@@ -51,8 +51,11 @@ export function MobileNav({ currentCategory = '' }: MobileNavProps) {
     }
   }, [])
 
-  // Notify when this menu opens/closes
+  // Notify when this menu opens/closes (sync + async)
   useEffect(() => {
+    // Set synchronous flag on window for immediate access by other components
+    (window as unknown as { __leftMenuOpen: boolean }).__leftMenuOpen = isOpen
+
     if (isOpen) {
       window.dispatchEvent(new CustomEvent('left-menu-opened'))
     } else {
@@ -75,14 +78,22 @@ export function MobileNav({ currentCategory = '' }: MobileNavProps) {
       const deltaX = touch.clientX - touchStartX.current
       const deltaY = Math.abs(touch.clientY - touchStartY.current)
 
+      // Check synchronous flag for right menu state (more reliable than async state)
+      const isRightMenuOpen = (window as unknown as { __rightMenuOpen?: boolean }).__rightMenuOpen
+
       if (isOpen) {
         // When menu is open, swipe left anywhere to close
         if (deltaX < -80 && Math.abs(deltaX) > deltaY * 1.5) {
+          // Set flag to prevent other menu from opening on same swipe
+          (window as unknown as { __menuJustClosed: boolean }).__menuJustClosed = true
+          setTimeout(() => {
+            (window as unknown as { __menuJustClosed: boolean }).__menuJustClosed = false
+          }, 100)
           setIsOpen(false)
           touchStartX.current = null
           touchStartY.current = null
         }
-      } else if (!rightMenuOpen) {
+      } else if (!isRightMenuOpen && !(window as unknown as { __menuJustClosed?: boolean }).__menuJustClosed) {
         // When menu is closed AND right menu is not open, swipe right to open
         if (deltaX > 80 && deltaX > deltaY * 1.5) {
           setIsOpen(true)
@@ -106,7 +117,7 @@ export function MobileNav({ currentCategory = '' }: MobileNavProps) {
       document.removeEventListener('touchmove', handleTouchMove)
       document.removeEventListener('touchend', handleTouchEnd)
     }
-  }, [isOpen, rightMenuOpen])
+  }, [isOpen])
 
   // Swipe to close menu
   const handleMenuTouchStart = (e: React.TouchEvent) => {
