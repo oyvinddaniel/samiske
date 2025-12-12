@@ -144,7 +144,37 @@
 
 ---
 
+## NYE BESLUTNINGER FRA SIKKERHETSGJENNOMGANG (2025-12-12)
+
+### 20. E-postbekreftelse (Auto-confirm)
+**Beslutning:** Behold auto-confirm for nå, planlegg overgang senere
+**Begrunnelse:**
+- Enklere onboarding for nye brukere i oppstartsfasen
+- Risiko for spam/impersonering aksepteres midlertidig
+- Overgang til e-postbekreftelse planlagt i Fase 5
+- Må dokumentere risikoen og overvåke for misbruk
+
+### 21. Søkefunksjon
+**Beslutning:** Implementer søkefunksjon (Fase 4)
+**Begrunnelse:**
+- Nyttig funksjon for brukere å finne innlegg og personer
+- SearchModal finnes allerede (Cmd+K), bare ikke implementert
+- Søk i tittel, innhold og brukernavn
+
+### 22. SMS-varsling
+**Beslutning:** Fjern fra UI (Fase 4)
+**Begrunnelse:**
+- Unødvendig kompleksitet på dette stadiet
+- Ingen backend-støtte implementert
+- Forvirrer brukere med innstilling som ikke fungerer
+- Kan gjeninnføres senere om det er behov
+
+---
+
 ## Fremtidige beslutninger å ta
-- SMS-tjenesteleverandør (Twilio, MessageBird, etc.)
+
+- Konkret SMS-tjenesteleverandør hvis det blir aktuelt
 - Utvidet e-postvarsling (digest, varsler til brukere)
 - PWA-konfigurasjon og offline-støtte
+- Gruppechat funksjonalitet
+- Kalenderintegrasjon for arrangementer

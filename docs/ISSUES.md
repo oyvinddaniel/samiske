@@ -4,9 +4,88 @@
 
 ---
 
-## Aktive problemer
+## AKTIVE SIKKERHETSPROBLEMER
 
-Ingen kjente aktive problemer.
+### KRITISK: Service Role Key eksponert
+**Status:** AKTIV - MÅ FIKSES UMIDDELBART
+**Alvorlighet:** 🔴 KRITISK
+**Beskrivelse:** Service Role Key ligger i .env.local og kan være committed til git. Gir full admin-tilgang til databasen.
+**Løsning:**
+1. Roter nøkkelen i Supabase Dashboard → Settings → API
+2. Oppdater kun i Vercel Environment Variables
+3. Fjern fra .env.local
+
+### KRITISK: Åpne RLS policies
+**Status:** AKTIV - MÅ FIKSES UMIDDELBART
+**Alvorlighet:** 🔴 KRITISK
+**Beskrivelse:** `email_subscribers`, `conversations`, `conversation_participants` har `WITH CHECK (true)` - hvem som helst kan skrive data.
+**Løsning:** Se NEXT-STEPS.md Fase 1.2 for SQL-fix
+
+### HØY: Delete account uten beskyttelse
+**Status:** AKTIV
+**Alvorlighet:** 🟠 HØY
+**Beskrivelse:** Mangler passordbekreftelse og CSRF-token
+**Løsning:** Legg til passordbekreftelse i delete-account API
+
+### HØY: Auto-confirm users
+**Status:** DOKUMENTERT RISIKO
+**Alvorlighet:** 🟠 HØY
+**Beskrivelse:** Brukere bekreftes automatisk uten e-postvalidering - muliggjør spam og impersonering
+**Beslutning:** Behold for nå, planlegg overgang til e-postbekreftelse (Fase 5)
+
+---
+
+## AKTIVE KODEKVALITETSPROBLEMER
+
+### KRITISK: Manglende error handling
+**Status:** AKTIV
+**Alvorlighet:** 🔴 KRITISK
+**Beskrivelse:** 80% av Supabase queries håndterer ikke feil. Brukere ser ingen feilmeldinger.
+**Løsning:** Gå gjennom alle queries, legg til try/catch og toast notifications
+
+### KRITISK: N+1 query problem
+**Status:** AKTIV
+**Alvorlighet:** 🔴 KRITISK
+**Beskrivelse:** Feed gjør 31 queries for 10 innlegg (bør være 2-3)
+**Fil:** `src/components/feed/Feed.tsx`
+**Løsning:** Batch-fetch likes og comments counts
+
+### HØY: PostCard.tsx for stor
+**Status:** AKTIV
+**Alvorlighet:** 🟠 HØY
+**Beskrivelse:** 1139 linjer - vanskelig å vedlikeholde
+**Fil:** `src/components/posts/PostCard.tsx`
+**Løsning:** Splitt i 4 komponenter (PostCard, PostActions, PostComments, EditPostDialog)
+
+### HØY: Memory leaks i React
+**Status:** AKTIV
+**Alvorlighet:** 🟠 HØY
+**Beskrivelse:** Supabase subscriptions ryddes ikke alltid opp ordentlig
+**Løsning:** Gjennomgå alle useEffect med subscriptions, sikre cleanup
+
+---
+
+## AKTIVE FUNKSJONALITETSPROBLEMER
+
+### HØY: Søk fungerer ikke
+**Status:** AKTIV
+**Alvorlighet:** 🟠 HØY
+**Beskrivelse:** SearchModal åpnes (Cmd+K), men ingen søkefunksjon er implementert
+**Fil:** `src/components/search/SearchModal.tsx`
+**Løsning:** Implementer søk i innlegg og brukere
+
+### MEDIUM: SMS uten backend
+**Status:** BESLUTTET FJERNES
+**Alvorlighet:** 🟡 MEDIUM
+**Beskrivelse:** SMS-innstilling vises i UI, men gjør ingenting
+**Fil:** `src/app/innstillinger/page.tsx`
+**Løsning:** Fjern SMS-toggle fra UI
+
+### MEDIUM: Manglende tilgjengelighet (a11y)
+**Status:** AKTIV
+**Alvorlighet:** 🟡 MEDIUM
+**Beskrivelse:** Aria-labels og keyboard navigation mangler steder
+**Løsning:** Legg til aria-labels på icon-buttons, keyboard nav for bubbles
 
 ---
 
@@ -55,8 +134,8 @@ WHERE p.id IS NULL;
 
 ## Kjente begrensninger
 
-- SMS-varsling er ikke implementert (fremtidig funksjon)
-- Søkefunksjon tas i senere versjon
+- SMS-varsling er ikke implementert (fjernes fra UI)
+- Søkefunksjon tas i Fase 4
 - Kalendervisning tas i senere versjon
 - Sletting av egne innlegg ikke implementert ennå
 
