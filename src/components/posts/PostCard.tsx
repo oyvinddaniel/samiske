@@ -17,6 +17,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { BottomSheet } from '@/components/ui/bottom-sheet'
+import { useIsMobile } from '@/hooks/useIsMobile'
 import {
   Tooltip,
   TooltipContent,
@@ -120,6 +122,7 @@ export function PostCard({ post, currentUserId }: PostCardProps) {
   const [saving, setSaving] = useState(false)
   const [postData, setPostData] = useState(post)
   const supabase = createClient()
+  const isMobile = useIsMobile()
 
   // Check if content should be blurred (members-only and not logged in)
   const isBlurred = postData.visibility === 'members' && !currentUserId
@@ -922,186 +925,367 @@ export function PostCard({ post, currentUserId }: PostCardProps) {
       )}
     </Card>
 
-    {/* Post Dialog/Popup */}
-    <Dialog open={showDialog} onOpenChange={(open) => { setShowDialog(open); if (!open) setIsEditing(false); }}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            {isEditing ? 'Rediger innlegg' : postData.title}
-            {!isEditing && isOwner && (
-              <button
-                onClick={() => setIsEditing(true)}
-                className="p-1 rounded hover:bg-gray-100 transition-colors"
-                title="Rediger innlegg"
-              >
-                <Pencil className="w-4 h-4 text-gray-400 hover:text-gray-600" />
-              </button>
-            )}
-          </DialogTitle>
-        </DialogHeader>
-
-        {isEditing ? (
-          /* Edit mode */
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="editTitle">Tittel</Label>
-              <Input
-                id="editTitle"
-                value={editTitle}
-                onChange={(e) => setEditTitle(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="editContent">Innhold</Label>
-              <Textarea
-                id="editContent"
-                value={editContent}
-                onChange={(e) => setEditContent(e.target.value)}
-                rows={5}
-              />
-            </div>
-            {postData.type === 'event' && (
-              <>
-                <div className="space-y-2">
-                  <Label htmlFor="editEventDate">Dato</Label>
-                  <Input
-                    id="editEventDate"
-                    type="date"
-                    value={editEventDate}
-                    onChange={(e) => setEditEventDate(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="editEventTime">Tidspunkt</Label>
-                  <Input
-                    id="editEventTime"
-                    type="time"
-                    value={editEventTime}
-                    onChange={(e) => setEditEventTime(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="editEventLocation">Sted</Label>
-                  <Input
-                    id="editEventLocation"
-                    value={editEventLocation}
-                    onChange={(e) => setEditEventLocation(e.target.value)}
-                  />
-                </div>
-              </>
-            )}
-            <div className="flex gap-2 pt-2">
-              <Button onClick={handleSaveEdit} disabled={saving}>
-                {saving ? 'Lagrer...' : 'Lagre endringer'}
-              </Button>
-              <Button variant="outline" onClick={handleCancelEdit}>
-                Avbryt
-              </Button>
-            </div>
-          </div>
-        ) : (
-          /* View mode */
-          <div className="space-y-4">
-            {/* Author info */}
-            <div className="flex items-center gap-2">
-              <Avatar className="w-8 h-8">
-                <AvatarImage src={postData.user.avatar_url || undefined} />
-                <AvatarFallback className="bg-blue-100 text-blue-600 text-xs">
-                  {getInitials(postData.user.full_name)}
-                </AvatarFallback>
-              </Avatar>
-              <div>
-                <p className="text-sm font-medium">{postData.user.full_name || 'Ukjent'}</p>
-                <p className="text-xs text-gray-500">{formatDate(postData.created_at)}</p>
-              </div>
-              {postData.category && (
-                <Badge
-                  style={{ backgroundColor: categoryColor, color: 'white' }}
-                  className="ml-auto text-xs"
-                >
-                  {postData.category.name}
-                </Badge>
-              )}
-            </div>
-
-            {/* Event info */}
-            {postData.type === 'event' && postData.event_date && (
-              <div className="flex items-center gap-3 text-sm text-gray-600 bg-gray-50 rounded-lg p-3">
-                <span>📅 {formatEventDate(postData.event_date, postData.event_time)}</span>
-                {postData.event_location && <span>📍 {postData.event_location}</span>}
-              </div>
-            )}
-
-            {/* Full content */}
-            <p className="text-gray-700 whitespace-pre-wrap">{postData.content}</p>
-
-            {/* Image */}
-            {postData.image_url && (
-              <div className="w-full overflow-hidden rounded-lg">
-                <img
-                  src={postData.image_url}
-                  alt={postData.title}
-                  className="w-full h-auto"
+    {/* Post Dialog/Popup - Desktop uses Dialog, Mobile uses BottomSheet */}
+    {isMobile ? (
+      <BottomSheet
+        open={showDialog}
+        onClose={() => { setShowDialog(false); if (isEditing) handleCancelEdit(); }}
+        title={isEditing ? 'Rediger innlegg' : postData.title}
+        confirmClose={isEditing}
+        confirmMessage="Er du sikker på at du vil avbryte? Endringer vil gå tapt."
+      >
+        <div className="py-4">
+          {isEditing ? (
+            /* Edit mode */
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="editTitleMobile">Tittel</Label>
+                <Input
+                  id="editTitleMobile"
+                  value={editTitle}
+                  onChange={(e) => setEditTitle(e.target.value)}
                 />
               </div>
-            )}
-
-            {/* Actions in dialog */}
-            <div className="flex items-center gap-2 pt-2 border-t">
-              <Button
-                variant="ghost"
-                size="sm"
-                className={`${liked ? 'text-red-500' : 'text-gray-500'}`}
-                onClick={handleLike}
-                disabled={!currentUserId}
-              >
-                {liked ? '❤️' : '🤍'} {likeCount}
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-gray-500"
-                onClick={() => { setShowComments(true); if (comments.length === 0) fetchComments(); }}
-              >
-                💬 {commentCount}
-              </Button>
-            </div>
-
-            {/* Comments in dialog */}
-            {showComments && (
-              <div className="space-y-3 pt-2 border-t">
-                <h4 className="text-sm font-medium">Kommentarer</h4>
-                {loadingComments ? (
-                  <p className="text-xs text-gray-400">Laster kommentarer...</p>
-                ) : comments.length === 0 ? (
-                  <p className="text-xs text-gray-500">Ingen kommentarer ennå</p>
-                ) : (
+              <div className="space-y-2">
+                <Label htmlFor="editContentMobile">Innhold</Label>
+                <Textarea
+                  id="editContentMobile"
+                  value={editContent}
+                  onChange={(e) => setEditContent(e.target.value)}
+                  rows={5}
+                />
+              </div>
+              {postData.type === 'event' && (
+                <>
                   <div className="space-y-2">
-                    {comments.map((comment) => renderComment(comment))}
-                  </div>
-                )}
-
-                {/* Comment input */}
-                {currentUserId && (
-                  <form onSubmit={(e) => handleSubmitComment(e, null)} className="flex gap-2">
-                    <Textarea
-                      value={newComment}
-                      onChange={(e) => setNewComment(e.target.value)}
-                      placeholder="Skriv en kommentar..."
-                      rows={1}
-                      className="resize-none text-sm"
+                    <Label htmlFor="editEventDateMobile">Dato</Label>
+                    <Input
+                      id="editEventDateMobile"
+                      type="date"
+                      value={editEventDate}
+                      onChange={(e) => setEditEventDate(e.target.value)}
                     />
-                    <Button type="submit" disabled={submitting || !newComment.trim()}>
-                      {submitting ? '...' : 'Send'}
-                    </Button>
-                  </form>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="editEventTimeMobile">Tidspunkt</Label>
+                    <Input
+                      id="editEventTimeMobile"
+                      type="time"
+                      value={editEventTime}
+                      onChange={(e) => setEditEventTime(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="editEventLocationMobile">Sted</Label>
+                    <Input
+                      id="editEventLocationMobile"
+                      value={editEventLocation}
+                      onChange={(e) => setEditEventLocation(e.target.value)}
+                    />
+                  </div>
+                </>
+              )}
+              <div className="flex gap-2 pt-2">
+                <Button onClick={handleSaveEdit} disabled={saving} className="flex-1">
+                  {saving ? 'Lagrer...' : 'Lagre endringer'}
+                </Button>
+                <Button variant="outline" onClick={handleCancelEdit}>
+                  Avbryt
+                </Button>
+              </div>
+            </div>
+          ) : (
+            /* View mode */
+            <div className="space-y-4">
+              {/* Author info with edit button */}
+              <div className="flex items-center gap-2">
+                <Avatar className="w-8 h-8">
+                  <AvatarImage src={postData.user.avatar_url || undefined} />
+                  <AvatarFallback className="bg-blue-100 text-blue-600 text-xs">
+                    {getInitials(postData.user.full_name)}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex-1">
+                  <p className="text-sm font-medium">{postData.user.full_name || 'Ukjent'}</p>
+                  <p className="text-xs text-gray-500">{formatDate(postData.created_at)}</p>
+                </div>
+                {isOwner && (
+                  <button
+                    onClick={() => setIsEditing(true)}
+                    className="p-2 rounded hover:bg-gray-100 transition-colors"
+                    title="Rediger innlegg"
+                  >
+                    <Pencil className="w-4 h-4 text-gray-400" />
+                  </button>
+                )}
+                {postData.category && (
+                  <Badge
+                    style={{ backgroundColor: categoryColor, color: 'white' }}
+                    className="text-xs"
+                  >
+                    {postData.category.name}
+                  </Badge>
                 )}
               </div>
-            )}
-          </div>
-        )}
-      </DialogContent>
-    </Dialog>
+
+              {/* Event info */}
+              {postData.type === 'event' && postData.event_date && (
+                <div className="flex flex-wrap items-center gap-2 text-sm text-gray-600 bg-gray-50 rounded-lg p-3">
+                  <span>📅 {formatEventDate(postData.event_date, postData.event_time)}</span>
+                  {postData.event_location && <span>📍 {postData.event_location}</span>}
+                </div>
+              )}
+
+              {/* Full content */}
+              <p className="text-gray-700 whitespace-pre-wrap">{postData.content}</p>
+
+              {/* Image */}
+              {postData.image_url && (
+                <div className="w-full overflow-hidden rounded-lg">
+                  <img
+                    src={postData.image_url}
+                    alt={postData.title}
+                    className="w-full h-auto"
+                  />
+                </div>
+              )}
+
+              {/* Actions */}
+              <div className="flex items-center gap-2 pt-2 border-t">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className={`${liked ? 'text-red-500' : 'text-gray-500'}`}
+                  onClick={handleLike}
+                  disabled={!currentUserId}
+                >
+                  {liked ? '❤️' : '🤍'} {likeCount}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-gray-500"
+                  onClick={() => { setShowComments(true); if (comments.length === 0) fetchComments(); }}
+                >
+                  💬 {commentCount}
+                </Button>
+              </div>
+
+              {/* Comments */}
+              {showComments && (
+                <div className="space-y-3 pt-2 border-t">
+                  <h4 className="text-sm font-medium">Kommentarer</h4>
+                  {loadingComments ? (
+                    <p className="text-xs text-gray-400">Laster kommentarer...</p>
+                  ) : comments.length === 0 ? (
+                    <p className="text-xs text-gray-500">Ingen kommentarer ennå</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {comments.map((comment) => renderComment(comment))}
+                    </div>
+                  )}
+
+                  {currentUserId && (
+                    <form onSubmit={(e) => handleSubmitComment(e, null)} className="flex gap-2">
+                      <Textarea
+                        value={newComment}
+                        onChange={(e) => setNewComment(e.target.value)}
+                        placeholder="Skriv en kommentar..."
+                        rows={1}
+                        className="resize-none text-sm"
+                      />
+                      <Button type="submit" disabled={submitting || !newComment.trim()}>
+                        {submitting ? '...' : 'Send'}
+                      </Button>
+                    </form>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </BottomSheet>
+    ) : (
+      <Dialog open={showDialog} onOpenChange={(open) => { setShowDialog(open); if (!open) setIsEditing(false); }}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {isEditing ? 'Rediger innlegg' : postData.title}
+              {!isEditing && isOwner && (
+                <button
+                  onClick={() => setIsEditing(true)}
+                  className="p-1 rounded hover:bg-gray-100 transition-colors"
+                  title="Rediger innlegg"
+                >
+                  <Pencil className="w-4 h-4 text-gray-400 hover:text-gray-600" />
+                </button>
+              )}
+            </DialogTitle>
+          </DialogHeader>
+
+          {isEditing ? (
+            /* Edit mode */
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="editTitle">Tittel</Label>
+                <Input
+                  id="editTitle"
+                  value={editTitle}
+                  onChange={(e) => setEditTitle(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="editContent">Innhold</Label>
+                <Textarea
+                  id="editContent"
+                  value={editContent}
+                  onChange={(e) => setEditContent(e.target.value)}
+                  rows={5}
+                />
+              </div>
+              {postData.type === 'event' && (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="editEventDate">Dato</Label>
+                    <Input
+                      id="editEventDate"
+                      type="date"
+                      value={editEventDate}
+                      onChange={(e) => setEditEventDate(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="editEventTime">Tidspunkt</Label>
+                    <Input
+                      id="editEventTime"
+                      type="time"
+                      value={editEventTime}
+                      onChange={(e) => setEditEventTime(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="editEventLocation">Sted</Label>
+                    <Input
+                      id="editEventLocation"
+                      value={editEventLocation}
+                      onChange={(e) => setEditEventLocation(e.target.value)}
+                    />
+                  </div>
+                </>
+              )}
+              <div className="flex gap-2 pt-2">
+                <Button onClick={handleSaveEdit} disabled={saving}>
+                  {saving ? 'Lagrer...' : 'Lagre endringer'}
+                </Button>
+                <Button variant="outline" onClick={handleCancelEdit}>
+                  Avbryt
+                </Button>
+              </div>
+            </div>
+          ) : (
+            /* View mode */
+            <div className="space-y-4">
+              {/* Author info */}
+              <div className="flex items-center gap-2">
+                <Avatar className="w-8 h-8">
+                  <AvatarImage src={postData.user.avatar_url || undefined} />
+                  <AvatarFallback className="bg-blue-100 text-blue-600 text-xs">
+                    {getInitials(postData.user.full_name)}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <p className="text-sm font-medium">{postData.user.full_name || 'Ukjent'}</p>
+                  <p className="text-xs text-gray-500">{formatDate(postData.created_at)}</p>
+                </div>
+                {postData.category && (
+                  <Badge
+                    style={{ backgroundColor: categoryColor, color: 'white' }}
+                    className="ml-auto text-xs"
+                  >
+                    {postData.category.name}
+                  </Badge>
+                )}
+              </div>
+
+              {/* Event info */}
+              {postData.type === 'event' && postData.event_date && (
+                <div className="flex items-center gap-3 text-sm text-gray-600 bg-gray-50 rounded-lg p-3">
+                  <span>📅 {formatEventDate(postData.event_date, postData.event_time)}</span>
+                  {postData.event_location && <span>📍 {postData.event_location}</span>}
+                </div>
+              )}
+
+              {/* Full content */}
+              <p className="text-gray-700 whitespace-pre-wrap">{postData.content}</p>
+
+              {/* Image */}
+              {postData.image_url && (
+                <div className="w-full overflow-hidden rounded-lg">
+                  <img
+                    src={postData.image_url}
+                    alt={postData.title}
+                    className="w-full h-auto"
+                  />
+                </div>
+              )}
+
+              {/* Actions in dialog */}
+              <div className="flex items-center gap-2 pt-2 border-t">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className={`${liked ? 'text-red-500' : 'text-gray-500'}`}
+                  onClick={handleLike}
+                  disabled={!currentUserId}
+                >
+                  {liked ? '❤️' : '🤍'} {likeCount}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-gray-500"
+                  onClick={() => { setShowComments(true); if (comments.length === 0) fetchComments(); }}
+                >
+                  💬 {commentCount}
+                </Button>
+              </div>
+
+              {/* Comments in dialog */}
+              {showComments && (
+                <div className="space-y-3 pt-2 border-t">
+                  <h4 className="text-sm font-medium">Kommentarer</h4>
+                  {loadingComments ? (
+                    <p className="text-xs text-gray-400">Laster kommentarer...</p>
+                  ) : comments.length === 0 ? (
+                    <p className="text-xs text-gray-500">Ingen kommentarer ennå</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {comments.map((comment) => renderComment(comment))}
+                    </div>
+                  )}
+
+                  {/* Comment input */}
+                  {currentUserId && (
+                    <form onSubmit={(e) => handleSubmitComment(e, null)} className="flex gap-2">
+                      <Textarea
+                        value={newComment}
+                        onChange={(e) => setNewComment(e.target.value)}
+                        placeholder="Skriv en kommentar..."
+                        rows={1}
+                        className="resize-none text-sm"
+                      />
+                      <Button type="submit" disabled={submitting || !newComment.trim()}>
+                        {submitting ? '...' : 'Send'}
+                      </Button>
+                    </form>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+    )}
     </>
   )
 }
