@@ -240,7 +240,7 @@ export function MobileNav({ currentCategory = '' }: MobileNavProps) {
       {/* Hamburger button */}
       <button
         onClick={() => setIsOpen(true)}
-        className="md:hidden p-2 -ml-2 text-gray-600 hover:text-gray-900"
+        className="md:hidden p-2 -ml-2 text-white/80 hover:text-white"
         aria-label="Åpne meny"
       >
         <svg
