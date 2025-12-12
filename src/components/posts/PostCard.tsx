@@ -930,11 +930,12 @@ export function PostCard({ post, currentUserId }: PostCardProps) {
       <BottomSheet
         open={showDialog}
         onClose={() => { setShowDialog(false); if (isEditing) handleCancelEdit(); }}
+        onOpen={() => { if (comments.length === 0) fetchComments(); }}
         title={isEditing ? 'Rediger innlegg' : postData.title}
         confirmClose={isEditing}
         confirmMessage="Er du sikker på at du vil avbryte? Endringer vil gå tapt."
       >
-        <div className="py-4">
+        <div className="py-4 pb-[100px]">
           {isEditing ? (
             /* Edit mode */
             <div className="space-y-4">
@@ -1061,53 +1062,50 @@ export function PostCard({ post, currentUserId }: PostCardProps) {
                 >
                   {liked ? '❤️' : '🤍'} {likeCount}
                 </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-gray-500"
-                  onClick={() => { setShowComments(true); if (comments.length === 0) fetchComments(); }}
-                >
+                <span className="text-sm text-gray-500">
                   💬 {commentCount}
-                </Button>
+                </span>
               </div>
 
-              {/* Comments */}
-              {showComments && (
-                <div className="space-y-3 pt-2 border-t">
-                  <h4 className="text-sm font-medium">Kommentarer</h4>
-                  {loadingComments ? (
-                    <p className="text-xs text-gray-400">Laster kommentarer...</p>
-                  ) : comments.length === 0 ? (
-                    <p className="text-xs text-gray-500">Ingen kommentarer ennå</p>
-                  ) : (
-                    <div className="space-y-2">
-                      {comments.map((comment) => renderComment(comment))}
-                    </div>
-                  )}
+              {/* Comments - always visible */}
+              <div className="space-y-3 pt-2 border-t">
+                <h4 className="text-sm font-medium">Kommentarer ({commentCount})</h4>
+                {loadingComments ? (
+                  <p className="text-xs text-gray-400">Laster kommentarer...</p>
+                ) : comments.length === 0 ? (
+                  <p className="text-xs text-gray-500">Ingen kommentarer ennå</p>
+                ) : (
+                  <div className="space-y-2">
+                    {comments.map((comment) => renderComment(comment))}
+                  </div>
+                )}
 
-                  {currentUserId && (
-                    <form onSubmit={(e) => handleSubmitComment(e, null)} className="flex gap-2">
-                      <Textarea
-                        value={newComment}
-                        onChange={(e) => setNewComment(e.target.value)}
-                        placeholder="Skriv en kommentar..."
-                        rows={1}
-                        className="resize-none text-sm"
-                      />
-                      <Button type="submit" disabled={submitting || !newComment.trim()}>
-                        {submitting ? '...' : 'Send'}
-                      </Button>
-                    </form>
-                  )}
-                </div>
-              )}
+                {currentUserId ? (
+                  <form onSubmit={(e) => handleSubmitComment(e, null)} className="flex gap-2">
+                    <Textarea
+                      value={newComment}
+                      onChange={(e) => setNewComment(e.target.value)}
+                      placeholder="Skriv en kommentar..."
+                      rows={1}
+                      className="resize-none text-sm"
+                    />
+                    <Button type="submit" disabled={submitting || !newComment.trim()}>
+                      {submitting ? '...' : 'Send'}
+                    </Button>
+                  </form>
+                ) : (
+                  <p className="text-xs text-gray-500 bg-gray-50 p-2 rounded">
+                    Logg inn for å kommentere
+                  </p>
+                )}
+              </div>
             </div>
           )}
         </div>
       </BottomSheet>
     ) : (
-      <Dialog open={showDialog} onOpenChange={(open) => { setShowDialog(open); if (!open) setIsEditing(false); }}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <Dialog open={showDialog} onOpenChange={(open) => { setShowDialog(open); if (!open) setIsEditing(false); if (open && comments.length === 0) fetchComments(); }}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto pb-0">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               {isEditing ? 'Rediger innlegg' : postData.title}
@@ -1240,47 +1238,44 @@ export function PostCard({ post, currentUserId }: PostCardProps) {
                 >
                   {liked ? '❤️' : '🤍'} {likeCount}
                 </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-gray-500"
-                  onClick={() => { setShowComments(true); if (comments.length === 0) fetchComments(); }}
-                >
+                <span className="text-sm text-gray-500">
                   💬 {commentCount}
-                </Button>
+                </span>
               </div>
 
-              {/* Comments in dialog */}
-              {showComments && (
-                <div className="space-y-3 pt-2 border-t">
-                  <h4 className="text-sm font-medium">Kommentarer</h4>
-                  {loadingComments ? (
-                    <p className="text-xs text-gray-400">Laster kommentarer...</p>
-                  ) : comments.length === 0 ? (
-                    <p className="text-xs text-gray-500">Ingen kommentarer ennå</p>
-                  ) : (
-                    <div className="space-y-2">
-                      {comments.map((comment) => renderComment(comment))}
-                    </div>
-                  )}
+              {/* Comments in dialog - always visible */}
+              <div className="space-y-3 pt-2 border-t pb-[100px]">
+                <h4 className="text-sm font-medium">Kommentarer ({commentCount})</h4>
+                {loadingComments ? (
+                  <p className="text-xs text-gray-400">Laster kommentarer...</p>
+                ) : comments.length === 0 ? (
+                  <p className="text-xs text-gray-500">Ingen kommentarer ennå</p>
+                ) : (
+                  <div className="space-y-2">
+                    {comments.map((comment) => renderComment(comment))}
+                  </div>
+                )}
 
-                  {/* Comment input */}
-                  {currentUserId && (
-                    <form onSubmit={(e) => handleSubmitComment(e, null)} className="flex gap-2">
-                      <Textarea
-                        value={newComment}
-                        onChange={(e) => setNewComment(e.target.value)}
-                        placeholder="Skriv en kommentar..."
-                        rows={1}
-                        className="resize-none text-sm"
-                      />
-                      <Button type="submit" disabled={submitting || !newComment.trim()}>
-                        {submitting ? '...' : 'Send'}
-                      </Button>
-                    </form>
-                  )}
-                </div>
-              )}
+                {/* Comment input */}
+                {currentUserId ? (
+                  <form onSubmit={(e) => handleSubmitComment(e, null)} className="flex gap-2">
+                    <Textarea
+                      value={newComment}
+                      onChange={(e) => setNewComment(e.target.value)}
+                      placeholder="Skriv en kommentar..."
+                      rows={1}
+                      className="resize-none text-sm"
+                    />
+                    <Button type="submit" disabled={submitting || !newComment.trim()}>
+                      {submitting ? '...' : 'Send'}
+                    </Button>
+                  </form>
+                ) : (
+                  <p className="text-xs text-gray-500 bg-gray-50 p-2 rounded">
+                    Logg inn for å kommentere
+                  </p>
+                )}
+              </div>
             </div>
           )}
         </DialogContent>

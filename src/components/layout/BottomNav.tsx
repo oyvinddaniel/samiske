@@ -6,10 +6,12 @@ import { usePathname } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
 import { Home, PlusCircle, User, LogIn, Menu, BarChart3 } from 'lucide-react'
+import { NewPostSheet } from '@/components/posts/NewPostSheet'
 import type { User as SupabaseUser } from '@supabase/supabase-js'
 
 export function BottomNav() {
   const [user, setUser] = useState<SupabaseUser | null>(null)
+  const [showNewPostSheet, setShowNewPostSheet] = useState(false)
   const pathname = usePathname()
   const supabase = createClient()
 
@@ -36,13 +38,17 @@ export function BottomNav() {
     window.dispatchEvent(new CustomEvent('open-right-sidebar'))
   }
 
+  const openNewPostSheet = () => {
+    setShowNewPostSheet(true)
+  }
+
   const navItems = user ? [
-    { href: '/', icon: Home, label: 'Hjem' },
-    { href: '/ny', icon: PlusCircle, label: 'Ny' },
-    { href: '/profil', icon: User, label: 'Profil' },
+    { href: '/', icon: Home, label: 'Hjem', action: null },
+    { href: null, icon: PlusCircle, label: 'Ny', action: openNewPostSheet },
+    { href: '/profil', icon: User, label: 'Profil', action: null },
   ] : [
-    { href: '/', icon: Home, label: 'Hjem' },
-    { href: '/login', icon: LogIn, label: 'Logg inn' },
+    { href: '/', icon: Home, label: 'Hjem', action: null },
+    { href: '/login', icon: LogIn, label: 'Logg inn', action: null },
   ]
 
   return (
@@ -59,16 +65,33 @@ export function BottomNav() {
 
         {/* Center navigation items */}
         <div className="flex items-center justify-center flex-1">
-          {navItems.map((item) => {
-            const isActive = pathname === item.href ||
+          {navItems.map((item, index) => {
+            const isActive = item.href && (pathname === item.href ||
               (item.href === '/' && pathname === '/') ||
-              (item.href !== '/' && pathname.startsWith(item.href))
+              (item.href !== '/' && pathname.startsWith(item.href)))
             const Icon = item.icon
 
+            // If item has an action, render as button
+            if (item.action) {
+              return (
+                <button
+                  key={item.label}
+                  onClick={item.action}
+                  className="flex flex-col items-center justify-center w-16 h-full py-2 transition-colors text-gray-500 hover:text-gray-900"
+                >
+                  <Icon className="w-6 h-6" />
+                  <span className="text-[10px] mt-1 font-medium">
+                    {item.label}
+                  </span>
+                </button>
+              )
+            }
+
+            // Otherwise render as link
             return (
               <Link
-                key={item.href}
-                href={item.href}
+                key={item.href || index}
+                href={item.href || '/'}
                 className={cn(
                   'flex flex-col items-center justify-center w-16 h-full py-2 transition-colors',
                   isActive
@@ -100,6 +123,12 @@ export function BottomNav() {
           <span className="text-[10px] mt-1 font-medium">Info</span>
         </button>
       </div>
+
+      {/* New Post Sheet */}
+      <NewPostSheet
+        open={showNewPostSheet}
+        onClose={() => setShowNewPostSheet(false)}
+      />
     </nav>
   )
 }

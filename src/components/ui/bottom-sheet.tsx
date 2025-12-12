@@ -8,6 +8,7 @@ import { X } from 'lucide-react'
 interface BottomSheetProps {
   open: boolean
   onClose: () => void
+  onOpen?: () => void
   children: React.ReactNode
   title?: string
   confirmClose?: boolean
@@ -17,6 +18,7 @@ interface BottomSheetProps {
 export function BottomSheet({
   open,
   onClose,
+  onOpen,
   children,
   title,
   confirmClose = false,
@@ -31,6 +33,13 @@ export function BottomSheet({
   useEffect(() => {
     setMounted(true)
   }, [])
+
+  // Call onOpen when sheet opens
+  useEffect(() => {
+    if (open && onOpen) {
+      onOpen()
+    }
+  }, [open, onOpen])
 
   // Prevent body scroll when open
   useEffect(() => {
