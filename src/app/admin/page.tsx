@@ -317,13 +317,13 @@ export default function AdminPage() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           <Card>
             <CardContent className="pt-6 text-center">
-              <p className="text-3xl font-bold text-gray-900">{stats.totalUsers}</p>
+              <p className="text-3xl font-bold text-gray-900">{users.length}</p>
               <p className="text-sm text-gray-500">Brukere</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="pt-6 text-center">
-              <p className="text-3xl font-bold text-gray-900">{stats.totalPosts}</p>
+              <p className="text-3xl font-bold text-gray-900">{posts.length}</p>
               <p className="text-sm text-gray-500">Innlegg</p>
             </CardContent>
           </Card>
