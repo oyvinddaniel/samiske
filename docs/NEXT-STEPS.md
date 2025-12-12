@@ -1,49 +1,74 @@
 # Neste steg: samiske.no
 
-## Sist oppdatert: 2025-12-11
+## Sist oppdatert: 2025-12-12
 
 ---
 
-## Umiddelbare oppgaver
+## Status
+**Prosjektet er LIVE på samiske.no**
 
-### 1. Sett opp Supabase
-- [ ] Opprett Supabase-prosjekt på supabase.com
-- [ ] Hent API-nøkler (SUPABASE_URL og SUPABASE_ANON_KEY)
-- [ ] Installer @supabase/supabase-js
-- [ ] Opprett /src/lib/supabase.ts med klientkonfigurasjon
-- [ ] Legg til miljøvariabler i .env.local
-
-### 2. Design databaseskjema
-- [ ] Opprett tabell: users (profiler)
-- [ ] Opprett tabell: posts (innlegg)
-- [ ] Opprett tabell: categories (kategorier)
-- [ ] Opprett tabell: comments (kommentarer)
-- [ ] Opprett tabell: likes
-- [ ] Sett opp Row Level Security (RLS)
-
-### 3. Implementer autentisering
-- [ ] Registreringsside
-- [ ] Innloggingsside
-- [ ] Utloggingsfunksjon
-- [ ] Beskyttet ruting
-
-### 4. Bygg hovedfeed
-- [ ] Feed-komponent med innleggsliste
-- [ ] Innleggskort-komponent
-- [ ] Kategorifilter
-- [ ] Responsivt design
+GitHub: https://github.com/oyvinddaniel/samiske
+Automatisk deploy via Vercel ved push til main.
 
 ---
 
-## Forutsetninger
-Før du starter, sørg for at:
-1. Du har en Supabase-konto
-2. Du har lest /docs/PRD.md for full kontekst
-3. Du har lest /docs/PROGRESS.md for nåværende status
+## Mulige fremtidige forbedringer
+
+### 1. E-postvarsling
+- [ ] Sett opp e-postliste for nye innlegg
+- [ ] Konfigurer Supabase Edge Functions eller ekstern tjeneste
+- [ ] La brukere velge varslingsfrekvens
+
+### 2. PWA (Progressive Web App)
+- [ ] Legg til manifest.json
+- [ ] Konfigurer service worker
+- [ ] Legg til installeringsknapp
+- [ ] Offline-støtte for lest innhold
+
+### 3. Ekstra brukerinteraksjon
+- [ ] Slette egne innlegg
+- [ ] Bokmerke innlegg
+- [ ] Dele innlegg (kopier lenke)
+- [ ] Melde fra om upassende innhold
+
+### 4. Forbedringer
+- [ ] Søkefunksjon
+- [ ] Kalendervisning for arrangementer
+- [ ] Bildegalleri
+- [ ] Rike tekst-editor (markdown/WYSIWYG)
+
+### 5. SMS-varsling
+- [ ] Velg SMS-leverandør (Twilio, etc.)
+- [ ] Implementer opt-in for SMS
+- [ ] Send SMS ved viktige hendelser
+
+---
+
+## Utviklingsarbeidsflyt
+
+### Gjøre endringer:
+1. Gjør endringer lokalt (`npm run dev`)
+2. Test at alt fungerer
+3. Commit og push: `git add -A && git commit -m "Beskrivelse" && git push`
+4. Vercel deployer automatisk innen 1-2 minutter
+
+### Viktige filer:
+- `/src/components/posts/PostCard.tsx` - Hovedkomponent for innlegg
+- `/src/components/feed/Feed.tsx` - Hovedfeed
+- `/src/components/layout/` - Header, Sidebar, MobileNav
+- `/src/app/` - Sider (Next.js App Router)
+- `/supabase/` - Database-migrasjoner
+
+---
+
+## Miljøvariabler (Vercel)
+Disse må være satt i Vercel Settings → Environment Variables:
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 
 ---
 
 ## Tips
-- Start utviklingsserver med `npm run dev`
-- Bruk eksisterende Shadcn/ui-komponenter i /src/components/ui/
-- Følg designprinsippene i CLAUDE.md
+- Kjør `npm run build` lokalt før push for å sjekke at alt kompilerer
+- Se Vercel dashboard for deploy-logger
+- Supabase dashboard for database og auth-administrasjon

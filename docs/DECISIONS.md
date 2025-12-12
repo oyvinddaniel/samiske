@@ -1,6 +1,6 @@
 # Beslutningslogg: samiske.no
 
-## Sist oppdatert: 2025-12-11
+## Sist oppdatert: 2025-12-12
 
 ---
 
@@ -53,9 +53,44 @@
 - Gir kulturell identitet
 - Moderne minimalistisk base med fargerike aksenter
 
+### 8. Ikoner (2025-12-12)
+**Beslutning:** Lucide React i stedet for emojis
+**Begrunnelse:**
+- Profesjonelt utseende
+- Konsistent stil gjennom appen
+- Bedre tilgjengelighet
+
+### 9. Innleggsvisning (2025-12-12)
+**Beslutning:** Popup/dialog i stedet for egen side
+**Begrunnelse:**
+- Raskere navigasjon
+- Brukeren forblir i feeden
+- Bedre brukeropplevelse
+
+### 10. Redigering (2025-12-12)
+**Beslutning:** In-place redigering i popup
+**Begrunnelse:**
+- Enklere enn egen redigeringsside
+- Umiddelbar tilbakemelding
+- Kun synlig for innleggets eier
+
+### 11. Varslingssystem (2025-12-12)
+**Beslutning:** Timestamp-basert varsling (last_seen_at)
+**Begrunnelse:**
+- Enklere enn full notifikasjons-tabell
+- Viser alt nytt siden sist besøk
+- Teller nye innlegg, kommentarer og likes
+
+### 12. Hosting/Domene (2025-12-12)
+**Beslutning:** Vercel med samiske.no
+**Begrunnelse:**
+- Automatisk deploy fra GitHub
+- Gratis SSL
+- God ytelse globalt
+
 ---
 
 ## Fremtidige beslutninger å ta
 - SMS-tjenesteleverandør (Twilio, MessageBird, etc.)
-- Bildehåndtering (Supabase Storage vs Cloudinary)
+- E-post-tjeneste for varsling
 - PWA-konfigurasjon
