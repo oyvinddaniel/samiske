@@ -72,27 +72,24 @@ export function RightSidebar() {
     return () => window.removeEventListener('open-right-sidebar', handleOpenSidebar)
   }, [])
 
-  // Swipe to open from right edge
+  // Swipe left anywhere to open right menu
   useEffect(() => {
     const handleTouchStart = (e: TouchEvent) => {
+      if (mobileOpen) return // Don't track if menu is already open
       const touch = e.touches[0]
-      const screenWidth = window.innerWidth
-      // Only track if starting from right edge (within 20px)
-      if (touch.clientX > screenWidth - 20 && !mobileOpen) {
-        touchStartX.current = touch.clientX
-        touchStartY.current = touch.clientY
-      }
+      touchStartX.current = touch.clientX
+      touchStartY.current = touch.clientY
     }
 
     const handleTouchMove = (e: TouchEvent) => {
-      if (touchStartX.current === null || touchStartY.current === null) return
+      if (touchStartX.current === null || touchStartY.current === null || mobileOpen) return
 
       const touch = e.touches[0]
-      const deltaX = touchStartX.current - touch.clientX // Swipe left (negative direction)
+      const deltaX = touchStartX.current - touch.clientX // Swipe left (positive value means left)
       const deltaY = Math.abs(touch.clientY - touchStartY.current)
 
-      // If horizontal swipe is greater than vertical and moved enough
-      if (deltaX > 50 && deltaX > deltaY) {
+      // Swipe left to open (positive deltaX), must be more horizontal than vertical
+      if (deltaX > 80 && deltaX > deltaY * 1.5) {
         setMobileOpen(true)
         touchStartX.current = null
         touchStartY.current = null
