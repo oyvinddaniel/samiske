@@ -126,16 +126,18 @@ export default function AdminPage() {
   }, [router, supabase])
 
   const fetchUsers = async () => {
-    const { data } = await supabase
+    const { data, count } = await supabase
       .from('profiles')
-      .select('*')
+      .select('*', { count: 'exact' })
       .order('created_at', { ascending: false })
+      .limit(10000)
 
     if (data) setUsers(data)
+    if (count !== null) setStats(prev => ({ ...prev, totalUsers: count }))
   }
 
   const fetchPosts = async () => {
-    const { data } = await supabase
+    const { data, count } = await supabase
       .from('posts')
       .select(`
         id,
@@ -153,8 +155,9 @@ export default function AdminPage() {
           name,
           color
         )
-      `)
+      `, { count: 'exact' })
       .order('created_at', { ascending: false })
+      .limit(10000)
 
     if (data) {
       const formattedPosts = data.map((post) => {
@@ -168,6 +171,7 @@ export default function AdminPage() {
       })
       setPosts(formattedPosts)
     }
+    if (count !== null) setStats(prev => ({ ...prev, totalPosts: count }))
   }
 
   const fetchFeedback = async () => {
@@ -317,13 +321,13 @@ export default function AdminPage() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           <Card>
             <CardContent className="pt-6 text-center">
-              <p className="text-3xl font-bold text-gray-900">{users.length}</p>
+              <p className="text-3xl font-bold text-gray-900">{stats.totalUsers}</p>
               <p className="text-sm text-gray-500">Brukere</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="pt-6 text-center">
-              <p className="text-3xl font-bold text-gray-900">{posts.length}</p>
+              <p className="text-3xl font-bold text-gray-900">{stats.totalPosts}</p>
               <p className="text-sm text-gray-500">Innlegg</p>
             </CardContent>
           </Card>
