@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom'
 import { createClient } from '@/lib/supabase/client'
 import { MessageSquarePlus, X, Send } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { toast } from 'sonner'
 
 export function FeedbackBubble() {
   const [isOpen, setIsOpen] = useState(false)
@@ -71,6 +72,7 @@ export function FeedbackBubble() {
       }, 3000)
     } catch (error) {
       console.error('Feedback error:', error)
+      toast.error('Kunne ikke sende tilbakemelding. Prøv igjen.')
     }
 
     setSending(false)

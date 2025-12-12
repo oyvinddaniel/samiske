@@ -4,6 +4,7 @@ import "./globals.css";
 import { ServiceWorkerRegistration } from "@/components/pwa/ServiceWorkerRegistration";
 import { FloatingSocialBubbles } from "@/components/social/FloatingSocialBubbles";
 import { FeedbackBubble } from "@/components/feedback/FeedbackBubble";
+import { Toaster } from "@/components/ui/sonner";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -56,6 +57,7 @@ export default function RootLayout({
         {children}
         <FloatingSocialBubbles />
         <FeedbackBubble />
+        <Toaster richColors position="top-center" />
       </body>
     </html>
   );

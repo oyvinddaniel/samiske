@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { PostCard } from '@/components/posts/PostCard'
 import { CreatePostSheet } from '@/components/posts/CreatePostSheet'
 import { Button } from '@/components/ui/button'
+import { toast } from 'sonner'
 
 interface FeedProps {
   categorySlug?: string
@@ -95,51 +96,68 @@ export function Feed({ categorySlug }: FeedProps) {
 
       if (error) {
         console.error('Error fetching posts:', error)
+        toast.error('Kunne ikke laste innlegg. Prøv igjen senere.')
         setLoading(false)
         return
       }
 
-      // Get counts and like status for each post
-      const postsWithCounts = await Promise.all(
-        (postsData || []).map(async (post) => {
-          // Get comment count
-          const { count: commentCount } = await supabase
-            .from('comments')
-            .select('*', { count: 'exact', head: true })
-            .eq('post_id', post.id)
+      if (!postsData || postsData.length === 0) {
+        setPosts([])
+        setLoading(false)
+        return
+      }
 
-          // Get like count
-          const { count: likeCount } = await supabase
-            .from('likes')
-            .select('*', { count: 'exact', head: true })
-            .eq('post_id', post.id)
+      // Get all post IDs for batch queries
+      const postIds = postsData.map(p => p.id)
 
-          // Check if current user has liked
-          let userHasLiked = false
-          if (user) {
-            const { data: likeData } = await supabase
-              .from('likes')
-              .select('id')
-              .eq('post_id', post.id)
-              .eq('user_id', user.id)
-              .single()
-            userHasLiked = !!likeData
-          }
+      // Batch fetch comment counts (single query instead of N queries)
+      const { data: commentCounts } = await supabase
+        .from('comments')
+        .select('post_id')
+        .in('post_id', postIds)
 
-          // Handle user - Supabase returns array for relations
-          const userData = Array.isArray(post.user) ? post.user[0] : post.user
-          const categoryData = Array.isArray(post.category) ? post.category[0] : post.category
+      // Batch fetch like counts (single query instead of N queries)
+      const { data: likeCounts } = await supabase
+        .from('likes')
+        .select('post_id')
+        .in('post_id', postIds)
 
-          return {
-            ...post,
-            user: userData as Post['user'],
-            category: categoryData as Post['category'],
-            comment_count: commentCount || 0,
-            like_count: likeCount || 0,
-            user_has_liked: userHasLiked,
-          }
-        })
-      )
+      // Batch fetch user's likes (single query instead of N queries)
+      let userLikedPostIds: string[] = []
+      if (user) {
+        const { data: userLikes } = await supabase
+          .from('likes')
+          .select('post_id')
+          .in('post_id', postIds)
+          .eq('user_id', user.id)
+        userLikedPostIds = (userLikes || []).map(l => l.post_id)
+      }
+
+      // Count comments and likes per post
+      const commentCountMap = (commentCounts || []).reduce((acc, c) => {
+        acc[c.post_id] = (acc[c.post_id] || 0) + 1
+        return acc
+      }, {} as Record<string, number>)
+
+      const likeCountMap = (likeCounts || []).reduce((acc, l) => {
+        acc[l.post_id] = (acc[l.post_id] || 0) + 1
+        return acc
+      }, {} as Record<string, number>)
+
+      // Map posts with counts
+      const postsWithCounts = postsData.map((post) => {
+        const userData = Array.isArray(post.user) ? post.user[0] : post.user
+        const categoryData = Array.isArray(post.category) ? post.category[0] : post.category
+
+        return {
+          ...post,
+          user: userData as Post['user'],
+          category: categoryData as Post['category'],
+          comment_count: commentCountMap[post.id] || 0,
+          like_count: likeCountMap[post.id] || 0,
+          user_has_liked: userLikedPostIds.includes(post.id),
+        }
+      })
 
       setPosts(postsWithCounts)
       setLoading(false)

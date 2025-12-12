@@ -17,7 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Mail, Bell, MessageSquare, ArrowLeft, Phone } from 'lucide-react'
+import { Mail, Bell, ArrowLeft } from 'lucide-react'
 import {
   isPushSupported,
   getPushPermission,
@@ -31,9 +31,6 @@ interface NotificationPreferences {
   email_new_posts: 'none' | 'instant' | 'daily' | 'weekly'
   email_comments: 'none' | 'instant' | 'daily'
   push_enabled: boolean
-  sms_enabled: boolean
-  sms_new_posts: boolean
-  sms_comments: boolean
 }
 
 export default function SettingsPage() {
@@ -44,13 +41,9 @@ export default function SettingsPage() {
     email_new_posts: 'none',
     email_comments: 'daily',
     push_enabled: false,
-    sms_enabled: false,
-    sms_new_posts: false,
-    sms_comments: false,
   })
   const [pushSupported, setPushSupported] = useState(false)
   const [pushPermission, setPushPermission] = useState<NotificationPermission>('default')
-  const [phoneNumber, setPhoneNumber] = useState('')
   const router = useRouter()
   const supabase = useMemo(() => createClient(), [])
 
@@ -84,21 +77,7 @@ export default function SettingsPage() {
           email_new_posts: data.email_new_posts || 'none',
           email_comments: data.email_comments || 'daily',
           push_enabled: data.push_enabled || false,
-          sms_enabled: data.sms_enabled || false,
-          sms_new_posts: data.sms_new_posts || false,
-          sms_comments: data.sms_comments || false,
         })
-      }
-
-      // Fetch phone number from profile
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('phone_number')
-        .eq('id', user.id)
-        .single()
-
-      if (profile?.phone_number) {
-        setPhoneNumber(profile.phone_number)
       }
 
       setLoading(false)
@@ -120,13 +99,7 @@ export default function SettingsPage() {
         updated_at: new Date().toISOString(),
       })
 
-    // Save phone number to profile
-    const { error: profileError } = await supabase
-      .from('profiles')
-      .update({ phone_number: phoneNumber || null })
-      .eq('id', userId)
-
-    if (prefsError || profileError) {
+    if (prefsError) {
       alert('Kunne ikke lagre innstillinger. Prøv igjen.')
     } else {
       alert('Innstillinger lagret!')
@@ -299,80 +272,6 @@ export default function SettingsPage() {
               <p className="text-sm text-gray-500">
                 Push-varsler støttes ikke i din nettleser.
               </p>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* SMS-varsler */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <MessageSquare className="w-5 h-5 text-green-500" />
-              SMS-varsler
-            </CardTitle>
-            <CardDescription>
-              Motta viktige varsler på SMS (krever telefonnummer i profilen)
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {/* Phone number input */}
-            <div className="space-y-2">
-              <Label htmlFor="phone_number">Telefonnummer</Label>
-              <Input
-                id="phone_number"
-                type="tel"
-                placeholder="12345678"
-                value={phoneNumber}
-                onChange={(e) => setPhoneNumber(e.target.value)}
-              />
-              <p className="text-xs text-gray-500">
-                Norsk mobilnummer (8 siffer). Landskode +47 legges til automatisk.
-              </p>
-            </div>
-
-            <div className="flex items-center justify-between pt-2">
-              <div>
-                <p className="text-sm font-medium">Aktiver SMS-varsler</p>
-                <p className="text-xs text-gray-500">
-                  {phoneNumber ? 'SMS sendes til ' + phoneNumber : 'Legg til telefonnummer først'}
-                </p>
-              </div>
-              <Switch
-                checked={preferences.sms_enabled}
-                disabled={!phoneNumber}
-                onCheckedChange={(checked) =>
-                  setPreferences(prev => ({ ...prev, sms_enabled: checked }))
-                }
-              />
-            </div>
-
-            {preferences.sms_enabled && phoneNumber && (
-              <div className="space-y-3 pt-3 border-t">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="sms_new_posts" className="text-sm">
-                    Nye innlegg
-                  </Label>
-                  <Switch
-                    id="sms_new_posts"
-                    checked={preferences.sms_new_posts}
-                    onCheckedChange={(checked) =>
-                      setPreferences(prev => ({ ...prev, sms_new_posts: checked }))
-                    }
-                  />
-                </div>
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="sms_comments" className="text-sm">
-                    Kommentarer på mine innlegg
-                  </Label>
-                  <Switch
-                    id="sms_comments"
-                    checked={preferences.sms_comments}
-                    onCheckedChange={(checked) =>
-                      setPreferences(prev => ({ ...prev, sms_comments: checked }))
-                    }
-                  />
-                </div>
-              </div>
             )}
           </CardContent>
         </Card>
