@@ -112,7 +112,7 @@ export function BottomSheet({
       {/* Overlay - clicking above sheet closes it */}
       <div
         className={cn(
-          'fixed inset-0 bg-black/50 z-[9998] transition-opacity duration-300 lg:hidden',
+          'fixed inset-0 bg-black/50 z-[9998] transition-opacity duration-300',
           open && !isClosing ? 'opacity-100' : 'opacity-0 pointer-events-none'
         )}
         onClick={handleOverlayClick}
@@ -125,9 +125,13 @@ export function BottomSheet({
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
         className={cn(
-          'fixed bottom-0 left-0 right-0 z-[9999] bg-white rounded-t-2xl shadow-2xl transition-transform duration-300 ease-out lg:hidden',
-          'h-[85vh] max-h-[85vh]',
-          open && !isClosing ? 'translate-y-0' : 'translate-y-full'
+          'fixed z-[9999] bg-white rounded-2xl shadow-2xl transition-all duration-300 ease-out',
+          'w-[calc(100%-2rem)] max-w-lg',
+          'left-1/2 -translate-x-1/2',
+          'md:left-[22.5rem] md:translate-x-0',
+          'bottom-4 md:bottom-6',
+          'max-h-[calc(100vh-2rem)] md:max-h-[calc(100vh-4rem)]',
+          open && !isClosing ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8 pointer-events-none'
         )}
       >
         {/* Drag handle */}
@@ -150,7 +154,7 @@ export function BottomSheet({
         )}
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto px-4 pb-safe" style={{ maxHeight: title ? 'calc(85vh - 80px)' : 'calc(85vh - 40px)' }}>
+        <div className="flex-1 overflow-y-auto px-4 pb-6" style={{ maxHeight: title ? 'calc(100vh - 14rem)' : 'calc(100vh - 12rem)' }}>
           {children}
         </div>
       </div>

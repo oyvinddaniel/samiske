@@ -273,7 +273,7 @@ export function RightSidebar() {
     fetchData()
   }, [supabase])
 
-  // Real-time subscription for comments + polling fallback
+  // Real-time subscription for comments
   useEffect(() => {
     // Set up real-time subscription
     const channel = supabase
@@ -292,14 +292,8 @@ export function RightSidebar() {
       )
       .subscribe()
 
-    // Polling fallback every 5 seconds in case realtime doesn't work
-    const pollInterval = setInterval(() => {
-      fetchRecentComments()
-    }, 5000)
-
     return () => {
       supabase.removeChannel(channel)
-      clearInterval(pollInterval)
     }
   }, [supabase, fetchRecentComments])
 

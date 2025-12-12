@@ -33,8 +33,8 @@ export default function LoginPage() {
         : error.message)
       setLoading(false)
     } else {
-      router.push('/')
-      router.refresh()
+      // Use hard reload to ensure all client-side components get fresh auth state
+      window.location.href = '/'
     }
   }
 
@@ -66,7 +66,12 @@ export default function LoginPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">Passord</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="password">Passord</Label>
+                <Link href="/glemt-passord" className="text-xs text-blue-600 hover:underline">
+                  Glemt passord?
+                </Link>
+              </div>
               <Input
                 id="password"
                 type="password"

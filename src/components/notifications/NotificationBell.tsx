@@ -253,22 +253,23 @@ export function NotificationBell({ userId }: NotificationBellProps) {
 
   const handleOpenChange = async (open: boolean) => {
     setIsOpen(open)
+  }
 
-    // Update last_seen_at when closing the dropdown
-    if (!open && totalCount > 0) {
+  // Mark all as read - updates last_seen_at but keeps showing notifications
+  const markAllAsRead = async () => {
+    if (totalCount > 0) {
       await supabase
         .from('profiles')
         .update({ last_seen_at: new Date().toISOString() })
         .eq('id', userId)
 
-      // Reset counts after viewing
+      // Reset counts but keep notifications visible (marked as read)
       setCounts({
         newPosts: 0,
         commentsOnMyPosts: 0,
         commentsOnFollowedPosts: 0,
         likesOnMyPosts: 0,
       })
-      setNotifications([])
     }
   }
 
@@ -418,16 +419,20 @@ export function NotificationBell({ userId }: NotificationBellProps) {
           </div>
         )}
 
-        <DropdownMenuSeparator />
-        <div className="px-3 py-2 text-center">
-          <button
-            onClick={() => handleOpenChange(false)}
-            className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800"
-          >
-            <CheckCheck className="w-3 h-3" />
-            Merk alle som lest
-          </button>
-        </div>
+        {notifications.length > 0 && (
+          <>
+            <DropdownMenuSeparator />
+            <div className="px-3 py-2 text-center">
+              <button
+                onClick={markAllAsRead}
+                className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800"
+              >
+                <CheckCheck className="w-3 h-3" />
+                Merk alle som lest
+              </button>
+            </div>
+          </>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   )

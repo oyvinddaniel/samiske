@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
@@ -13,12 +13,26 @@ export function BottomNav() {
   const [user, setUser] = useState<SupabaseUser | null>(null)
   const [showNewPostSheet, setShowNewPostSheet] = useState(false)
   const pathname = usePathname()
-  const supabase = createClient()
+
+  // Create stable supabase client reference
+  const supabase = useMemo(() => createClient(), [])
 
   useEffect(() => {
     const getUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      setUser(user)
+      try {
+        // First try getSession (faster, uses cached session)
+        const { data: { session } } = await supabase.auth.getSession()
+        if (session?.user) {
+          setUser(session.user)
+          return
+        }
+
+        // Fallback to getUser
+        const { data: { user: fetchedUser } } = await supabase.auth.getUser()
+        setUser(fetchedUser)
+      } catch {
+        setUser(null)
+      }
     }
 
     getUser()

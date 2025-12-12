@@ -52,32 +52,26 @@
 - [ ] PWA-oppsett
 - [ ] Testing og feilretting
 
+### Fase 8: Sosiale funksjoner (UNDER UTVIKLING)
+- [x] Database-tabeller for friendships og messages (migrering kjørt)
+- [x] SocialPanel-komponent med venner-liste og meldinger
+- [x] Vennefunksjon: Sende, godta, avslå venneforespørsler
+- [x] Meldingsfunksjon: Sende og motta direktemeldinger
+- [x] ProfileOverlay med "Legg til venn"-knapp
+- [x] Venner/Meldinger-meny i venstre sidebar (desktop)
+- [~] Venner/Meldinger-meny i MobileNav (mobil) - HAR AUTH-PROBLEM
+
 ---
 
 ## Sist fullførte oppgave
-- Innlegg åpnes nå i popup i stedet for egen side
-- Brukere kan redigere sine egne innlegg
-- Varslingssystem implementert
-- Deployet til Vercel med domene samiske.no
+- Implementert vennefunksjon og meldingssystem
+- Lagt til sosial-seksjon i sidebarer
+- Fikset autentiseringsproblemer med useMemo og getSession()
 
 ## Nåværende status
 **LIVE PÅ samiske.no**
 
-- Next.js-prosjekt er opprettet og bygger uten feil
-- Supabase er konfigurert med database og auth
-- Vercel er koblet til GitHub med automatisk deploy
-- Hovedfeed med innlegg fungerer
-- Innlogging og registrering fungerer
-- Skjema for å opprette innlegg fungerer
-- Kategorifiltrering fungerer
-- Kommentarsystem med sanntidsoppdatering fungerer
-- Like-funksjon fungerer
-- Brukerprofiler fungerer
-- Admin-panel fungerer (kun synlig for admin-brukere)
-- Mobil-navigasjon med hamburger-meny fungerer
-- Varslingssystem fungerer
-- Popup for innlegg fungerer
-- Redigering av innlegg fungerer
+Vennefunksjonen fungerer på desktop-sidebar, men det er et **aktivt problem** med MobileNav på mobil der sosial-seksjonen ikke vises selv om autentisering fungerer.
 
 ## Hva som fungerer nå
 - samiske.no - Hovedfeeden (live)
@@ -91,11 +85,11 @@
 - Varslings-bjelle i header
 - Popup-visning av innlegg
 - Redigering av egne innlegg
+- Vennefunksjon på desktop (Sidebar)
+- "Legg til venn"-knapp i profil-popup
 
 ## Kjente problemer
-Ingen kjente problemer for øyeblikket.
+Se ISSUES.md for detaljer.
 
 ## Neste steg
-- E-postvarsling for nye innlegg
-- PWA-oppsett for app-lignende opplevelse
-- Eventuelt: Slette-funksjon for egne innlegg
+Se NEXT-STEPS.md for detaljer.

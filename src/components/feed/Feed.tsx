@@ -1,9 +1,10 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { PostCard } from '@/components/posts/PostCard'
+import { CreatePostSheet } from '@/components/posts/CreatePostSheet'
 import { Button } from '@/components/ui/button'
 
 interface FeedProps {
@@ -40,10 +41,10 @@ export function Feed({ categorySlug }: FeedProps) {
   const [posts, setPosts] = useState<Post[]>([])
   const [loading, setLoading] = useState(true)
   const [currentUserId, setCurrentUserId] = useState<string | undefined>()
+  const [showCreatePost, setShowCreatePost] = useState(false)
   const supabase = createClient()
 
-  useEffect(() => {
-    const fetchPosts = async () => {
+  const fetchPosts = useCallback(async () => {
       setLoading(true)
 
       // Get current user
@@ -142,10 +143,11 @@ export function Feed({ categorySlug }: FeedProps) {
 
       setPosts(postsWithCounts)
       setLoading(false)
-    }
-
-    fetchPosts()
   }, [categorySlug, supabase])
+
+  useEffect(() => {
+    fetchPosts()
+  }, [fetchPosts])
 
   if (loading) {
     return (
@@ -172,7 +174,7 @@ export function Feed({ categorySlug }: FeedProps) {
     <div className="relative">
       {/* Create post button - only for logged in users */}
       {currentUserId && (
-        <Link href="/ny" className="block mb-5">
+        <button onClick={() => setShowCreatePost(true)} className="block mb-5 w-full">
           <div className="w-40 mx-auto">
             <div className="bg-white rounded-xl p-4 border-2 border-dashed border-gray-200 hover:border-blue-400 hover:bg-blue-50/50 transition-all cursor-pointer group flex items-center justify-center">
               <div className="w-10 h-10 rounded-full bg-blue-100 group-hover:bg-blue-200 flex items-center justify-center transition-colors">
@@ -182,7 +184,17 @@ export function Feed({ categorySlug }: FeedProps) {
               </div>
             </div>
           </div>
-        </Link>
+        </button>
+      )}
+
+      {/* Create post sheet */}
+      {currentUserId && (
+        <CreatePostSheet
+          open={showCreatePost}
+          onClose={() => setShowCreatePost(false)}
+          onSuccess={fetchPosts}
+          userId={currentUserId}
+        />
       )}
 
       <div className="space-y-[66px]">
@@ -195,7 +207,11 @@ export function Feed({ categorySlug }: FeedProps) {
           </div>
         ) : (
           posts.map((post) => (
-            <PostCard key={post.id} post={post} currentUserId={currentUserId} />
+            <PostCard
+              key={post.id}
+              post={post}
+              currentUserId={currentUserId}
+            />
           ))
         )}
 

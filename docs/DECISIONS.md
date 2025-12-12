@@ -88,6 +88,36 @@
 - Gratis SSL
 - God ytelse globalt
 
+### 13. Vennefunksjon (2025-12-12)
+**Beslutning:** Enkel vennefunksjon med forespørsler
+**Begrunnelse:**
+- Kan sende venneforespørsler
+- Kan godta/avslå forespørsler
+- Venner kan sende direktemeldinger til hverandre
+- Gir sosial funksjonalitet uten å bli for komplisert
+
+### 14. Meldingssystem (2025-12-12)
+**Beslutning:** Enkel en-til-en chat mellom venner
+**Begrunnelse:**
+- Kun direktemeldinger mellom godkjente venner
+- Sanntidsoppdatering med Supabase Realtime
+- Holder det enkelt - ingen gruppechat eller avanserte funksjoner ennå
+
+### 15. Sosial-meny plassering (2025-12-12)
+**Beslutning:** I venstre sidebar, over kategorier
+**Begrunnelse:**
+- Naturlig plassering i navigasjonen
+- Vises både på desktop (Sidebar) og mobil (MobileNav)
+- Notification badges for uleste meldinger og venneforespørsler
+
+### 16. Auth-håndtering i klient-komponenter (2025-12-12)
+**Beslutning:** useMemo for Supabase-klient + getSession() først
+**Begrunnelse:**
+- `useMemo(() => createClient(), [])` gir stabil referanse
+- `getSession()` bruker cached session og er raskere
+- `getUser()` som fallback hvis session ikke finnes
+- Mer pålitelig auth-tilstand på tvers av komponenter
+
 ---
 
 ## Fremtidige beslutninger å ta

@@ -11,21 +11,14 @@ import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
 import { BottomSheet } from '@/components/ui/bottom-sheet'
-import { useIsMobile } from '@/hooks/useIsMobile'
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
-import { Pencil, MessageCircle } from 'lucide-react'
+import { Pencil, MessageCircle, Trash2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { ProfileOverlay } from '@/components/profile/ProfileOverlay'
 
@@ -83,6 +76,7 @@ interface PostCardProps {
     user_has_liked?: boolean
   }
   currentUserId?: string
+  onClick?: () => void
 }
 
 const categoryColors: Record<string, string> = {
@@ -95,7 +89,7 @@ const categoryColors: Record<string, string> = {
   generelt: '#6B7280',
 }
 
-export function PostCard({ post, currentUserId }: PostCardProps) {
+export function PostCard({ post, currentUserId, onClick }: PostCardProps) {
   const [liked, setLiked] = useState(post.user_has_liked || false)
   const [likeCount, setLikeCount] = useState(post.like_count)
   const [isLiking, setIsLiking] = useState(false)
@@ -121,8 +115,9 @@ export function PostCard({ post, currentUserId }: PostCardProps) {
   const [editEventLocation, setEditEventLocation] = useState(post.event_location || '')
   const [saving, setSaving] = useState(false)
   const [postData, setPostData] = useState(post)
+  const [isDeleted, setIsDeleted] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const supabase = createClient()
-  const isMobile = useIsMobile()
 
   // Check if content should be blurred (members-only and not logged in)
   const isBlurred = postData.visibility === 'members' && !currentUserId
@@ -397,7 +392,7 @@ export function PostCard({ post, currentUserId }: PostCardProps) {
     fetchPreviewComments()
   }, [fetchPreviewComments])
 
-  // Real-time subscription for this post's comments + polling fallback
+  // Real-time subscription for this post's comments
   useEffect(() => {
     const channel = supabase
       .channel(`post-comments-${post.id}`)
@@ -420,14 +415,8 @@ export function PostCard({ post, currentUserId }: PostCardProps) {
       )
       .subscribe()
 
-    // Polling fallback every 5 seconds for preview comments
-    const pollInterval = setInterval(() => {
-      fetchPreviewComments()
-    }, 5000)
-
     return () => {
       supabase.removeChannel(channel)
-      clearInterval(pollInterval)
     }
   }, [supabase, post.id, showComments, fetchPreviewComments])
 
@@ -524,8 +513,33 @@ export function PostCard({ post, currentUserId }: PostCardProps) {
     setIsEditing(false)
   }
 
+  const handleDeletePost = async () => {
+    if (!isOwner) return
+    if (!confirm('Er du sikker på at du vil slette dette innlegget? Dette kan ikke angres.')) return
+
+    setDeleting(true)
+
+    const { error } = await supabase
+      .from('posts')
+      .delete()
+      .eq('id', postData.id)
+
+    if (!error) {
+      setIsDeleted(true)
+      setShowDialog(false)
+    } else {
+      alert('Kunne ikke slette innlegget. Prøv igjen.')
+    }
+
+    setDeleting(false)
+  }
+
   const openDialog = () => {
-    setShowDialog(true)
+    if (onClick) {
+      onClick()
+    } else {
+      setShowDialog(true)
+    }
   }
 
   // Render a single comment with replies
@@ -642,6 +656,11 @@ export function PostCard({ post, currentUserId }: PostCardProps) {
     )
   }
 
+  // If post is deleted, show nothing
+  if (isDeleted) {
+    return null
+  }
+
   return (
     <>
     <Card id={`post-${postData.id}`} className={`overflow-hidden hover:shadow-md transition-shadow max-w-lg mx-auto ${isBlurred ? 'relative' : ''} !pt-0 !pb-0 !gap-0`}>
@@ -680,15 +699,25 @@ export function PostCard({ post, currentUserId }: PostCardProps) {
           <span className="text-xs text-gray-400">·</span>
           <span className="text-xs text-gray-500">{formatDate(postData.created_at)}</span>
           <div className="flex-1" />
-          {/* Edit button for owner */}
+          {/* Edit and delete buttons for owner */}
           {isOwner && (
-            <button
-              onClick={() => { setShowDialog(true); setIsEditing(true); }}
-              className="p-1 rounded hover:bg-gray-100 transition-colors"
-              title="Rediger innlegg"
-            >
-              <Pencil className="w-3.5 h-3.5 text-gray-400 hover:text-gray-600" />
-            </button>
+            <div className="flex items-center gap-0.5">
+              <button
+                onClick={() => { setShowDialog(true); setIsEditing(true); }}
+                className="p-1 rounded hover:bg-gray-100 transition-colors"
+                title="Rediger innlegg"
+              >
+                <Pencil className="w-3.5 h-3.5 text-gray-400 hover:text-gray-600" />
+              </button>
+              <button
+                onClick={handleDeletePost}
+                disabled={deleting}
+                className="p-1 rounded hover:bg-red-50 transition-colors"
+                title="Slett innlegg"
+              >
+                <Trash2 className="w-3.5 h-3.5 text-gray-400 hover:text-red-500" />
+              </button>
+            </div>
           )}
           {/* Visibility icon - globe for public, lock for members */}
           <TooltipProvider>
@@ -925,8 +954,8 @@ export function PostCard({ post, currentUserId }: PostCardProps) {
       )}
     </Card>
 
-    {/* Post Dialog/Popup - Desktop uses Dialog, Mobile uses BottomSheet */}
-    {isMobile ? (
+    {/* Post BottomSheet - Used for both mobile and desktop */}
+    {!onClick && (
       <BottomSheet
         open={showDialog}
         onClose={() => { setShowDialog(false); if (isEditing) handleCancelEdit(); }}
@@ -1103,183 +1132,6 @@ export function PostCard({ post, currentUserId }: PostCardProps) {
           )}
         </div>
       </BottomSheet>
-    ) : (
-      <Dialog open={showDialog} onOpenChange={(open) => { setShowDialog(open); if (!open) setIsEditing(false); if (open && comments.length === 0) fetchComments(); }}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto pb-0">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              {isEditing ? 'Rediger innlegg' : postData.title}
-              {!isEditing && isOwner && (
-                <button
-                  onClick={() => setIsEditing(true)}
-                  className="p-1 rounded hover:bg-gray-100 transition-colors"
-                  title="Rediger innlegg"
-                >
-                  <Pencil className="w-4 h-4 text-gray-400 hover:text-gray-600" />
-                </button>
-              )}
-            </DialogTitle>
-          </DialogHeader>
-
-          {isEditing ? (
-            /* Edit mode */
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="editTitle">Tittel</Label>
-                <Input
-                  id="editTitle"
-                  value={editTitle}
-                  onChange={(e) => setEditTitle(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="editContent">Innhold</Label>
-                <Textarea
-                  id="editContent"
-                  value={editContent}
-                  onChange={(e) => setEditContent(e.target.value)}
-                  rows={5}
-                />
-              </div>
-              {postData.type === 'event' && (
-                <>
-                  <div className="space-y-2">
-                    <Label htmlFor="editEventDate">Dato</Label>
-                    <Input
-                      id="editEventDate"
-                      type="date"
-                      value={editEventDate}
-                      onChange={(e) => setEditEventDate(e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="editEventTime">Tidspunkt</Label>
-                    <Input
-                      id="editEventTime"
-                      type="time"
-                      value={editEventTime}
-                      onChange={(e) => setEditEventTime(e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="editEventLocation">Sted</Label>
-                    <Input
-                      id="editEventLocation"
-                      value={editEventLocation}
-                      onChange={(e) => setEditEventLocation(e.target.value)}
-                    />
-                  </div>
-                </>
-              )}
-              <div className="flex gap-2 pt-2">
-                <Button onClick={handleSaveEdit} disabled={saving}>
-                  {saving ? 'Lagrer...' : 'Lagre endringer'}
-                </Button>
-                <Button variant="outline" onClick={handleCancelEdit}>
-                  Avbryt
-                </Button>
-              </div>
-            </div>
-          ) : (
-            /* View mode */
-            <div className="space-y-4">
-              {/* Author info */}
-              <div className="flex items-center gap-2">
-                <Avatar className="w-8 h-8">
-                  <AvatarImage src={postData.user.avatar_url || undefined} />
-                  <AvatarFallback className="bg-blue-100 text-blue-600 text-xs">
-                    {getInitials(postData.user.full_name)}
-                  </AvatarFallback>
-                </Avatar>
-                <div>
-                  <p className="text-sm font-medium">{postData.user.full_name || 'Ukjent'}</p>
-                  <p className="text-xs text-gray-500">{formatDate(postData.created_at)}</p>
-                </div>
-                {postData.category && (
-                  <Badge
-                    style={{ backgroundColor: categoryColor, color: 'white' }}
-                    className="ml-auto text-xs"
-                  >
-                    {postData.category.name}
-                  </Badge>
-                )}
-              </div>
-
-              {/* Event info */}
-              {postData.type === 'event' && postData.event_date && (
-                <div className="flex items-center gap-3 text-sm text-gray-600 bg-gray-50 rounded-lg p-3">
-                  <span>📅 {formatEventDate(postData.event_date, postData.event_time)}</span>
-                  {postData.event_location && <span>📍 {postData.event_location}</span>}
-                </div>
-              )}
-
-              {/* Full content */}
-              <p className="text-gray-700 whitespace-pre-wrap">{postData.content}</p>
-
-              {/* Image */}
-              {postData.image_url && (
-                <div className="w-full overflow-hidden rounded-lg">
-                  <img
-                    src={postData.image_url}
-                    alt={postData.title}
-                    className="w-full h-auto"
-                  />
-                </div>
-              )}
-
-              {/* Actions in dialog */}
-              <div className="flex items-center gap-2 pt-2 border-t">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className={`${liked ? 'text-red-500' : 'text-gray-500'}`}
-                  onClick={handleLike}
-                  disabled={!currentUserId}
-                >
-                  {liked ? '❤️' : '🤍'} {likeCount}
-                </Button>
-                <span className="text-sm text-gray-500">
-                  <MessageCircle className="w-4 h-4 inline mr-1" /> {commentCount}
-                </span>
-              </div>
-
-              {/* Comments in dialog - always visible */}
-              <div className="space-y-3 pt-2 border-t pb-[100px]">
-                <h4 className="text-sm font-medium">Kommentarer ({commentCount})</h4>
-                {loadingComments ? (
-                  <p className="text-xs text-gray-400">Laster kommentarer...</p>
-                ) : comments.length === 0 ? (
-                  <p className="text-xs text-gray-500">Ingen kommentarer ennå</p>
-                ) : (
-                  <div className="space-y-2">
-                    {comments.map((comment) => renderComment(comment))}
-                  </div>
-                )}
-
-                {/* Comment input */}
-                {currentUserId ? (
-                  <form onSubmit={(e) => handleSubmitComment(e, null)} className="flex gap-2">
-                    <Textarea
-                      value={newComment}
-                      onChange={(e) => setNewComment(e.target.value)}
-                      placeholder="Skriv en kommentar..."
-                      rows={1}
-                      className="resize-none text-sm"
-                    />
-                    <Button type="submit" disabled={submitting || !newComment.trim()}>
-                      {submitting ? '...' : 'Send'}
-                    </Button>
-                  </form>
-                ) : (
-                  <p className="text-xs text-gray-500 bg-gray-50 p-2 rounded">
-                    Logg inn for å kommentere
-                  </p>
-                )}
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
     )}
     </>
   )

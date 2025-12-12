@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import Link from 'next/link'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
@@ -17,6 +18,10 @@ import {
 import type { User } from '@supabase/supabase-js'
 import { MobileNav } from './MobileNav'
 import { NotificationBell } from '@/components/notifications/NotificationBell'
+import { SocialPanel } from '@/components/social/SocialPanel'
+import { Users, X, Search } from 'lucide-react'
+import { SearchModal } from '@/components/search/SearchModal'
+import { cn } from '@/lib/utils'
 
 interface Profile {
   full_name: string | null
@@ -32,21 +37,51 @@ export function Header({ currentCategory }: HeaderProps) {
   const [user, setUser] = useState<User | null>(null)
   const [profile, setProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
+  const [showSocialPanel, setShowSocialPanel] = useState(false)
+  const [showSearch, setShowSearch] = useState(false)
+  const [mounted, setMounted] = useState(false)
+  const [socialNotifications, setSocialNotifications] = useState(0)
+  const searchButtonRef = useRef<HTMLButtonElement>(null)
   const router = useRouter()
-  const supabase = createClient()
+
+  // Create stable supabase client reference
+  const supabase = useMemo(() => createClient(), [])
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   useEffect(() => {
     const getUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      setUser(user)
+      try {
+        // First try getSession (faster, uses cached session)
+        const { data: { session } } = await supabase.auth.getSession()
+        const currentUser = session?.user
 
-      if (user) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('full_name, avatar_url, role')
-          .eq('id', user.id)
-          .single()
-        setProfile(profile)
+        if (!currentUser) {
+          // Fallback to getUser
+          const { data: { user: fetchedUser } } = await supabase.auth.getUser()
+          setUser(fetchedUser)
+          if (fetchedUser) {
+            const { data: profileData } = await supabase
+              .from('profiles')
+              .select('full_name, avatar_url, role')
+              .eq('id', fetchedUser.id)
+              .single()
+            setProfile(profileData)
+          }
+        } else {
+          setUser(currentUser)
+          const { data: profileData } = await supabase
+            .from('profiles')
+            .select('full_name, avatar_url, role')
+            .eq('id', currentUser.id)
+            .single()
+          setProfile(profileData)
+        }
+      } catch {
+        setUser(null)
+        setProfile(null)
       }
 
       setLoading(false)
@@ -64,10 +99,75 @@ export function Header({ currentCategory }: HeaderProps) {
     return () => subscription.unsubscribe()
   }, [supabase])
 
+  // Fetch social notification counts
+  const fetchNotificationCounts = useCallback(async () => {
+    if (!user) {
+      setSocialNotifications(0)
+      return
+    }
+
+    try {
+      const { count: pendingCount } = await supabase
+        .from('friendships')
+        .select('*', { count: 'exact', head: true })
+        .eq('addressee_id', user.id)
+        .eq('status', 'pending')
+
+      const { data: unreadCount } = await supabase
+        .rpc('get_unread_message_count', { user_id_param: user.id })
+
+      setSocialNotifications((pendingCount || 0) + (unreadCount || 0))
+    } catch {
+      setSocialNotifications(0)
+    }
+  }, [user, supabase])
+
+  useEffect(() => {
+    fetchNotificationCounts()
+  }, [fetchNotificationCounts])
+
+  useEffect(() => {
+    if (!user) return
+
+    const channel = supabase
+      .channel('header-social-notifications')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'friendships', filter: `addressee_id=eq.${user.id}` }, () => fetchNotificationCounts())
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, () => fetchNotificationCounts())
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [user, supabase, fetchNotificationCounts])
+
+  useEffect(() => {
+    if (showSocialPanel) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = ''
+    }
+    return () => {
+      document.body.style.overflow = ''
+    }
+  }, [showSocialPanel])
+
+  // Keyboard shortcut for search (Cmd+K or Ctrl+K)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault()
+        setShowSearch(true)
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [])
+
   const handleLogout = async () => {
     await supabase.auth.signOut()
-    router.push('/')
-    router.refresh()
+    // Use hard reload to clear all client-side auth state
+    window.location.href = '/'
   }
 
   const getInitials = (name: string | null | undefined) => {
@@ -113,10 +213,33 @@ export function Header({ currentCategory }: HeaderProps) {
 
         {/* Right side */}
         <div className="flex items-center gap-3">
+          {/* Search button */}
+          <button
+            ref={searchButtonRef}
+            onClick={() => setShowSearch(true)}
+            className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+            title="Søk (⌘K)"
+          >
+            <Search className="w-5 h-5" />
+          </button>
+
           {loading ? (
             <div className="w-9 h-9 rounded-full bg-gray-200 animate-pulse" />
           ) : user ? (
             <div className="flex items-center gap-2">
+              {/* Social button - hidden on mobile as it's in BottomNav */}
+              <button
+                onClick={() => setShowSocialPanel(true)}
+                className="hidden lg:flex relative p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                title="Venner og meldinger"
+              >
+                <Users className="w-5 h-5" />
+                {socialNotifications > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 bg-red-500 text-white text-[9px] w-4 h-4 rounded-full flex items-center justify-center">
+                    {socialNotifications > 9 ? '9+' : socialNotifications}
+                  </span>
+                )}
+              </button>
               <NotificationBell userId={user.id} />
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -141,6 +264,14 @@ export function Header({ currentCategory }: HeaderProps) {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                       </svg>
                       Min profil
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/innstillinger" className="cursor-pointer">
+                      <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                      </svg>
+                      Varsler
                     </Link>
                   </DropdownMenuItem>
                   {profile?.role === 'admin' && (
@@ -180,6 +311,61 @@ export function Header({ currentCategory }: HeaderProps) {
           )}
         </div>
       </div>
+
+      {/* Desktop Social Panel - Bottom Sheet */}
+      {mounted && createPortal(
+        <>
+          {/* Overlay */}
+          <div
+            className={cn(
+              'hidden lg:block fixed inset-0 bg-black/50 z-[9998] transition-opacity duration-300',
+              showSocialPanel ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+            )}
+            onClick={() => setShowSocialPanel(false)}
+          />
+
+          {/* Bottom Sheet */}
+          <div
+            className={cn(
+              'hidden lg:flex fixed z-[9999] bg-white rounded-2xl shadow-2xl flex-col transition-all duration-300 ease-out',
+              'w-96',
+              'right-4',
+              'bottom-20',
+              'max-h-[60vh]',
+              showSocialPanel ? 'opacity-100 scale-100' : 'opacity-0 scale-95 pointer-events-none'
+            )}
+          >
+            {/* Drag handle */}
+            <div className="flex justify-center pt-3 pb-2">
+              <div className="w-10 h-1 bg-gray-300 rounded-full" />
+            </div>
+
+            {/* Header */}
+            <div className="flex items-center justify-between px-4 pb-3 border-b border-gray-100">
+              <h2 className="font-semibold text-gray-900 flex items-center gap-2">
+                <Users className="w-5 h-5 text-blue-600" />
+                Sosial
+              </h2>
+              <button
+                onClick={() => setShowSocialPanel(false)}
+                className="p-2 -mr-2 text-gray-500 hover:text-gray-700 rounded-lg hover:bg-gray-100"
+                aria-label="Lukk"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 overflow-hidden" style={{ height: 'calc(100vh - 14rem)' }}>
+              {showSocialPanel && <SocialPanel />}
+            </div>
+          </div>
+        </>,
+        document.body
+      )}
+
+      {/* Search Modal */}
+      <SearchModal open={showSearch} onClose={() => setShowSearch(false)} anchorRef={searchButtonRef} />
     </header>
   )
 }

@@ -9,20 +9,56 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 
+// Password validation function
+function validatePassword(password: string): { valid: boolean; errors: string[] } {
+  const errors: string[] = []
+
+  if (password.length < 10) {
+    errors.push('Minimum 10 tegn')
+  }
+  if (!/[a-z]/.test(password)) {
+    errors.push('Minst én liten bokstav')
+  }
+  if (!/[A-Z]/.test(password)) {
+    errors.push('Minst én stor bokstav')
+  }
+  if (!/[0-9]/.test(password)) {
+    errors.push('Minst ett tall')
+  }
+
+  return { valid: errors.length === 0, errors }
+}
+
 export default function RegisterPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [fullName, setFullName] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [passwordErrors, setPasswordErrors] = useState<string[]>([])
   const [success, setSuccess] = useState(false)
   const [loading, setLoading] = useState(false)
   const router = useRouter()
   const supabase = createClient()
 
+  const handlePasswordChange = (value: string) => {
+    setPassword(value)
+    const validation = validatePassword(value)
+    setPasswordErrors(validation.errors)
+  }
+
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setError(null)
+
+    // Validate password
+    const validation = validatePassword(password)
+    if (!validation.valid) {
+      setError('Passordet oppfyller ikke kravene')
+      setPasswordErrors(validation.errors)
+      setLoading(false)
+      return
+    }
 
     const { error } = await supabase.auth.signUp({
       email,
@@ -113,12 +149,28 @@ export default function RegisterPage() {
               <Input
                 id="password"
                 type="password"
-                placeholder="Minst 6 tegn"
+                placeholder="Minst 10 tegn"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                minLength={6}
+                onChange={(e) => handlePasswordChange(e.target.value)}
+                minLength={10}
                 required
               />
+              {password.length > 0 && (
+                <div className="text-xs space-y-1 mt-1">
+                  <p className={password.length >= 10 ? 'text-green-600' : 'text-gray-400'}>
+                    {password.length >= 10 ? '✓' : '○'} Minimum 10 tegn
+                  </p>
+                  <p className={/[a-z]/.test(password) ? 'text-green-600' : 'text-gray-400'}>
+                    {/[a-z]/.test(password) ? '✓' : '○'} Minst én liten bokstav
+                  </p>
+                  <p className={/[A-Z]/.test(password) ? 'text-green-600' : 'text-gray-400'}>
+                    {/[A-Z]/.test(password) ? '✓' : '○'} Minst én stor bokstav
+                  </p>
+                  <p className={/[0-9]/.test(password) ? 'text-green-600' : 'text-gray-400'}>
+                    {/[0-9]/.test(password) ? '✓' : '○'} Minst ett tall
+                  </p>
+                </div>
+              )}
             </div>
           </CardContent>
           <CardFooter className="flex flex-col gap-4">

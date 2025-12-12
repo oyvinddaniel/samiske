@@ -1,9 +1,12 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
+import { createClient } from '@/lib/supabase/client'
+import { Users, MessageCircle, ChevronRight } from 'lucide-react'
+import { SocialPanel } from '@/components/social/SocialPanel'
 
 const categories = [
   { name: 'Alle', slug: '', color: '#6B7280' },
@@ -24,13 +27,89 @@ export function MobileNav({ currentCategory = '' }: MobileNavProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
   const [rightMenuOpen, setRightMenuOpen] = useState(false)
+  const [showSocialPanel, setShowSocialPanel] = useState(false)
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
+  const [pendingRequests, setPendingRequests] = useState(0)
+  const [unreadMessages, setUnreadMessages] = useState(0)
   const touchStartX = useRef<number | null>(null)
   const touchStartY = useRef<number | null>(null)
   const menuRef = useRef<HTMLDivElement>(null)
 
+  // Create stable supabase client reference
+  const supabase = useMemo(() => createClient(), [])
+
   useEffect(() => {
     setMounted(true)
   }, [])
+
+  // Get current user
+  useEffect(() => {
+    const getUser = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (session?.user) {
+          setCurrentUserId(session.user.id)
+          return
+        }
+        const { data: { user } } = await supabase.auth.getUser()
+        setCurrentUserId(user?.id || null)
+      } catch {
+        setCurrentUserId(null)
+      }
+    }
+    getUser()
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setCurrentUserId(session?.user?.id || null)
+    })
+
+    return () => subscription.unsubscribe()
+  }, [supabase])
+
+  // Fetch notification counts
+  const fetchCounts = useCallback(async () => {
+    if (!currentUserId) {
+      setPendingRequests(0)
+      setUnreadMessages(0)
+      return
+    }
+
+    try {
+      const { count: pending } = await supabase
+        .from('friendships')
+        .select('*', { count: 'exact', head: true })
+        .eq('addressee_id', currentUserId)
+        .eq('status', 'pending')
+
+      const { data: unread } = await supabase
+        .rpc('get_unread_message_count', { user_id_param: currentUserId })
+
+      setPendingRequests(pending || 0)
+      setUnreadMessages(unread || 0)
+    } catch {
+      setPendingRequests(0)
+      setUnreadMessages(0)
+    }
+  }, [currentUserId, supabase])
+
+  useEffect(() => {
+    fetchCounts()
+  }, [fetchCounts])
+
+  // Subscribe to realtime updates
+  useEffect(() => {
+    if (!currentUserId) return
+
+    const channel = supabase
+      .channel('mobile-nav-social')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'friendships', filter: `addressee_id=eq.${currentUserId}` }, () => fetchCounts())
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, () => fetchCounts())
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [currentUserId, supabase, fetchCounts])
 
   // Listen for open-left-sidebar event from BottomNav
   useEffect(() => {
@@ -146,7 +225,7 @@ export function MobileNav({ currentCategory = '' }: MobileNavProps) {
 
   // Prevent body scroll when menu is open
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen || showSocialPanel) {
       document.body.style.overflow = 'hidden'
     } else {
       document.body.style.overflow = ''
@@ -154,7 +233,7 @@ export function MobileNav({ currentCategory = '' }: MobileNavProps) {
     return () => {
       document.body.style.overflow = ''
     }
-  }, [isOpen])
+  }, [isOpen, showSocialPanel])
 
   return (
     <>
@@ -239,6 +318,61 @@ export function MobileNav({ currentCategory = '' }: MobileNavProps) {
               </button>
             </div>
 
+            {/* Social section - only show when logged in */}
+            {currentUserId && (
+              <div className="p-4 border-b border-gray-100">
+                <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 px-3">
+                  Sosial
+                </h2>
+                <ul className="space-y-1">
+                  <li>
+                    <button
+                      onClick={() => {
+                        setIsOpen(false)
+                        setShowSocialPanel(true)
+                      }}
+                      className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors"
+                    >
+                      <span className="flex items-center gap-3">
+                        <Users className="w-4 h-4 text-blue-500" />
+                        Venner
+                      </span>
+                      <span className="flex items-center gap-2">
+                        {pendingRequests > 0 && (
+                          <span className="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">
+                            {pendingRequests}
+                          </span>
+                        )}
+                        <ChevronRight className="w-4 h-4 text-gray-400" />
+                      </span>
+                    </button>
+                  </li>
+                  <li>
+                    <button
+                      onClick={() => {
+                        setIsOpen(false)
+                        setShowSocialPanel(true)
+                      }}
+                      className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors"
+                    >
+                      <span className="flex items-center gap-3">
+                        <MessageCircle className="w-4 h-4 text-green-500" />
+                        Meldinger
+                      </span>
+                      <span className="flex items-center gap-2">
+                        {unreadMessages > 0 && (
+                          <span className="bg-blue-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">
+                            {unreadMessages}
+                          </span>
+                        )}
+                        <ChevronRight className="w-4 h-4 text-gray-400" />
+                      </span>
+                    </button>
+                  </li>
+                </ul>
+              </div>
+            )}
+
             {/* Categories */}
             <nav className="p-4">
               <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 px-3">
@@ -278,6 +412,49 @@ export function MobileNav({ currentCategory = '' }: MobileNavProps) {
               <p className="text-xs text-gray-400 text-center">
                 Det samiske miljøet i Trondheim
               </p>
+            </div>
+          </div>
+
+          {/* Social Panel Bottom Sheet */}
+          <div
+            className={cn(
+              'fixed inset-0 bg-black/50 z-[10000] transition-opacity duration-300',
+              showSocialPanel ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+            )}
+            onClick={() => setShowSocialPanel(false)}
+          />
+          <div
+            className={cn(
+              'fixed bottom-0 left-0 right-0 z-[10001] bg-white rounded-t-2xl shadow-2xl transition-transform duration-300 ease-out',
+              'h-[85vh] max-h-[85vh]',
+              showSocialPanel ? 'translate-y-0' : 'translate-y-full'
+            )}
+          >
+            {/* Drag handle */}
+            <div className="flex justify-center pt-3 pb-2">
+              <div className="w-10 h-1 bg-gray-300 rounded-full" />
+            </div>
+
+            {/* Header */}
+            <div className="flex items-center justify-between px-4 pb-3 border-b border-gray-100">
+              <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                <Users className="w-5 h-5 text-blue-600" />
+                Sosial
+              </h2>
+              <button
+                onClick={() => setShowSocialPanel(false)}
+                className="p-2 -mr-2 text-gray-500 hover:text-gray-700 rounded-lg hover:bg-gray-100"
+                aria-label="Lukk"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="h-[calc(85vh-80px)] overflow-hidden">
+              {showSocialPanel && <SocialPanel />}
             </div>
           </div>
         </>,
