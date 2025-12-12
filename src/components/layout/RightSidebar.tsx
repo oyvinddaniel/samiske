@@ -63,6 +63,13 @@ export function RightSidebar() {
     setMounted(true)
   }, [])
 
+  // Listen for open-right-sidebar event from BottomNav
+  useEffect(() => {
+    const handleOpenSidebar = () => setMobileOpen(true)
+    window.addEventListener('open-right-sidebar', handleOpenSidebar)
+    return () => window.removeEventListener('open-right-sidebar', handleOpenSidebar)
+  }, [])
+
   // Prevent body scroll when mobile drawer is open
   useEffect(() => {
     if (mobileOpen) {
@@ -423,7 +430,7 @@ export function RightSidebar() {
         {mounted && createPortal(
           <button
             onClick={() => setMobileOpen(true)}
-            className="lg:hidden fixed right-0 top-1/2 -translate-y-1/2 z-40 bg-blue-600 text-white py-3 px-1 rounded-l-lg shadow-lg hover:bg-blue-700 transition-colors"
+            className="lg:hidden fixed right-0 top-20 z-40 bg-blue-600 text-white py-2 px-1 rounded-l-lg shadow-lg hover:bg-blue-700 transition-colors"
             aria-label="Åpne statistikk"
           >
             <ChevronLeft className="w-4 h-4" />
@@ -445,11 +452,11 @@ export function RightSidebar() {
       {/* Mobile teaser tab */}
       {mounted && createPortal(
         <>
-          {/* Teaser button */}
+          {/* Teaser button - near top right, under navbar */}
           <button
             onClick={() => setMobileOpen(true)}
             className={cn(
-              "lg:hidden fixed right-0 top-1/2 -translate-y-1/2 z-40 bg-blue-600 text-white py-3 px-1.5 rounded-l-lg shadow-lg hover:bg-blue-700 transition-all",
+              "lg:hidden fixed right-0 top-20 z-40 bg-blue-600 text-white py-2 px-1.5 rounded-l-lg shadow-lg hover:bg-blue-700 transition-all",
               mobileOpen && "opacity-0 pointer-events-none"
             )}
             aria-label="Åpne statistikk"

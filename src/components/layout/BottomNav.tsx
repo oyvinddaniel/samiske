@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
-import { Home, PlusCircle, User, LogIn } from 'lucide-react'
+import { Home, PlusCircle, User, LogIn, Menu, BarChart3 } from 'lucide-react'
 import type { User as SupabaseUser } from '@supabase/supabase-js'
 
 export function BottomNav() {
@@ -28,6 +28,14 @@ export function BottomNav() {
     return () => subscription.unsubscribe()
   }, [supabase])
 
+  const openLeftSidebar = () => {
+    window.dispatchEvent(new CustomEvent('open-left-sidebar'))
+  }
+
+  const openRightSidebar = () => {
+    window.dispatchEvent(new CustomEvent('open-right-sidebar'))
+  }
+
   const navItems = user ? [
     { href: '/', icon: Home, label: 'Hjem' },
     { href: '/ny', icon: PlusCircle, label: 'Ny' },
@@ -39,37 +47,58 @@ export function BottomNav() {
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200 lg:hidden safe-area-bottom">
-      <div className="flex items-center justify-around h-16 px-2">
-        {navItems.map((item) => {
-          const isActive = pathname === item.href ||
-            (item.href === '/' && pathname === '/') ||
-            (item.href !== '/' && pathname.startsWith(item.href))
-          const Icon = item.icon
+      <div className="flex items-center justify-between h-16 px-1">
+        {/* Left menu button */}
+        <button
+          onClick={openLeftSidebar}
+          className="flex flex-col items-center justify-center w-14 h-full py-2 text-gray-500 hover:text-gray-900 transition-colors"
+        >
+          <Menu className="w-6 h-6" />
+          <span className="text-[10px] mt-1 font-medium">Meny</span>
+        </button>
 
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={cn(
-                'flex flex-col items-center justify-center flex-1 h-full py-2 relative transition-colors',
-                isActive
-                  ? 'text-blue-600'
-                  : 'text-gray-500 hover:text-gray-900'
-              )}
-            >
-              <Icon className={cn(
-                'w-6 h-6',
-                isActive && 'stroke-[2.5]'
-              )} />
-              <span className={cn(
-                'text-[10px] mt-1 font-medium',
-                isActive && 'font-semibold'
-              )}>
-                {item.label}
-              </span>
-            </Link>
-          )
-        })}
+        {/* Center navigation items */}
+        <div className="flex items-center justify-center flex-1">
+          {navItems.map((item) => {
+            const isActive = pathname === item.href ||
+              (item.href === '/' && pathname === '/') ||
+              (item.href !== '/' && pathname.startsWith(item.href))
+            const Icon = item.icon
+
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={cn(
+                  'flex flex-col items-center justify-center w-16 h-full py-2 transition-colors',
+                  isActive
+                    ? 'text-blue-600'
+                    : 'text-gray-500 hover:text-gray-900'
+                )}
+              >
+                <Icon className={cn(
+                  'w-6 h-6',
+                  isActive && 'stroke-[2.5]'
+                )} />
+                <span className={cn(
+                  'text-[10px] mt-1 font-medium',
+                  isActive && 'font-semibold'
+                )}>
+                  {item.label}
+                </span>
+              </Link>
+            )
+          })}
+        </div>
+
+        {/* Right menu button */}
+        <button
+          onClick={openRightSidebar}
+          className="flex flex-col items-center justify-center w-14 h-full py-2 text-gray-500 hover:text-gray-900 transition-colors"
+        >
+          <BarChart3 className="w-6 h-6" />
+          <span className="text-[10px] mt-1 font-medium">Info</span>
+        </button>
       </div>
     </nav>
   )

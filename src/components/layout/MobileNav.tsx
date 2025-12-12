@@ -28,6 +28,13 @@ export function MobileNav({ currentCategory = '' }: MobileNavProps) {
     setMounted(true)
   }, [])
 
+  // Listen for open-left-sidebar event from BottomNav
+  useEffect(() => {
+    const handleOpenSidebar = () => setIsOpen(true)
+    window.addEventListener('open-left-sidebar', handleOpenSidebar)
+    return () => window.removeEventListener('open-left-sidebar', handleOpenSidebar)
+  }, [])
+
   // Prevent body scroll when menu is open
   useEffect(() => {
     if (isOpen) {
