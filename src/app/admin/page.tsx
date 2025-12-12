@@ -62,13 +62,26 @@ interface Stats {
   totalPosts: number
   totalComments: number
   totalLikes: number
+  totalFeedback: number
+}
+
+interface Feedback {
+  id: string
+  message: string
+  created_at: string
+  user: {
+    id: string
+    full_name: string | null
+    email: string
+  } | null
 }
 
 export default function AdminPage() {
   const [currentUser, setCurrentUser] = useState<User | null>(null)
   const [users, setUsers] = useState<User[]>([])
   const [posts, setPosts] = useState<Post[]>([])
-  const [stats, setStats] = useState<Stats>({ totalUsers: 0, totalPosts: 0, totalComments: 0, totalLikes: 0 })
+  const [feedback, setFeedback] = useState<Feedback[]>([])
+  const [stats, setStats] = useState<Stats>({ totalUsers: 0, totalPosts: 0, totalComments: 0, totalLikes: 0, totalFeedback: 0 })
   const [loading, setLoading] = useState(true)
   const [isAdmin, setIsAdmin] = useState(false)
   const router = useRouter()
@@ -102,6 +115,7 @@ export default function AdminPage() {
       await Promise.all([
         fetchUsers(),
         fetchPosts(),
+        fetchFeedback(),
         fetchStats(),
       ])
 
@@ -156,12 +170,37 @@ export default function AdminPage() {
     }
   }
 
+  const fetchFeedback = async () => {
+    const { data } = await supabase
+      .from('feedback')
+      .select(`
+        id,
+        message,
+        created_at,
+        user:profiles (
+          id,
+          full_name,
+          email
+        )
+      `)
+      .order('created_at', { ascending: false })
+
+    if (data) {
+      const formattedFeedback = data.map((f) => ({
+        ...f,
+        user: Array.isArray(f.user) ? f.user[0] : f.user,
+      }))
+      setFeedback(formattedFeedback as Feedback[])
+    }
+  }
+
   const fetchStats = async () => {
-    const [usersResult, postsResult, commentsResult, likesResult] = await Promise.all([
+    const [usersResult, postsResult, commentsResult, likesResult, feedbackResult] = await Promise.all([
       supabase.from('profiles').select('*', { count: 'exact', head: true }),
       supabase.from('posts').select('*', { count: 'exact', head: true }),
       supabase.from('comments').select('*', { count: 'exact', head: true }),
       supabase.from('likes').select('*', { count: 'exact', head: true }),
+      supabase.from('feedback').select('*', { count: 'exact', head: true }),
     ])
 
     setStats({
@@ -169,6 +208,7 @@ export default function AdminPage() {
       totalPosts: postsResult.count || 0,
       totalComments: commentsResult.count || 0,
       totalLikes: likesResult.count || 0,
+      totalFeedback: feedbackResult.count || 0,
     })
   }
 
@@ -189,6 +229,15 @@ export default function AdminPage() {
     if (!error) {
       setPosts(posts.filter((p) => p.id !== postId))
       setStats((prev) => ({ ...prev, totalPosts: prev.totalPosts - 1 }))
+    }
+  }
+
+  const handleDeleteFeedback = async (feedbackId: string) => {
+    const { error } = await supabase.from('feedback').delete().eq('id', feedbackId)
+
+    if (!error) {
+      setFeedback(feedback.filter((f) => f.id !== feedbackId))
+      setStats((prev) => ({ ...prev, totalFeedback: prev.totalFeedback - 1 }))
     }
   }
 
@@ -297,6 +346,7 @@ export default function AdminPage() {
           <TabsList>
             <TabsTrigger value="users">Brukere ({users.length})</TabsTrigger>
             <TabsTrigger value="posts">Innlegg ({posts.length})</TabsTrigger>
+            <TabsTrigger value="feedback">Tilbakemeldinger ({feedback.length})</TabsTrigger>
           </TabsList>
 
           {/* Users Tab */}
@@ -427,6 +477,69 @@ export default function AdminPage() {
                                 <AlertDialogCancel>Avbryt</AlertDialogCancel>
                                 <AlertDialogAction
                                   onClick={() => handleDeletePost(post.id)}
+                                  className="bg-red-600 hover:bg-red-700"
+                                >
+                                  Slett
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Feedback Tab */}
+          <TabsContent value="feedback">
+            <Card>
+              <CardHeader>
+                <CardTitle>Tilbakemeldinger</CardTitle>
+                <CardDescription>Se hva brukerne savner og ønsker seg</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {feedback.length === 0 ? (
+                    <p className="text-center text-gray-500 py-8">Ingen tilbakemeldinger ennå</p>
+                  ) : (
+                    feedback.map((item) => (
+                      <div
+                        key={item.id}
+                        className="flex items-start justify-between p-4 bg-gray-50 rounded-lg"
+                      >
+                        <div className="flex-1 min-w-0">
+                          <p className="text-gray-900 whitespace-pre-wrap">{item.message}</p>
+                          <p className="text-xs text-gray-400 mt-2">
+                            {item.user ? (
+                              <>Fra {item.user.full_name || item.user.email}</>
+                            ) : (
+                              <>Anonym</>
+                            )}
+                            {' • '}
+                            {formatDate(item.created_at)}
+                          </p>
+                        </div>
+                        <div className="ml-4">
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="destructive" size="sm">
+                                Slett
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Slett tilbakemelding?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Er du sikker på at du vil slette denne tilbakemeldingen?
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Avbryt</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => handleDeleteFeedback(item.id)}
                                   className="bg-red-600 hover:bg-red-700"
                                 >
                                   Slett
