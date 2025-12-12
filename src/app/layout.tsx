@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ServiceWorkerRegistration } from "@/components/pwa/ServiceWorkerRegistration";
 import { FloatingSocialBubbles } from "@/components/social/FloatingSocialBubbles";
+import { FeedbackBubble } from "@/components/feedback/FeedbackBubble";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -54,6 +55,7 @@ export default function RootLayout({
         <ServiceWorkerRegistration />
         {children}
         <FloatingSocialBubbles />
+        <FeedbackBubble />
       </body>
     </html>
   );
