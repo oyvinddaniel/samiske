@@ -2,8 +2,19 @@ import { createClient } from '@supabase/supabase-js'
 import { createClient as createServerClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 
-export async function DELETE() {
+export async function DELETE(request: Request) {
   try {
+    // Get password from request body
+    const body = await request.json().catch(() => ({}))
+    const { password } = body
+
+    if (!password) {
+      return NextResponse.json(
+        { error: 'Du må oppgi passordet ditt for å slette kontoen' },
+        { status: 400 }
+      )
+    }
+
     // Get current user from session
     const supabase = await createServerClient()
     const { data: { user }, error: authError } = await supabase.auth.getUser()
@@ -11,6 +22,19 @@ export async function DELETE() {
     if (authError || !user) {
       return NextResponse.json(
         { error: 'Du må være innlogget for å slette kontoen' },
+        { status: 401 }
+      )
+    }
+
+    // Verify password by attempting to sign in
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email: user.email!,
+      password: password,
+    })
+
+    if (signInError) {
+      return NextResponse.json(
+        { error: 'Feil passord. Vennligst prøv igjen.' },
         { status: 401 }
       )
     }

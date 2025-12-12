@@ -59,6 +59,8 @@ export default function ProfilePage() {
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
+  const [deletePassword, setDeletePassword] = useState('')
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
   const supabase = createClient()
@@ -206,12 +208,21 @@ export default function ProfilePage() {
   }
 
   const handleDeleteAccount = async () => {
+    if (!deletePassword.trim()) {
+      setDeleteError('Du må oppgi passordet ditt')
+      return
+    }
+
     setDeleting(true)
     setDeleteError(null)
 
     try {
       const response = await fetch('/api/delete-account', {
         method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ password: deletePassword }),
       })
 
       const data = await response.json()
@@ -230,6 +241,12 @@ export default function ProfilePage() {
       setDeleteError('En uventet feil oppstod')
       setDeleting(false)
     }
+  }
+
+  const resetDeleteDialog = () => {
+    setDeletePassword('')
+    setDeleteError(null)
+    setShowDeleteDialog(false)
   }
 
   const getInitials = (name: string | null) => {
@@ -493,7 +510,10 @@ export default function ProfilePage() {
               </div>
             )}
 
-            <AlertDialog>
+            <AlertDialog open={showDeleteDialog} onOpenChange={(open) => {
+              if (!open) resetDeleteDialog()
+              else setShowDeleteDialog(true)
+            }}>
               <AlertDialogTrigger asChild>
                 <Button variant="destructive" disabled={deleting}>
                   {deleting ? 'Sletter...' : 'Slett min konto'}
@@ -502,23 +522,47 @@ export default function ProfilePage() {
               <AlertDialogContent>
                 <AlertDialogHeader>
                   <AlertDialogTitle>Er du sikker?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Denne handlingen kan ikke angres. Dette vil permanent slette kontoen din
-                    og fjerne alle dine data fra serverne våre, inkludert:
-                    <ul className="list-disc list-inside mt-2 space-y-1">
-                      <li>Alle innlegg du har opprettet</li>
-                      <li>Alle kommentarer du har skrevet</li>
-                      <li>Alle likes du har gitt</li>
-                      <li>Din profilinformasjon</li>
-                    </ul>
+                  <AlertDialogDescription asChild>
+                    <div>
+                      <p>
+                        Denne handlingen kan ikke angres. Dette vil permanent slette kontoen din
+                        og fjerne alle dine data fra serverne våre, inkludert:
+                      </p>
+                      <ul className="list-disc list-inside mt-2 space-y-1">
+                        <li>Alle innlegg du har opprettet</li>
+                        <li>Alle kommentarer du har skrevet</li>
+                        <li>Alle likes du har gitt</li>
+                        <li>Din profilinformasjon</li>
+                      </ul>
+                      <div className="mt-4">
+                        <Label htmlFor="deletePassword" className="text-sm font-medium text-gray-900">
+                          Bekreft med passord
+                        </Label>
+                        <Input
+                          id="deletePassword"
+                          type="password"
+                          value={deletePassword}
+                          onChange={(e) => setDeletePassword(e.target.value)}
+                          placeholder="Skriv inn passordet ditt"
+                          className="mt-1"
+                          autoComplete="current-password"
+                        />
+                      </div>
+                      {deleteError && (
+                        <p className="mt-2 text-sm text-red-600">{deleteError}</p>
+                      )}
+                    </div>
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                  <AlertDialogCancel>Avbryt</AlertDialogCancel>
+                  <AlertDialogCancel disabled={deleting}>Avbryt</AlertDialogCancel>
                   <AlertDialogAction
-                    onClick={handleDeleteAccount}
+                    onClick={(e) => {
+                      e.preventDefault()
+                      handleDeleteAccount()
+                    }}
                     className="bg-red-600 hover:bg-red-700"
-                    disabled={deleting}
+                    disabled={deleting || !deletePassword.trim()}
                   >
                     {deleting ? 'Sletter...' : 'Ja, slett kontoen min'}
                   </AlertDialogAction>

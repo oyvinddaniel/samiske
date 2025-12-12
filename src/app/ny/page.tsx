@@ -251,10 +251,12 @@ export default function NewPostPage() {
                 <Input
                   id="title"
                   value={title}
-                  onChange={(e) => setTitle(e.target.value)}
+                  onChange={(e) => setTitle(e.target.value.slice(0, 100))}
                   placeholder="Skriv en tittel..."
                   required
+                  maxLength={100}
                 />
+                <p className="text-xs text-gray-500 text-right">{title.length}/100 tegn</p>
               </div>
 
               {/* Content */}
@@ -263,11 +265,13 @@ export default function NewPostPage() {
                 <Textarea
                   id="content"
                   value={content}
-                  onChange={(e) => setContent(e.target.value)}
+                  onChange={(e) => setContent(e.target.value.slice(0, 5000))}
                   placeholder="Skriv innholdet her..."
                   rows={5}
                   required
+                  maxLength={5000}
                 />
+                <p className="text-xs text-gray-500 text-right">{content.length}/5000 tegn</p>
               </div>
 
               {/* Event fields */}
@@ -313,9 +317,10 @@ export default function NewPostPage() {
                     <Input
                       id="eventLocation"
                       value={eventLocation}
-                      onChange={(e) => setEventLocation(e.target.value)}
+                      onChange={(e) => setEventLocation(e.target.value.slice(0, 200))}
                       placeholder="F.eks. Studentersamfundet, Trondheim"
                       required={type === 'event'}
+                      maxLength={200}
                     />
                   </div>
                 </div>
