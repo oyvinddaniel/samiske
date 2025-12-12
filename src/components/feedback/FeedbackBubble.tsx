@@ -16,6 +16,16 @@ export function FeedbackBubble() {
 
   useEffect(() => {
     setMounted(true)
+
+    // Auto-open after 10 seconds (only once per session)
+    const hasSeenFeedback = sessionStorage.getItem('feedbackShown')
+    if (!hasSeenFeedback) {
+      const timer = setTimeout(() => {
+        setIsOpen(true)
+        sessionStorage.setItem('feedbackShown', 'true')
+      }, 10000)
+      return () => clearTimeout(timer)
+    }
   }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
