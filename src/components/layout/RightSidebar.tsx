@@ -9,6 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Calendar, MapPin, UserPlus, MessageCircle, ChevronLeft, BarChart3, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { ProfileOverlay } from '@/components/profile/ProfileOverlay'
 
 interface NewMember {
   id: string
@@ -58,6 +59,7 @@ export function RightSidebar() {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
   const [leftMenuOpen, setLeftMenuOpen] = useState(false)
+  const [profileOverlayUserId, setProfileOverlayUserId] = useState<string | null>(null)
   const touchStartX = useRef<number | null>(null)
   const touchStartY = useRef<number | null>(null)
   const supabase = createClient()
@@ -420,7 +422,11 @@ export function RightSidebar() {
         <CardContent className="pt-0">
           <div className={`space-y-2 ${!isLoggedIn ? 'blur-sm select-none' : ''}`}>
             {newMembers.map((member) => (
-              <div key={member.id} className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-gray-50 transition-colors">
+              <button
+                key={member.id}
+                onClick={() => { setProfileOverlayUserId(member.id); if (isMobile) setMobileOpen(false); }}
+                className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-gray-50 transition-colors w-full text-left"
+              >
                 <Avatar className="w-8 h-8">
                   <AvatarImage src={member.avatar_url || undefined} />
                   <AvatarFallback className="bg-blue-100 text-blue-600 text-xs">
@@ -435,7 +441,7 @@ export function RightSidebar() {
                     {getTimeAgo(member.created_at)}
                   </p>
                 </div>
-              </div>
+              </button>
             ))}
           </div>
           {!isLoggedIn && (
@@ -470,14 +476,19 @@ export function RightSidebar() {
                 })
                 return groups.map((group, index) => (
                   <div key={`${group.post?.id}-${index}`} className="border-b border-gray-100 pb-3 last:border-0 last:pb-0">
-                    <Link href={`/#post-${group.post?.id}`} onClick={() => isMobile && setMobileOpen(false)}>
+                    <Link href={`/innlegg/${group.post?.id}`} onClick={() => isMobile && setMobileOpen(false)}>
                       <h4 className="text-sm font-semibold text-gray-900 hover:text-blue-600 transition-colors mb-2 line-clamp-1">
                         {group.post?.title || 'Ukjent innlegg'}
                       </h4>
                     </Link>
                     <div className="space-y-2 pl-2 border-l-2 border-gray-100">
                       {group.comments.map((comment) => (
-                        <div key={comment.id} className="hover:bg-gray-50 rounded p-1.5 transition-colors">
+                        <Link
+                          key={comment.id}
+                          href={`/innlegg/${group.post?.id}`}
+                          onClick={() => isMobile && setMobileOpen(false)}
+                          className="block hover:bg-gray-50 rounded p-1.5 transition-colors"
+                        >
                           <div className="flex items-center gap-1.5 mb-0.5">
                             <Avatar className="w-4 h-4">
                               <AvatarImage src={comment.user?.avatar_url || undefined} />
@@ -493,7 +504,7 @@ export function RightSidebar() {
                             </span>
                           </div>
                           <p className="text-xs text-gray-600 line-clamp-2">{comment.content}</p>
-                        </div>
+                        </Link>
                       ))}
                     </div>
                   </div>
@@ -611,6 +622,14 @@ export function RightSidebar() {
           </div>
         </>,
         document.body
+      )}
+
+      {/* Profile Overlay */}
+      {profileOverlayUserId && (
+        <ProfileOverlay
+          userId={profileOverlayUserId}
+          onClose={() => setProfileOverlayUserId(null)}
+        />
       )}
     </>
   )

@@ -181,7 +181,7 @@ export function Header({ currentCategory }: HeaderProps) {
   }
 
   return (
-    <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-sm border-b border-gray-200 shadow-sm">
+    <header className="sticky top-0 z-50 shadow-md" style={{ backgroundColor: '#0143F5' }}>
       <div className="flex items-center justify-between px-4 md:px-6 h-16">
         {/* Mobile nav */}
         <div className="flex items-center gap-3 md:hidden">
@@ -194,15 +194,15 @@ export function Header({ currentCategory }: HeaderProps) {
                 className="w-full h-full object-cover"
               />
             </div>
-            <span className="font-bold text-gray-900">samiske.no</span>
+            <span className="font-bold text-white">samiske.no</span>
           </Link>
         </div>
 
         {/* Desktop title with gradient accent */}
         <div className="hidden md:flex items-center gap-3">
-          <div className="h-8 w-1 rounded-full bg-gradient-to-b from-red-500 via-blue-500 to-green-500" />
+          <div className="h-8 w-1 rounded-full bg-gradient-to-b from-red-400 via-white to-green-400" />
           <div>
-            <h1 className="text-lg font-semibold text-gray-900">
+            <h1 className="text-lg font-semibold text-white">
               {currentCategory
                 ? currentCategory === 'mote' ? 'Møte' : currentCategory.charAt(0).toUpperCase() + currentCategory.slice(1)
                 : 'Hjem'
@@ -217,20 +217,20 @@ export function Header({ currentCategory }: HeaderProps) {
           <button
             ref={searchButtonRef}
             onClick={() => setShowSearch(true)}
-            className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+            className="p-2 text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
             title="Søk (⌘K)"
           >
             <Search className="w-5 h-5" />
           </button>
 
           {loading ? (
-            <div className="w-9 h-9 rounded-full bg-gray-200 animate-pulse" />
+            <div className="w-9 h-9 rounded-full bg-white/20 animate-pulse" />
           ) : user ? (
             <div className="flex items-center gap-2">
               {/* Social button - hidden on mobile as it's in BottomNav */}
               <button
                 onClick={() => setShowSocialPanel(true)}
-                className="hidden lg:flex relative p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                className="hidden lg:flex relative p-2 text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
                 title="Venner og meldinger"
               >
                 <Users className="w-5 h-5" />
@@ -244,9 +244,9 @@ export function Header({ currentCategory }: HeaderProps) {
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button className="flex items-center gap-2 focus:outline-none group">
-                    <Avatar className="w-9 h-9 ring-2 ring-transparent group-hover:ring-blue-100 transition-all">
+                    <Avatar className="w-9 h-9 ring-2 ring-white/30 group-hover:ring-white/50 transition-all">
                       <AvatarImage src={profile?.avatar_url || undefined} />
-                      <AvatarFallback className="bg-gradient-to-br from-blue-500 to-blue-600 text-white text-sm font-medium">
+                      <AvatarFallback className="bg-white text-[#0143F5] text-sm font-medium">
                         {getInitials(profile?.full_name || user.email)}
                       </AvatarFallback>
                     </Avatar>
@@ -298,12 +298,12 @@ export function Header({ currentCategory }: HeaderProps) {
           ) : (
             <div className="flex items-center gap-2">
               <Link href="/login">
-                <Button variant="ghost" size="sm" className="font-medium">
+                <Button variant="ghost" size="sm" className="font-medium text-white hover:bg-white/10 hover:text-white">
                   Logg inn
                 </Button>
               </Link>
               <Link href="/register">
-                <Button size="sm" className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 font-medium shadow-sm">
+                <Button size="sm" className="bg-white text-[#0143F5] hover:bg-white/90 font-medium shadow-sm">
                   Registrer
                 </Button>
               </Link>
