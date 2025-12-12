@@ -117,10 +117,7 @@ export function Sidebar({ currentCategory = '' }: SidebarProps) {
               className="w-full h-full object-cover"
             />
           </div>
-          <div>
-            <h1 className="font-bold text-lg text-gray-900">samiske.no</h1>
-            <p className="text-xs text-gray-500">Trondheim</p>
-          </div>
+          <h1 className="font-bold text-lg text-gray-900">samiske.no</h1>
         </Link>
       </div>
 
