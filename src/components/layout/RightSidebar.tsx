@@ -72,27 +72,35 @@ export function RightSidebar() {
     return () => window.removeEventListener('open-right-sidebar', handleOpenSidebar)
   }, [])
 
-  // Swipe left anywhere to open right menu
+  // Swipe left anywhere to open right menu, swipe right to close when open
   useEffect(() => {
     const handleTouchStart = (e: TouchEvent) => {
-      if (mobileOpen) return // Don't track if menu is already open
       const touch = e.touches[0]
       touchStartX.current = touch.clientX
       touchStartY.current = touch.clientY
     }
 
     const handleTouchMove = (e: TouchEvent) => {
-      if (touchStartX.current === null || touchStartY.current === null || mobileOpen) return
+      if (touchStartX.current === null || touchStartY.current === null) return
 
       const touch = e.touches[0]
-      const deltaX = touchStartX.current - touch.clientX // Swipe left (positive value means left)
+      const deltaX = touch.clientX - touchStartX.current
       const deltaY = Math.abs(touch.clientY - touchStartY.current)
 
-      // Swipe left to open (positive deltaX), must be more horizontal than vertical
-      if (deltaX > 80 && deltaX > deltaY * 1.5) {
-        setMobileOpen(true)
-        touchStartX.current = null
-        touchStartY.current = null
+      if (mobileOpen) {
+        // When drawer is open, swipe right anywhere to close
+        if (deltaX > 80 && deltaX > deltaY * 1.5) {
+          setMobileOpen(false)
+          touchStartX.current = null
+          touchStartY.current = null
+        }
+      } else {
+        // When drawer is closed, swipe left to open
+        if (deltaX < -80 && Math.abs(deltaX) > deltaY * 1.5) {
+          setMobileOpen(true)
+          touchStartX.current = null
+          touchStartY.current = null
+        }
       }
     }
 

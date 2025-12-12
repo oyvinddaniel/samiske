@@ -38,27 +38,35 @@ export function MobileNav({ currentCategory = '' }: MobileNavProps) {
     return () => window.removeEventListener('open-left-sidebar', handleOpenSidebar)
   }, [])
 
-  // Swipe right anywhere to open left menu
+  // Swipe right anywhere to open left menu, swipe left to close when open
   useEffect(() => {
     const handleTouchStart = (e: TouchEvent) => {
-      if (isOpen) return // Don't track if menu is already open
       const touch = e.touches[0]
       touchStartX.current = touch.clientX
       touchStartY.current = touch.clientY
     }
 
     const handleTouchMove = (e: TouchEvent) => {
-      if (touchStartX.current === null || touchStartY.current === null || isOpen) return
+      if (touchStartX.current === null || touchStartY.current === null) return
 
       const touch = e.touches[0]
       const deltaX = touch.clientX - touchStartX.current
       const deltaY = Math.abs(touch.clientY - touchStartY.current)
 
-      // Swipe right to open (positive deltaX), must be more horizontal than vertical
-      if (deltaX > 80 && deltaX > deltaY * 1.5) {
-        setIsOpen(true)
-        touchStartX.current = null
-        touchStartY.current = null
+      if (isOpen) {
+        // When menu is open, swipe left anywhere to close
+        if (deltaX < -80 && Math.abs(deltaX) > deltaY * 1.5) {
+          setIsOpen(false)
+          touchStartX.current = null
+          touchStartY.current = null
+        }
+      } else {
+        // When menu is closed, swipe right to open (but not if right sidebar is open)
+        if (deltaX > 80 && deltaX > deltaY * 1.5) {
+          setIsOpen(true)
+          touchStartX.current = null
+          touchStartY.current = null
+        }
       }
     }
 
