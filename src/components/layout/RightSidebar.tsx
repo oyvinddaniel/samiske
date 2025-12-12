@@ -1,12 +1,14 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
-import { Calendar, MapPin, UserPlus, MessageCircle } from 'lucide-react'
+import { Calendar, MapPin, UserPlus, MessageCircle, ChevronLeft, BarChart3, X } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 interface NewMember {
   id: string
@@ -53,7 +55,25 @@ export function RightSidebar() {
   const [stats, setStats] = useState<Stats>({ totalMembers: 0, totalPosts: 0, totalComments: 0 })
   const [loading, setLoading] = useState(true)
   const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const [mobileOpen, setMobileOpen] = useState(false)
+  const [mounted, setMounted] = useState(false)
   const supabase = createClient()
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  // Prevent body scroll when mobile drawer is open
+  useEffect(() => {
+    if (mobileOpen) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = ''
+    }
+    return () => {
+      document.body.style.overflow = ''
+    }
+  }, [mobileOpen])
 
   const fetchRecentComments = useCallback(async () => {
     const { data: comments } = await supabase
@@ -207,28 +227,9 @@ export function RightSidebar() {
     return `${Math.floor(diffInDays / 30)} måneder siden`
   }
 
-  if (loading) {
-    return (
-      <aside className="hidden lg:block w-72 space-y-4">
-        <Card className="animate-pulse">
-          <CardContent className="pt-6">
-            <div className="h-4 bg-gray-200 rounded w-1/2 mb-4" />
-            <div className="space-y-3">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-full bg-gray-200" />
-                  <div className="h-3 bg-gray-200 rounded w-24" />
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      </aside>
-    )
-  }
-
-  return (
-    <aside className="hidden lg:block w-72 space-y-4">
+  // Sidebar content component to avoid duplication
+  const SidebarContent = ({ isMobile = false }: { isMobile?: boolean }) => (
+    <div className={cn("space-y-4", isMobile && "p-4")}>
       {/* Stats */}
       <Card>
         <CardContent className="pt-6">
@@ -264,7 +265,7 @@ export function RightSidebar() {
           <CardContent className="pt-0">
             <div className="space-y-3">
               {upcomingEvents.map((event) => (
-                <Link key={event.id} href={`/innlegg/${event.id}`}>
+                <Link key={event.id} href={`/innlegg/${event.id}`} onClick={() => isMobile && setMobileOpen(false)}>
                   <div className="rounded-lg hover:bg-gray-50 transition-colors cursor-pointer overflow-hidden">
                     {event.image_url && (
                       <div className="w-full h-24 overflow-hidden">
@@ -334,7 +335,7 @@ export function RightSidebar() {
         </CardContent>
       </Card>
 
-      {/* Recent comments - grouped by consecutive posts */}
+      {/* Recent comments */}
       <Card className="gap-0">
         <CardHeader className="pb-0">
           <CardTitle className="text-sm font-semibold flex items-center gap-2">
@@ -347,36 +348,24 @@ export function RightSidebar() {
             {recentComments.length === 0 ? (
               <p className="text-xs text-gray-500 text-center py-2">Ingen kommentarer ennå</p>
             ) : (
-              // Group consecutive comments on same post
               (() => {
                 const groups: { post: RecentComment['post'], comments: RecentComment[] }[] = []
-
                 recentComments.forEach((comment) => {
                   const lastGroup = groups[groups.length - 1]
                   const currentPostId = comment.post?.id
-
-                  // If same post as last group, add to it
                   if (lastGroup && lastGroup.post?.id === currentPostId) {
                     lastGroup.comments.push(comment)
                   } else {
-                    // Start new group
-                    groups.push({
-                      post: comment.post,
-                      comments: [comment]
-                    })
+                    groups.push({ post: comment.post, comments: [comment] })
                   }
                 })
-
                 return groups.map((group, index) => (
                   <div key={`${group.post?.id}-${index}`} className="border-b border-gray-100 pb-3 last:border-0 last:pb-0">
-                    {/* Post title */}
-                    <Link href={`/#post-${group.post?.id}`}>
+                    <Link href={`/#post-${group.post?.id}`} onClick={() => isMobile && setMobileOpen(false)}>
                       <h4 className="text-sm font-semibold text-gray-900 hover:text-blue-600 transition-colors mb-2 line-clamp-1">
                         {group.post?.title || 'Ukjent innlegg'}
                       </h4>
                     </Link>
-
-                    {/* Comments for this post */}
                     <div className="space-y-2 pl-2 border-l-2 border-gray-100">
                       {group.comments.map((comment) => (
                         <div key={comment.id} className="hover:bg-gray-50 rounded p-1.5 transition-colors">
@@ -394,9 +383,7 @@ export function RightSidebar() {
                               {getTimeAgo(comment.created_at)}
                             </span>
                           </div>
-                          <p className="text-xs text-gray-600 line-clamp-2">
-                            {comment.content}
-                          </p>
+                          <p className="text-xs text-gray-600 line-clamp-2">{comment.content}</p>
                         </div>
                       ))}
                     </div>
@@ -410,6 +397,110 @@ export function RightSidebar() {
           )}
         </CardContent>
       </Card>
-    </aside>
+    </div>
+  )
+
+  if (loading) {
+    return (
+      <>
+        {/* Desktop loading */}
+        <aside className="hidden lg:block w-72 space-y-4">
+          <Card className="animate-pulse">
+            <CardContent className="pt-6">
+              <div className="h-4 bg-gray-200 rounded w-1/2 mb-4" />
+              <div className="space-y-3">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-full bg-gray-200" />
+                    <div className="h-3 bg-gray-200 rounded w-24" />
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </aside>
+        {/* Mobile teaser - even during loading */}
+        {mounted && createPortal(
+          <button
+            onClick={() => setMobileOpen(true)}
+            className="lg:hidden fixed right-0 top-1/2 -translate-y-1/2 z-40 bg-blue-600 text-white py-3 px-1 rounded-l-lg shadow-lg hover:bg-blue-700 transition-colors"
+            aria-label="Åpne statistikk"
+          >
+            <ChevronLeft className="w-4 h-4" />
+            <BarChart3 className="w-4 h-4 mt-1" />
+          </button>,
+          document.body
+        )}
+      </>
+    )
+  }
+
+  return (
+    <>
+      {/* Desktop sidebar */}
+      <aside className="hidden lg:block w-72">
+        <SidebarContent />
+      </aside>
+
+      {/* Mobile teaser tab */}
+      {mounted && createPortal(
+        <>
+          {/* Teaser button */}
+          <button
+            onClick={() => setMobileOpen(true)}
+            className={cn(
+              "lg:hidden fixed right-0 top-1/2 -translate-y-1/2 z-40 bg-blue-600 text-white py-3 px-1.5 rounded-l-lg shadow-lg hover:bg-blue-700 transition-all",
+              mobileOpen && "opacity-0 pointer-events-none"
+            )}
+            aria-label="Åpne statistikk"
+          >
+            <ChevronLeft className="w-4 h-4" />
+            <BarChart3 className="w-4 h-4 mt-1" />
+            {upcomingEvents.length > 0 && (
+              <span className="absolute -top-1 -left-1 w-4 h-4 bg-red-500 rounded-full text-[9px] flex items-center justify-center">
+                {upcomingEvents.length}
+              </span>
+            )}
+          </button>
+
+          {/* Overlay */}
+          <div
+            className={cn(
+              "lg:hidden fixed inset-0 bg-black/50 z-[9998] transition-opacity duration-300",
+              mobileOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+            )}
+            onClick={() => setMobileOpen(false)}
+          />
+
+          {/* Slide-out drawer from right */}
+          <div
+            className={cn(
+              "lg:hidden fixed inset-y-0 right-0 w-80 max-w-[85vw] bg-gray-50 shadow-2xl z-[9999] transform transition-transform duration-300 ease-in-out overflow-y-auto",
+              mobileOpen ? "translate-x-0" : "translate-x-full"
+            )}
+          >
+            {/* Header */}
+            <div className="sticky top-0 bg-white border-b border-gray-200 p-4 flex items-center justify-between">
+              <h2 className="font-semibold text-gray-900 flex items-center gap-2">
+                <BarChart3 className="w-5 h-5 text-blue-600" />
+                Statistikk & Info
+              </h2>
+              <button
+                onClick={() => setMobileOpen(false)}
+                className="p-2 text-gray-500 hover:text-gray-700 rounded-lg hover:bg-gray-100"
+                aria-label="Lukk"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Content */}
+            <SidebarContent isMobile />
+          </div>
+        </>,
+        document.body
+      )}
+    </>
   )
 }
+
