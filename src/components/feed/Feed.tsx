@@ -246,16 +246,7 @@ export function Feed({ categorySlug }: FeedProps) {
                   </div>
                   <div className="hidden sm:block">
                     <p className="font-semibold text-gray-900">samiske.no</p>
-                    <p className="text-xs text-gray-500">Det samiske miljøet i Trondheim</p>
                   </div>
-                </div>
-
-                {/* Text */}
-                <div className="flex-1 text-center hidden md:block">
-                  <p className="text-gray-700">
-                    <span className="font-medium">Bli en del av miljøet!</span>
-                    <span className="text-gray-500 ml-2">Registrer deg for å se alle innlegg og delta i diskusjoner</span>
-                  </p>
                 </div>
 
                 {/* Buttons */}
