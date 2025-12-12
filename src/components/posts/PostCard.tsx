@@ -25,7 +25,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
-import { Pencil } from 'lucide-react'
+import { Pencil, MessageCircle } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { ProfileOverlay } from '@/components/profile/ProfileOverlay'
 
@@ -765,7 +765,7 @@ export function PostCard({ post, currentUserId }: PostCardProps) {
               className="h-7 px-1.5 text-xs text-gray-500"
               onClick={handleToggleComments}
             >
-              💬 {commentCount}
+              <MessageCircle className="w-4 h-4 inline mr-1" /> {commentCount}
             </Button>
 
             <div className="flex-1" />
@@ -1063,7 +1063,7 @@ export function PostCard({ post, currentUserId }: PostCardProps) {
                   {liked ? '❤️' : '🤍'} {likeCount}
                 </Button>
                 <span className="text-sm text-gray-500">
-                  💬 {commentCount}
+                  <MessageCircle className="w-4 h-4 inline mr-1" /> {commentCount}
                 </span>
               </div>
 
@@ -1239,7 +1239,7 @@ export function PostCard({ post, currentUserId }: PostCardProps) {
                   {liked ? '❤️' : '🤍'} {likeCount}
                 </Button>
                 <span className="text-sm text-gray-500">
-                  💬 {commentCount}
+                  <MessageCircle className="w-4 h-4 inline mr-1" /> {commentCount}
                 </span>
               </div>
 
