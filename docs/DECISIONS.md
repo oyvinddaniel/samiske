@@ -104,11 +104,11 @@
 - Holder det enkelt - ingen gruppechat eller avanserte funksjoner ennå
 
 ### 15. Sosial-meny plassering (2025-12-12)
-**Beslutning:** I venstre sidebar, over kategorier
+**Beslutning:** Flytende bobler i høyre hjørne
 **Begrunnelse:**
-- Naturlig plassering i navigasjonen
-- Vises både på desktop (Sidebar) og mobil (MobileNav)
-- Notification badges for uleste meldinger og venneforespørsler
+- Alltid tilgjengelig uansett hvor på siden du er
+- Åpner panel som overlay
+- Fungerer på både mobil og desktop
 
 ### 16. Auth-håndtering i klient-komponenter (2025-12-12)
 **Beslutning:** useMemo for Supabase-klient + getSession() først
@@ -118,9 +118,33 @@
 - `getUser()` som fallback hvis session ikke finnes
 - Mer pålitelig auth-tilstand på tvers av komponenter
 
+### 17. Slett konto-funksjon (2025-12-12)
+**Beslutning:** Brukere kan slette egen konto med bekreftelse
+**Begrunnelse:**
+- GDPR-krav om rett til sletting
+- Service Role Key brukes på server-side for å slette fra auth.users
+- CASCADE-delete fjerner automatisk all tilknyttet data
+- AlertDialog for bekreftelse før permanent sletting
+
+### 18. Feedback-system (2025-12-12)
+**Beslutning:** Lilla chatboble i venstre hjørne
+**Begrunnelse:**
+- Enkel måte for brukere å gi tilbakemelding
+- Auto-åpner etter 10 sekunder for å oppfordre til deltakelse
+- Kun synlig for innloggede brukere
+- Admin kan se og slette tilbakemeldinger i admin-panel
+
+### 19. E-postvarsling for admin (2025-12-12)
+**Beslutning:** E-post til admin ved nye brukerregistreringer
+**Begrunnelse:**
+- Holder admin informert om nye brukere
+- Bruker eksisterende SMTP-oppsett (cPanel)
+- Database-trigger legger e-post i kø
+- Cron-jobb sender hvert 5. minutt
+
 ---
 
 ## Fremtidige beslutninger å ta
 - SMS-tjenesteleverandør (Twilio, MessageBird, etc.)
-- E-post-tjeneste for varsling
-- PWA-konfigurasjon
+- Utvidet e-postvarsling (digest, varsler til brukere)
+- PWA-konfigurasjon og offline-støtte

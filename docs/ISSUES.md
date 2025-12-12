@@ -6,51 +6,26 @@
 
 ## Aktive problemer
 
-### [2025-12-12] MobileNav viser ikke sosial-seksjon (UNDER FEILSOKING)
-
-**Problem:**
-Sosial-seksjonen (Venner/Meldinger) vises i Sidebar på desktop, men IKKE i MobileNav på mobil, selv for innloggede brukere.
-
-**Symptomer:**
-- Desktop Sidebar: Viser "Venner" og "Meldinger" korrekt for innloggede brukere
-- MobileNav: Viser IKKE "Venner" og "Meldinger" selv når brukeren er innlogget
-- Debug-boks som ble lagt til i MobileNav vises heller ikke
-
-**Hva som er testet:**
-1. Supabase auth fungerer - `getSession()` og `getUser()` returnerer riktig bruker-ID
-2. Sidebar-komponenten viser sosial-seksjon korrekt
-3. MobileNav-komponenten har identisk auth-logikk som Sidebar
-4. Hard refresh i nettleser gjort
-5. Testet i helt ny nettleser (inkognito/annen browser)
-
-**Mulige årsaker:**
-1. React createPortal rendrer ikke innholdet riktig
-2. CSS-problemer (komponenten er skjult)
-3. Hot reload/caching-problemer - gammel kode kjøres
-4. MobileNav sin state oppdateres ikke
-
-**Filer involvert:**
-- `/src/components/layout/MobileNav.tsx` - Har sosial-seksjon som skal vises
-- `/src/components/layout/Sidebar.tsx` - Fungerer korrekt (referanse)
-
-**Debug-kode som er lagt til:**
-I MobileNav.tsx linje 321-324:
-```tsx
-{/* Debug - always show */}
-<div className="p-2 bg-red-100 text-xs border-b">
-  Debug: userId={currentUserId || 'NULL'}
-</div>
-```
-
-**Neste feilsøkingssteg:**
-1. Sjekk at MobileNav faktisk rendres (ikke Sidebar på mobil)
-2. Sjekk om createPortal fungerer riktig
-3. Prøv å fjerne createPortal og render direkte
-4. Sjekk dev server output for feil
+Ingen kjente aktive problemer.
 
 ---
 
 ## Løste problemer
+
+### [2025-12-12] Manglende profiler for brukere
+
+**Problem:** Statistikk i admin viste 8 brukere, men auth.users hadde 23.
+
+**Årsak:** 15 brukere manglet profil i profiles-tabellen. Triggeren `on_auth_user_created` hadde ikke kjørt for disse.
+
+**Løsning:**
+```sql
+INSERT INTO public.profiles (id, email, full_name)
+SELECT u.id, u.email, u.raw_user_meta_data->>'full_name'
+FROM auth.users u
+LEFT JOIN public.profiles p ON u.id = p.id
+WHERE p.id IS NULL;
+```
 
 ### [2025-12-12] Auth-tilstand ikke synkronisert mellom komponenter
 
@@ -60,10 +35,6 @@ I MobileNav.tsx linje 321-324:
 - Byttet fra `router.push()` + `router.refresh()` til `window.location.href = '/'`
 - Hard page reload sikrer at all klient-side state nullstilles
 
-**Filer endret:**
-- `/src/components/layout/Header.tsx` - handleLogout()
-- `/src/app/(auth)/login/page.tsx` - etter vellykket login
-
 ### [2025-12-12] Supabase-klient ustabil referanse
 
 **Problem:** Auth-tilstand var inkonsistent mellom renders.
@@ -71,13 +42,6 @@ I MobileNav.tsx linje 321-324:
 **Løsning:**
 - Bruker `useMemo(() => createClient(), [])` for stabil referanse
 - Bruker `getSession()` først (cached), deretter `getUser()` som fallback
-
-**Filer endret:**
-- `/src/components/layout/MobileNav.tsx`
-- `/src/components/layout/Sidebar.tsx`
-- `/src/components/layout/Header.tsx`
-- `/src/components/layout/BottomNav.tsx`
-- `/src/components/profile/ProfileOverlay.tsx`
 
 ### [2025-12-12] Vercel miljøvariabler med linjeskift
 
@@ -87,18 +51,11 @@ I MobileNav.tsx linje 321-324:
 
 **Løsning:** Slettet variabelen og la den inn på nytt som én sammenhengende linje
 
-### [2025-12-12] Card spacing i RightSidebar
-
-**Problem:** For mye avstand mellom CardHeader og CardContent
-
-**Løsning:** La til `className="gap-0"` på Card-komponentene
-
 ---
 
 ## Kjente begrensninger
 
 - SMS-varsling er ikke implementert (fremtidig funksjon)
-- E-postvarsling er ikke implementert (fremtidig funksjon)
 - Søkefunksjon tas i senere versjon
 - Kalendervisning tas i senere versjon
 - Sletting av egne innlegg ikke implementert ennå
@@ -141,3 +98,11 @@ npm run dev
 - Sjekk terminal for kompileringsfeil
 - Restart dev-server ved behov
 - Slett `.next` mappen og start på nytt
+
+### E-post sendes ikke
+- Sjekk at SMTP-variabler er satt i Supabase Edge Functions Secrets
+- Test Edge Function manuelt via Supabase Dashboard
+- Sjekk email_queue tabellen for feilede e-poster:
+  ```sql
+  SELECT * FROM email_queue WHERE status = 'failed';
+  ```

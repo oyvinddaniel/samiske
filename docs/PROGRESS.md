@@ -38,55 +38,71 @@
 - [x] Varslingssystem (nye innlegg, kommentarer, likes)
 
 ### Fase 5: Admin/Moderering
-- [x] Admin-panel
-- [x] Moderering av innlegg
-- [x] Brukeradministrasjon
+- [x] Admin-panel med statistikk
+- [x] Moderering av innlegg (sletting)
+- [x] Brukeradministrasjon (rolleendring)
+- [x] Tilbakemeldinger fra brukere (feedback-visning)
 
 ### Fase 6: Varsling
 - [x] In-app varslingssystem (bjelle-ikon)
-- [ ] E-postliste og varsling
+- [x] E-postvarsling ved nye brukere (til admin)
+- [x] Cron-jobb for automatisk e-postsending (hvert 5. min)
 - [ ] SMS-integrasjon
 
 ### Fase 7: Ferdigstilling
 - [x] Deploy til produksjon (samiske.no)
 - [ ] PWA-oppsett
-- [ ] Testing og feilretting
+- [x] Testing og feilretting
 
-### Fase 8: Sosiale funksjoner (UNDER UTVIKLING)
-- [x] Database-tabeller for friendships og messages (migrering kjørt)
+### Fase 8: Sosiale funksjoner
+- [x] Database-tabeller for friendships og messages
 - [x] SocialPanel-komponent med venner-liste og meldinger
 - [x] Vennefunksjon: Sende, godta, avslå venneforespørsler
 - [x] Meldingsfunksjon: Sende og motta direktemeldinger
 - [x] ProfileOverlay med "Legg til venn"-knapp
 - [x] Venner/Meldinger-meny i venstre sidebar (desktop)
-- [~] Venner/Meldinger-meny i MobileNav (mobil) - HAR AUTH-PROBLEM
+- [x] Flytende sosial-bobler (høyre hjørne)
+
+### Fase 9: Brukerkontoer
+- [x] Brukere kan slette egen konto
+- [x] CASCADE-delete fjerner all brukerdata
+- [x] Bekreftelsesdialog før sletting
+
+### Fase 10: Feedback-system
+- [x] Feedback-boble (lilla, venstre hjørne)
+- [x] Auto-åpner etter 10 sekunder (kun innloggede)
+- [x] Kun synlig for innloggede brukere
+- [x] Admin kan se og slette tilbakemeldinger
 
 ---
 
-## Sist fullførte oppgave
-- Implementert vennefunksjon og meldingssystem
-- Lagt til sosial-seksjon i sidebarer
-- Fikset autentiseringsproblemer med useMemo og getSession()
+## Sist fullførte oppgaver
+- Implementert slett konto-funksjon
+- Lagt til feedback-boble med auto-åpning
+- Satt opp e-postvarsling for nye brukere
+- Admin-panel viser tilbakemeldinger
+- Fikset statistikk-visning i admin
 
 ## Nåværende status
 **LIVE PÅ samiske.no**
 
-Vennefunksjonen fungerer på desktop-sidebar, men det er et **aktivt problem** med MobileNav på mobil der sosial-seksjonen ikke vises selv om autentisering fungerer.
+Alt fungerer som forventet. E-postvarsling sender automatisk hvert 5. minutt.
 
 ## Hva som fungerer nå
 - samiske.no - Hovedfeeden (live)
 - /login - Innlogging
 - /register - Registrering
 - /ny - Opprett nytt innlegg (krever innlogging)
-- /profil - Min profil (krever innlogging)
-- /admin - Admin-panel (kun for admin-brukere)
+- /profil - Min profil med slett konto (krever innlogging)
+- /admin - Admin-panel med brukere, innlegg og tilbakemeldinger
 - Kategorifiltrering i sidebaren
 - Mobil hamburger-meny
 - Varslings-bjelle i header
 - Popup-visning av innlegg
 - Redigering av egne innlegg
-- Vennefunksjon på desktop (Sidebar)
-- "Legg til venn"-knapp i profil-popup
+- Vennefunksjon og meldinger
+- Feedback-boble for brukerforslag
+- E-postvarsling ved nye brukere
 
 ## Kjente problemer
 Se ISSUES.md for detaljer.
