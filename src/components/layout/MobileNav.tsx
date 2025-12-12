@@ -23,6 +23,7 @@ interface MobileNavProps {
 export function MobileNav({ currentCategory = '' }: MobileNavProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
+  const [rightMenuOpen, setRightMenuOpen] = useState(false)
   const touchStartX = useRef<number | null>(null)
   const touchStartY = useRef<number | null>(null)
   const menuRef = useRef<HTMLDivElement>(null)
@@ -37,6 +38,27 @@ export function MobileNav({ currentCategory = '' }: MobileNavProps) {
     window.addEventListener('open-left-sidebar', handleOpenSidebar)
     return () => window.removeEventListener('open-left-sidebar', handleOpenSidebar)
   }, [])
+
+  // Track when right menu opens/closes
+  useEffect(() => {
+    const handleRightMenuOpen = () => setRightMenuOpen(true)
+    const handleRightMenuClose = () => setRightMenuOpen(false)
+    window.addEventListener('right-menu-opened', handleRightMenuOpen)
+    window.addEventListener('right-menu-closed', handleRightMenuClose)
+    return () => {
+      window.removeEventListener('right-menu-opened', handleRightMenuOpen)
+      window.removeEventListener('right-menu-closed', handleRightMenuClose)
+    }
+  }, [])
+
+  // Notify when this menu opens/closes
+  useEffect(() => {
+    if (isOpen) {
+      window.dispatchEvent(new CustomEvent('left-menu-opened'))
+    } else {
+      window.dispatchEvent(new CustomEvent('left-menu-closed'))
+    }
+  }, [isOpen])
 
   // Swipe right anywhere to open left menu, swipe left to close when open
   useEffect(() => {
@@ -60,8 +82,8 @@ export function MobileNav({ currentCategory = '' }: MobileNavProps) {
           touchStartX.current = null
           touchStartY.current = null
         }
-      } else {
-        // When menu is closed, swipe right to open (but not if right sidebar is open)
+      } else if (!rightMenuOpen) {
+        // When menu is closed AND right menu is not open, swipe right to open
         if (deltaX > 80 && deltaX > deltaY * 1.5) {
           setIsOpen(true)
           touchStartX.current = null
@@ -84,7 +106,7 @@ export function MobileNav({ currentCategory = '' }: MobileNavProps) {
       document.removeEventListener('touchmove', handleTouchMove)
       document.removeEventListener('touchend', handleTouchEnd)
     }
-  }, [isOpen])
+  }, [isOpen, rightMenuOpen])
 
   // Swipe to close menu
   const handleMenuTouchStart = (e: React.TouchEvent) => {

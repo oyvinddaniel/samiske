@@ -57,6 +57,7 @@ export function RightSidebar() {
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
+  const [leftMenuOpen, setLeftMenuOpen] = useState(false)
   const touchStartX = useRef<number | null>(null)
   const touchStartY = useRef<number | null>(null)
   const supabase = createClient()
@@ -71,6 +72,27 @@ export function RightSidebar() {
     window.addEventListener('open-right-sidebar', handleOpenSidebar)
     return () => window.removeEventListener('open-right-sidebar', handleOpenSidebar)
   }, [])
+
+  // Track when left menu opens/closes
+  useEffect(() => {
+    const handleLeftMenuOpen = () => setLeftMenuOpen(true)
+    const handleLeftMenuClose = () => setLeftMenuOpen(false)
+    window.addEventListener('left-menu-opened', handleLeftMenuOpen)
+    window.addEventListener('left-menu-closed', handleLeftMenuClose)
+    return () => {
+      window.removeEventListener('left-menu-opened', handleLeftMenuOpen)
+      window.removeEventListener('left-menu-closed', handleLeftMenuClose)
+    }
+  }, [])
+
+  // Notify when this menu opens/closes
+  useEffect(() => {
+    if (mobileOpen) {
+      window.dispatchEvent(new CustomEvent('right-menu-opened'))
+    } else {
+      window.dispatchEvent(new CustomEvent('right-menu-closed'))
+    }
+  }, [mobileOpen])
 
   // Swipe left anywhere to open right menu, swipe right to close when open
   useEffect(() => {
@@ -94,8 +116,8 @@ export function RightSidebar() {
           touchStartX.current = null
           touchStartY.current = null
         }
-      } else {
-        // When drawer is closed, swipe left to open
+      } else if (!leftMenuOpen) {
+        // When drawer is closed AND left menu is not open, swipe left to open
         if (deltaX < -80 && Math.abs(deltaX) > deltaY * 1.5) {
           setMobileOpen(true)
           touchStartX.current = null
@@ -118,7 +140,7 @@ export function RightSidebar() {
       document.removeEventListener('touchmove', handleTouchMove)
       document.removeEventListener('touchend', handleTouchEnd)
     }
-  }, [mobileOpen])
+  }, [mobileOpen, leftMenuOpen])
 
   // Swipe to close drawer
   const handleDrawerTouchStart = (e: React.TouchEvent) => {
