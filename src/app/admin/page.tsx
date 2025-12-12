@@ -130,7 +130,6 @@ export default function AdminPage() {
       .from('profiles')
       .select('*', { count: 'exact' })
       .order('created_at', { ascending: false })
-      .limit(10000)
 
     if (data) setUsers(data)
     if (count !== null) setStats(prev => ({ ...prev, totalUsers: count }))
