@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "samiske.no - Det samiske miljøet i Trondheim",
+  title: "samiske.no - Møtested for det samiske",
   description: "Kommunikasjonsplattform for det samiske miljøet i Trondheim. Del arrangementer, aktiviteter og nyheter.",
   keywords: ["samisk", "trondheim", "arrangementer", "aktiviteter", "sami", "community"],
   manifest: "/manifest.json",
