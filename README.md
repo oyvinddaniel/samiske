@@ -1,36 +1,76 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# samiske.no
 
-## Getting Started
+Kommunikasjonsplattform for det samiske miljøet i Trondheim.
 
-First, run the development server:
+## Om prosjektet
+
+samiske.no er en nettbasert plattform som erstatter Facebook for intern kommunikasjon i det samiske miljøet i Trondheim. Plattformen gjør det enkelt å dele arrangementer, aktiviteter, nyheter og annen relevant informasjon uten algoritmisk struping.
+
+## Funksjoner
+
+- Kronologisk feed med innlegg
+- Kategorifiltrering
+- Arrangementer med dato, tid og sted
+- Offentlige og medlems-only innlegg
+- Kommentarer og likes
+- E-postvarsling
+
+## Tech Stack
+
+- **Frontend:** Next.js 14 (App Router) + TypeScript
+- **Styling:** Tailwind CSS + Shadcn/ui
+- **Database:** Supabase (PostgreSQL)
+- **Auth:** Supabase Auth
+- **Hosting:** Vercel
+
+## Kom i gang
+
+### Forutsetninger
+- Node.js 18+
+- npm
+- Supabase-konto
+
+### Installasjon
 
 ```bash
+# Installer avhengigheter
+npm install
+
+# Kopier miljøvariabler
+cp .env.example .env.local
+
+# Rediger .env.local med dine Supabase-nøkler
+# NEXT_PUBLIC_SUPABASE_URL=din-url
+# NEXT_PUBLIC_SUPABASE_ANON_KEY=din-nøkkel
+
+# Start utviklingsserver
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Åpne [http://localhost:3000](http://localhost:3000) i nettleseren.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Kommandoer
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run dev      # Start utviklingsserver
+npm run build    # Bygg for produksjon
+npm run start    # Start produksjonsserver
+npm run lint     # Kjør linting
+```
 
-## Learn More
+## Dokumentasjon
 
-To learn more about Next.js, take a look at the following resources:
+Se `/docs` mappen for full dokumentasjon:
+- `PRD.md` - Produktkrav
+- `PROGRESS.md` - Prosjektstatus
+- `DECISIONS.md` - Beslutningslogg
+- `ISSUES.md` - Problemlogg
+- `NEXT-STEPS.md` - Neste steg
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Bidra
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Dette prosjektet er utviklet for det samiske miljøet i Trondheim.
 
-## Deploy on Vercel
+## Lisens
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Privat prosjekt.
