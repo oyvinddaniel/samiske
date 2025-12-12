@@ -6,19 +6,6 @@
 
 ## GJENSTÅENDE PROBLEMER
 
-### MEDIUM: PostCard.tsx for stor
-**Status:** AKTIV (lav prioritet)
-**Alvorlighet:** 🟡 MEDIUM
-**Beskrivelse:** 1139 linjer - vanskelig å vedlikeholde
-**Fil:** `src/components/posts/PostCard.tsx`
-**Løsning:** Splitt i 4 komponenter (PostCard, PostActions, PostComments, EditPostDialog)
-
-### MEDIUM: Memory leaks i React
-**Status:** AKTIV (lav prioritet)
-**Alvorlighet:** 🟡 MEDIUM
-**Beskrivelse:** Supabase subscriptions ryddes ikke alltid opp ordentlig
-**Løsning:** Gjennomgå alle useEffect med subscriptions, sikre cleanup
-
 ### LAV: Manglende tilgjengelighet (a11y)
 **Status:** AKTIV
 **Alvorlighet:** 🟢 LAV
@@ -34,6 +21,14 @@
 ---
 
 ## LØSTE PROBLEMER (2025-12-12)
+
+### ✅ MEDIUM: PostCard.tsx for stor
+**Status:** LØST
+**Løsning:** Splittet i 6 filer: PostCard.tsx (670 linjer), PostActions.tsx, PostComments.tsx, EditPostDialog.tsx, PostDialogContent.tsx, types.ts, utils.ts
+
+### ✅ MEDIUM: Memory leaks i React
+**Status:** LØST
+**Løsning:** Alle subscriptions har nå korrekt cleanup. RightSidebar.tsx fikset med useMemo.
 
 ### ✅ KRITISK: Service Role Key eksponert
 **Status:** LØST

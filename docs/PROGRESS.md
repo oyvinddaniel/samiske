@@ -107,6 +107,16 @@ Se NEXT-STEPS.md for gjenstående oppgaver.
 - [x] Fase 4: Funksjonalitet - SMS fjernet fra UI, søk fungerer
 - [ ] Fase 5: E-postbekreftelse (fremtidig)
 
+### Fase 12: Kodestruktur-forbedring (2025-12-12)
+- [x] Splittet PostCard.tsx fra 1139 til 670 linjer
+- [x] Opprettet PostActions.tsx (~110 linjer)
+- [x] Opprettet PostComments.tsx (~230 linjer)
+- [x] Opprettet EditPostDialog.tsx (~95 linjer)
+- [x] Opprettet PostDialogContent.tsx (~250 linjer)
+- [x] Opprettet types.ts og utils.ts for delt kode
+- [x] Fikset memory leaks: useMemo for supabase-klient i RightSidebar.tsx
+- [x] Verifisert cleanup i alle 9 filer med subscriptions
+
 ---
 
 ## Nåværende status

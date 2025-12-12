@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback, useRef } from 'react'
+import { useEffect, useState, useCallback, useRef, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
@@ -62,7 +62,7 @@ export function RightSidebar() {
   const [profileOverlayUserId, setProfileOverlayUserId] = useState<string | null>(null)
   const touchStartX = useRef<number | null>(null)
   const touchStartY = useRef<number | null>(null)
-  const supabase = createClient()
+  const supabase = useMemo(() => createClient(), [])
 
   useEffect(() => {
     setMounted(true)

@@ -42,10 +42,10 @@ Automatisk deploy via Vercel ved push til main.
 
 ## GJENSTÅENDE OPPGAVER
 
-### Kodekvalitet (kan tas ved behov)
-- [ ] Splitt PostCard.tsx (1139 linjer → 4 komponenter)
-- [ ] Memory leaks - gjennomgå useEffect med subscriptions
-- [ ] Extract utility functions til lib/formatting.ts
+### Kodekvalitet (FULLFØRT 2025-12-12)
+- [x] Splitt PostCard.tsx (1139 → 670 linjer + 5 nye filer)
+- [x] Memory leaks - alle subscriptions har korrekt cleanup
+- [x] Extract utility functions til src/components/posts/utils.ts
 
 ### Tilgjengelighet (a11y)
 - [ ] Legg til aria-labels på icon-buttons
@@ -82,7 +82,13 @@ Automatisk deploy via Vercel ved push til main.
 ## Viktige filer
 
 ### Hovedkomponenter:
-- `/src/components/posts/PostCard.tsx` - Hovedkomponent for innlegg
+- `/src/components/posts/PostCard.tsx` - Hovedkomponent for innlegg (670 linjer, refaktorert)
+- `/src/components/posts/PostActions.tsx` - Like/kommentar-knapper
+- `/src/components/posts/PostComments.tsx` - Kommentarseksjon
+- `/src/components/posts/EditPostDialog.tsx` - Redigerings-dialog
+- `/src/components/posts/PostDialogContent.tsx` - Fullvisning i dialog
+- `/src/components/posts/types.ts` - Delte typer
+- `/src/components/posts/utils.ts` - Hjelpefunksjoner (formatDate, getInitials)
 - `/src/components/feed/Feed.tsx` - Hovedfeed (N+1 fikset)
 - `/src/components/layout/Header.tsx` - Header med innlogging
 - `/src/components/social/SocialPanel.tsx` - Venner og meldinger
