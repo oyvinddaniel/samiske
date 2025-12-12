@@ -12,6 +12,17 @@ import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog'
 
 interface Profile {
   id: string
@@ -46,6 +57,8 @@ export default function ProfilePage() {
   const [avatarUrl, setAvatarUrl] = useState('')
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  const [deleting, setDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
   const supabase = createClient()
@@ -190,6 +203,33 @@ export default function ProfilePage() {
     }
 
     setSaving(false)
+  }
+
+  const handleDeleteAccount = async () => {
+    setDeleting(true)
+    setDeleteError(null)
+
+    try {
+      const response = await fetch('/api/delete-account', {
+        method: 'DELETE',
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        setDeleteError(data.error || 'Kunne ikke slette kontoen')
+        setDeleting(false)
+        return
+      }
+
+      // Sign out and redirect to home page
+      await supabase.auth.signOut()
+      window.location.href = '/'
+    } catch (error) {
+      console.error('Delete error:', error)
+      setDeleteError('En uventet feil oppstod')
+      setDeleting(false)
+    }
   }
 
   const getInitials = (name: string | null) => {
@@ -430,6 +470,61 @@ export default function ProfilePage() {
                 </Button>
               </div>
             </form>
+          </CardContent>
+        </Card>
+
+        {/* Delete account */}
+        <Card className="mt-6 border-red-200">
+          <CardHeader>
+            <CardTitle className="text-red-600">Slett konto</CardTitle>
+            <CardDescription>
+              Permanent sletting av kontoen din. Denne handlingen kan ikke angres.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-gray-600 mb-4">
+              Når du sletter kontoen din, vil alle dine innlegg, kommentarer, likes og annen data bli permanent slettet.
+              Du vil ikke kunne gjenopprette noe av dette.
+            </p>
+
+            {deleteError && (
+              <div className="p-3 text-sm rounded-lg bg-red-50 text-red-600 border border-red-200 mb-4">
+                {deleteError}
+              </div>
+            )}
+
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive" disabled={deleting}>
+                  {deleting ? 'Sletter...' : 'Slett min konto'}
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Er du sikker?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Denne handlingen kan ikke angres. Dette vil permanent slette kontoen din
+                    og fjerne alle dine data fra serverne våre, inkludert:
+                    <ul className="list-disc list-inside mt-2 space-y-1">
+                      <li>Alle innlegg du har opprettet</li>
+                      <li>Alle kommentarer du har skrevet</li>
+                      <li>Alle likes du har gitt</li>
+                      <li>Din profilinformasjon</li>
+                    </ul>
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Avbryt</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={handleDeleteAccount}
+                    className="bg-red-600 hover:bg-red-700"
+                    disabled={deleting}
+                  >
+                    {deleting ? 'Sletter...' : 'Ja, slett kontoen min'}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </CardContent>
         </Card>
       </div>
