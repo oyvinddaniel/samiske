@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
@@ -23,6 +23,9 @@ interface MobileNavProps {
 export function MobileNav({ currentCategory = '' }: MobileNavProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
+  const touchStartX = useRef<number | null>(null)
+  const touchStartY = useRef<number | null>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     setMounted(true)
@@ -34,6 +37,73 @@ export function MobileNav({ currentCategory = '' }: MobileNavProps) {
     window.addEventListener('open-left-sidebar', handleOpenSidebar)
     return () => window.removeEventListener('open-left-sidebar', handleOpenSidebar)
   }, [])
+
+  // Swipe to open from left edge
+  useEffect(() => {
+    const handleTouchStart = (e: TouchEvent) => {
+      const touch = e.touches[0]
+      // Only track if starting from left edge (within 20px)
+      if (touch.clientX < 20 && !isOpen) {
+        touchStartX.current = touch.clientX
+        touchStartY.current = touch.clientY
+      }
+    }
+
+    const handleTouchMove = (e: TouchEvent) => {
+      if (touchStartX.current === null || touchStartY.current === null) return
+
+      const touch = e.touches[0]
+      const deltaX = touch.clientX - touchStartX.current
+      const deltaY = Math.abs(touch.clientY - touchStartY.current)
+
+      // If horizontal swipe is greater than vertical and moved enough
+      if (deltaX > 50 && deltaX > deltaY) {
+        setIsOpen(true)
+        touchStartX.current = null
+        touchStartY.current = null
+      }
+    }
+
+    const handleTouchEnd = () => {
+      touchStartX.current = null
+      touchStartY.current = null
+    }
+
+    document.addEventListener('touchstart', handleTouchStart)
+    document.addEventListener('touchmove', handleTouchMove)
+    document.addEventListener('touchend', handleTouchEnd)
+
+    return () => {
+      document.removeEventListener('touchstart', handleTouchStart)
+      document.removeEventListener('touchmove', handleTouchMove)
+      document.removeEventListener('touchend', handleTouchEnd)
+    }
+  }, [isOpen])
+
+  // Swipe to close menu
+  const handleMenuTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX
+    touchStartY.current = e.touches[0].clientY
+  }
+
+  const handleMenuTouchMove = (e: React.TouchEvent) => {
+    if (touchStartX.current === null || touchStartY.current === null) return
+
+    const deltaX = e.touches[0].clientX - touchStartX.current
+    const deltaY = Math.abs(e.touches[0].clientY - touchStartY.current)
+
+    // Swipe left to close
+    if (deltaX < -50 && Math.abs(deltaX) > deltaY) {
+      setIsOpen(false)
+      touchStartX.current = null
+      touchStartY.current = null
+    }
+  }
+
+  const handleMenuTouchEnd = () => {
+    touchStartX.current = null
+    touchStartY.current = null
+  }
 
   // Prevent body scroll when menu is open
   useEffect(() => {
@@ -84,6 +154,10 @@ export function MobileNav({ currentCategory = '' }: MobileNavProps) {
 
           {/* Slide-out menu */}
           <div
+            ref={menuRef}
+            onTouchStart={handleMenuTouchStart}
+            onTouchMove={handleMenuTouchMove}
+            onTouchEnd={handleMenuTouchEnd}
             className={cn(
               'fixed inset-y-0 left-0 w-64 bg-white shadow-2xl z-[9999] transform transition-transform duration-300 ease-in-out md:hidden',
               isOpen ? 'translate-x-0' : '-translate-x-full'
