@@ -106,9 +106,9 @@ export function Sidebar({ currentCategory = '' }: SidebarProps) {
   }, [currentUserId, supabase, fetchCounts])
 
   return (
-    <aside className="hidden md:flex md:flex-col md:w-64 bg-white border-r border-gray-200 min-h-screen">
+    <aside className="hidden md:flex md:flex-col md:w-64 bg-white border-r border-gray-200 min-h-[calc(100vh-4rem)]">
       {/* Logo */}
-      <div className="p-6 border-b border-gray-100">
+      <div className="p-6 pt-8 border-b border-gray-100">
         <Link href="/" className="flex items-center gap-2">
           <div className="w-10 h-10 rounded-xl overflow-hidden shadow-md">
             <img

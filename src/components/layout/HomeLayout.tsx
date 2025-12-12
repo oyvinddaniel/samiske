@@ -29,22 +29,25 @@ export function HomeLayout({ children, currentCategory = '' }: HomeLayoutProps) 
   }, [])
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
-      {/* Left Sidebar */}
-      <Sidebar currentCategory={currentCategory} />
+    <div className="min-h-screen bg-gray-50">
+      {/* Full-width Header */}
+      <Header currentCategory={currentCategory} />
 
-      {/* Main content */}
-      <div className="flex-1 flex flex-col min-w-0">
-        <Header currentCategory={currentCategory} />
+      <div className="flex">
+        {/* Left Sidebar */}
+        <Sidebar currentCategory={currentCategory} />
 
-        <div className="flex-1 flex gap-6 p-4 md:p-6 pb-20 lg:pb-6">
-          {/* Feed/Calendar column */}
-          <main className="flex-1 max-w-2xl">
-            {children}
-          </main>
+        {/* Main content */}
+        <div className="flex-1 flex flex-col min-w-0">
+          <div className="flex-1 flex gap-6 p-4 md:p-6 pb-20 lg:pb-6">
+            {/* Feed/Calendar column */}
+            <main className="flex-1 max-w-2xl">
+              {children}
+            </main>
 
-          {/* Right Sidebar */}
-          <RightSidebar />
+            {/* Right Sidebar */}
+            <RightSidebar />
+          </div>
         </div>
       </div>
 
