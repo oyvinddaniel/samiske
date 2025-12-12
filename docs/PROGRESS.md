@@ -101,21 +101,21 @@ Se NEXT-STEPS.md for detaljert handlingsplan.
 - [x] Dokumentert alle funn i ISSUES.md
 - [x] Laget prioritert handlingsplan i NEXT-STEPS.md
 - [x] Dokumentert nye beslutninger i DECISIONS.md
-- [ ] Fase 1: Kritisk sikkerhet (MÅ GJØRES NÅ)
-- [ ] Fase 2: Høy prioritet sikkerhet
-- [ ] Fase 3: Kodekvalitet
-- [ ] Fase 4: Funksjonalitet
-- [ ] Fase 5: E-postbekreftelse
+- [x] Fase 1: Kritisk sikkerhet - NY secret key, RLS policies fikset
+- [x] Fase 2: Høy prioritet sikkerhet - Passordbekreftelse, input-validering
+- [x] Fase 3: Kodekvalitet - N+1 fix (31→4 queries), toast notifications
+- [x] Fase 4: Funksjonalitet - SMS fjernet fra UI, søk fungerer
+- [ ] Fase 5: E-postbekreftelse (fremtidig)
 
 ---
 
 ## Nåværende status
 
-**LIVE PÅ samiske.no** - Brukere strømmer til!
+**LIVE PÅ samiske.no** - Sikkerhet og kodekvalitet forbedret!
 
-### Pågående arbeid: Sikkerhets- og kvalitetsforbedring
+### Fullført: Fase 1-4 av sikkerhetsplanen
 
-**Neste steg:** Utfør Fase 1 fra NEXT-STEPS.md (kritisk sikkerhet)
+**Neste steg:** Fase 5 - E-postbekreftelse (kan tas når behov oppstår)
 
 ---
 
