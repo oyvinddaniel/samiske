@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { createClient } from '@/lib/supabase/client'
 import { MessageSquarePlus, X, Send } from 'lucide-react'
@@ -9,24 +9,42 @@ import { cn } from '@/lib/utils'
 export function FeedbackBubble() {
   const [isOpen, setIsOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
+  const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [feedback, setFeedback] = useState('')
   const [sending, setSending] = useState(false)
   const [sent, setSent] = useState(false)
-  const supabase = createClient()
+  const supabase = useMemo(() => createClient(), [])
 
   useEffect(() => {
     setMounted(true)
-
-    // Auto-open after 10 seconds (only once per session)
-    const hasSeenFeedback = sessionStorage.getItem('feedbackShown')
-    if (!hasSeenFeedback) {
-      const timer = setTimeout(() => {
-        setIsOpen(true)
-        sessionStorage.setItem('feedbackShown', 'true')
-      }, 10000)
-      return () => clearTimeout(timer)
-    }
   }, [])
+
+  // Check auth status
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession()
+      setIsLoggedIn(!!session?.user)
+
+      // Auto-open after 10 seconds (only once per session, only if logged in)
+      if (session?.user) {
+        const hasSeenFeedback = sessionStorage.getItem('feedbackShown')
+        if (!hasSeenFeedback) {
+          const timer = setTimeout(() => {
+            setIsOpen(true)
+            sessionStorage.setItem('feedbackShown', 'true')
+          }, 10000)
+          return () => clearTimeout(timer)
+        }
+      }
+    }
+    checkAuth()
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setIsLoggedIn(!!session?.user)
+    })
+
+    return () => subscription.unsubscribe()
+  }, [supabase])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -58,7 +76,7 @@ export function FeedbackBubble() {
     setSending(false)
   }
 
-  if (!mounted) return null
+  if (!mounted || !isLoggedIn) return null
 
   return createPortal(
     <>
