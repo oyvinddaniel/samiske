@@ -202,32 +202,32 @@ export function ChatPanel({ friendId, friendName, onClose }: ChatPanelProps) {
   return (
     <div className="flex flex-col h-[calc(100vh-12rem)] max-w-md">
       {/* Header */}
-      <div className="flex items-center gap-3 pb-3 border-b border-gray-100">
+      <div className="flex items-center gap-2 pb-2 border-b border-gray-100">
         <button
           onClick={onClose}
-          className="p-1.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors"
+          className="p-1 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors"
         >
-          <ArrowLeft className="w-5 h-5" />
+          <ArrowLeft className="w-4 h-4" />
         </button>
-        <Avatar className="w-9 h-9">
+        <Avatar className="w-8 h-8">
           <AvatarImage src={friendProfile?.avatar_url || undefined} />
-          <AvatarFallback className="bg-blue-100 text-blue-600 text-xs">
+          <AvatarFallback className="bg-blue-100 text-blue-600 text-[10px]">
             {getInitials(friendName)}
           </AvatarFallback>
         </Avatar>
         <div className="flex-1 min-w-0">
-          <h2 className="font-semibold text-gray-900 truncate">{friendName}</h2>
+          <h2 className="font-medium text-sm text-gray-900 truncate">{friendName}</h2>
         </div>
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto py-4 space-y-3">
+      <div className="flex-1 overflow-y-auto py-3 space-y-2">
         {loading ? (
-          <div className="flex justify-center py-8">
-            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600" />
+          <div className="flex justify-center py-6">
+            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600" />
           </div>
         ) : messages.length === 0 ? (
-          <div className="text-center py-8 text-gray-500 text-sm">
+          <div className="text-center py-6 text-gray-400 text-xs">
             <p>Start samtalen med {friendName}</p>
           </div>
         ) : (
@@ -239,14 +239,14 @@ export function ChatPanel({ friendId, friendName, onClose }: ChatPanelProps) {
                 className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}
               >
                 <div
-                  className={`max-w-[75%] px-3 py-2 rounded-2xl ${
+                  className={`max-w-[70%] px-2.5 py-1.5 rounded-xl ${
                     isMe
-                      ? 'bg-blue-500 text-white rounded-br-md'
-                      : 'bg-gray-100 text-gray-900 rounded-bl-md'
+                      ? 'bg-blue-500 text-white rounded-br-sm'
+                      : 'bg-gray-100 text-gray-900 rounded-bl-sm'
                   }`}
                 >
-                  <p className="text-sm whitespace-pre-wrap break-words">{msg.content}</p>
-                  <p className={`text-[10px] mt-1 ${isMe ? 'text-blue-100' : 'text-gray-400'}`}>
+                  <p className="text-xs whitespace-pre-wrap break-words">{msg.content}</p>
+                  <p className={`text-[9px] mt-0.5 ${isMe ? 'text-blue-200' : 'text-gray-400'}`}>
                     {formatTime(msg.created_at)}
                   </p>
                 </div>
@@ -258,25 +258,25 @@ export function ChatPanel({ friendId, friendName, onClose }: ChatPanelProps) {
       </div>
 
       {/* Input */}
-      <div className="pt-3 border-t border-gray-100">
+      <div className="pt-2 border-t border-gray-100">
         <form
           onSubmit={(e) => {
             e.preventDefault()
             sendMessage()
           }}
-          className="flex items-center gap-2"
+          className="flex items-center gap-1.5"
         >
           <input
             type="text"
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}
             placeholder="Skriv en melding..."
-            className="flex-1 px-4 py-2.5 bg-gray-100 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
+            className="flex-1 px-3 py-1.5 bg-gray-100 rounded-full text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
           />
           <button
             type="submit"
             disabled={!newMessage.trim() || sending}
-            className="p-2.5 bg-blue-500 text-white rounded-full hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="p-1.5 bg-blue-500 text-white rounded-full hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             <Send className="w-4 h-4" />
           </button>
