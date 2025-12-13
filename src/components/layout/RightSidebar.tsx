@@ -226,70 +226,92 @@ export function RightSidebar() {
     }
   }, [supabase])
 
+  // Fetch stats (can be called to refresh)
+  const fetchStats = useCallback(async () => {
+    const [membersCount, postsCount, commentsCount] = await Promise.all([
+      supabase.from('profiles').select('*', { count: 'exact', head: true }),
+      supabase.from('posts').select('*', { count: 'exact', head: true }),
+      supabase.from('comments').select('*', { count: 'exact', head: true }),
+    ])
+
+    setStats({
+      totalMembers: membersCount.count || 0,
+      totalPosts: postsCount.count || 0,
+      totalComments: commentsCount.count || 0,
+    })
+  }, [supabase])
+
+  // Fetch new members (can be called to refresh)
+  const fetchNewMembers = useCallback(async () => {
+    const { data: members } = await supabase
+      .from('profiles')
+      .select('id, full_name, avatar_url, created_at')
+      .order('created_at', { ascending: false })
+      .limit(5)
+
+    if (members) setNewMembers(members)
+  }, [supabase])
+
+  // Fetch upcoming events (can be called to refresh)
+  const fetchUpcomingEvents = useCallback(async () => {
+    const today = new Date().toISOString().split('T')[0]
+    const { data: events } = await supabase
+      .from('posts')
+      .select('id, title, image_url, event_date, event_time, event_end_time, event_location')
+      .eq('type', 'event')
+      .gte('event_date', today)
+      .order('event_date', { ascending: true })
+      .limit(3)
+
+    if (events) setUpcomingEvents(events)
+  }, [supabase])
+
   useEffect(() => {
     const fetchData = async () => {
       // Check if logged in
       const { data: { user } } = await supabase.auth.getUser()
       setIsLoggedIn(!!user)
 
-      // Fetch new members
-      const { data: members } = await supabase
-        .from('profiles')
-        .select('id, full_name, avatar_url, created_at')
-        .order('created_at', { ascending: false })
-        .limit(5)
-
-      if (members) setNewMembers(members)
-
-      // Fetch upcoming events
-      const today = new Date().toISOString().split('T')[0]
-      const { data: events } = await supabase
-        .from('posts')
-        .select('id, title, image_url, event_date, event_time, event_end_time, event_location')
-        .eq('type', 'event')
-        .gte('event_date', today)
-        .order('event_date', { ascending: true })
-        .limit(3)
-
-      if (events) setUpcomingEvents(events)
-
-      // Fetch recent comments
-      await fetchRecentComments()
-
-      // Fetch stats
-      const [membersCount, postsCount, commentsCount] = await Promise.all([
-        supabase.from('profiles').select('*', { count: 'exact', head: true }),
-        supabase.from('posts').select('*', { count: 'exact', head: true }),
-        supabase.from('comments').select('*', { count: 'exact', head: true }),
+      // Fetch all data in parallel
+      await Promise.all([
+        fetchNewMembers(),
+        fetchUpcomingEvents(),
+        fetchRecentComments(),
+        fetchStats(),
       ])
-
-      setStats({
-        totalMembers: membersCount.count || 0,
-        totalPosts: postsCount.count || 0,
-        totalComments: commentsCount.count || 0,
-      })
 
       setLoading(false)
     }
 
     fetchData()
-  }, [supabase])
+  }, [supabase, fetchNewMembers, fetchUpcomingEvents, fetchRecentComments, fetchStats])
 
-  // Real-time subscription for comments
+  // Real-time subscription for all relevant tables
   useEffect(() => {
-    // Set up real-time subscription
     const channel = supabase
-      .channel('comments-realtime')
+      .channel('sidebar-realtime')
       .on(
         'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'comments'
-        },
+        { event: '*', schema: 'public', table: 'comments' },
         () => {
-          // Refetch comments when any change happens
           fetchRecentComments()
+          fetchStats()
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'posts' },
+        () => {
+          fetchUpcomingEvents()
+          fetchStats()
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'profiles' },
+        () => {
+          fetchNewMembers()
+          fetchStats()
         }
       )
       .subscribe()
@@ -297,7 +319,7 @@ export function RightSidebar() {
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [supabase, fetchRecentComments])
+  }, [supabase, fetchRecentComments, fetchStats, fetchUpcomingEvents, fetchNewMembers])
 
   const getInitials = (name: string | null) => {
     if (!name) return '?'

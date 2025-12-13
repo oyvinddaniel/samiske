@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { formatDistanceToNow } from 'date-fns'
@@ -29,6 +29,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
+import { RefreshCw } from 'lucide-react'
 
 interface User {
   id: string
@@ -83,10 +84,115 @@ export default function AdminPage() {
   const [feedback, setFeedback] = useState<Feedback[]>([])
   const [stats, setStats] = useState<Stats>({ totalUsers: 0, totalPosts: 0, totalComments: 0, totalLikes: 0, totalFeedback: 0 })
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const [isAdmin, setIsAdmin] = useState(false)
   const router = useRouter()
-  const supabase = createClient()
+  const supabase = useMemo(() => createClient(), [])
 
+  // Define fetch functions first (before useEffects that use them)
+  const fetchUsers = useCallback(async () => {
+    const { data, count } = await supabase
+      .from('profiles')
+      .select('*', { count: 'exact' })
+      .order('created_at', { ascending: false })
+
+    if (data) setUsers(data)
+    if (count !== null) setStats(prev => ({ ...prev, totalUsers: count }))
+  }, [supabase])
+
+  const fetchPosts = useCallback(async () => {
+    const { data, count } = await supabase
+      .from('posts')
+      .select(`
+        id,
+        title,
+        content,
+        type,
+        visibility,
+        created_at,
+        user:profiles!posts_user_id_fkey (
+          id,
+          full_name,
+          email
+        ),
+        category:categories (
+          name,
+          color
+        )
+      `, { count: 'exact' })
+      .order('created_at', { ascending: false })
+      .limit(10000)
+
+    if (data) {
+      const formattedPosts = data.map((post) => {
+        const userData = Array.isArray(post.user) ? post.user[0] : post.user
+        const categoryData = Array.isArray(post.category) ? post.category[0] : post.category
+        return {
+          ...post,
+          user: userData as Post['user'],
+          category: categoryData as Post['category'],
+        }
+      })
+      setPosts(formattedPosts)
+    }
+    if (count !== null) setStats(prev => ({ ...prev, totalPosts: count }))
+  }, [supabase])
+
+  const fetchFeedback = useCallback(async () => {
+    const { data } = await supabase
+      .from('feedback')
+      .select(`
+        id,
+        message,
+        created_at,
+        user:profiles (
+          id,
+          full_name,
+          email
+        )
+      `)
+      .order('created_at', { ascending: false })
+
+    if (data) {
+      const formattedFeedback = data.map((f) => ({
+        ...f,
+        user: Array.isArray(f.user) ? f.user[0] : f.user,
+      }))
+      setFeedback(formattedFeedback as Feedback[])
+    }
+  }, [supabase])
+
+  const fetchStats = useCallback(async () => {
+    const [usersResult, postsResult, commentsResult, likesResult, feedbackResult] = await Promise.all([
+      supabase.from('profiles').select('*', { count: 'exact', head: true }),
+      supabase.from('posts').select('*', { count: 'exact', head: true }),
+      supabase.from('comments').select('*', { count: 'exact', head: true }),
+      supabase.from('likes').select('*', { count: 'exact', head: true }),
+      supabase.from('feedback').select('*', { count: 'exact', head: true }),
+    ])
+
+    setStats({
+      totalUsers: usersResult.count || 0,
+      totalPosts: postsResult.count || 0,
+      totalComments: commentsResult.count || 0,
+      totalLikes: likesResult.count || 0,
+      totalFeedback: feedbackResult.count || 0,
+    })
+  }, [supabase])
+
+  // Manual refresh function
+  const handleRefresh = async () => {
+    setRefreshing(true)
+    await Promise.all([
+      fetchUsers(),
+      fetchPosts(),
+      fetchFeedback(),
+      fetchStats(),
+    ])
+    setRefreshing(false)
+  }
+
+  // Check admin and fetch initial data
   useEffect(() => {
     const checkAdminAndFetchData = async () => {
       // Check if user is logged in and is admin
@@ -123,97 +229,38 @@ export default function AdminPage() {
     }
 
     checkAdminAndFetchData()
-  }, [router, supabase])
+  }, [router, supabase, fetchUsers, fetchPosts, fetchFeedback, fetchStats])
 
-  const fetchUsers = async () => {
-    const { data, count } = await supabase
-      .from('profiles')
-      .select('*', { count: 'exact' })
-      .order('created_at', { ascending: false })
+  // Real-time subscription for stats updates
+  useEffect(() => {
+    if (!isAdmin) return
 
-    if (data) setUsers(data)
-    if (count !== null) setStats(prev => ({ ...prev, totalUsers: count }))
-  }
-
-  const fetchPosts = async () => {
-    const { data, count } = await supabase
-      .from('posts')
-      .select(`
-        id,
-        title,
-        content,
-        type,
-        visibility,
-        created_at,
-        user:profiles!posts_user_id_fkey (
-          id,
-          full_name,
-          email
-        ),
-        category:categories (
-          name,
-          color
-        )
-      `, { count: 'exact' })
-      .order('created_at', { ascending: false })
-      .limit(10000)
-
-    if (data) {
-      const formattedPosts = data.map((post) => {
-        const userData = Array.isArray(post.user) ? post.user[0] : post.user
-        const categoryData = Array.isArray(post.category) ? post.category[0] : post.category
-        return {
-          ...post,
-          user: userData as Post['user'],
-          category: categoryData as Post['category'],
-        }
+    const channel = supabase
+      .channel('admin-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => {
+        fetchUsers()
+        fetchStats()
       })
-      setPosts(formattedPosts)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'posts' }, () => {
+        fetchPosts()
+        fetchStats()
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'comments' }, () => {
+        fetchStats()
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'likes' }, () => {
+        fetchStats()
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'feedback' }, () => {
+        fetchFeedback()
+        fetchStats()
+      })
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
     }
-    if (count !== null) setStats(prev => ({ ...prev, totalPosts: count }))
-  }
-
-  const fetchFeedback = async () => {
-    const { data } = await supabase
-      .from('feedback')
-      .select(`
-        id,
-        message,
-        created_at,
-        user:profiles (
-          id,
-          full_name,
-          email
-        )
-      `)
-      .order('created_at', { ascending: false })
-
-    if (data) {
-      const formattedFeedback = data.map((f) => ({
-        ...f,
-        user: Array.isArray(f.user) ? f.user[0] : f.user,
-      }))
-      setFeedback(formattedFeedback as Feedback[])
-    }
-  }
-
-  const fetchStats = async () => {
-    const [usersResult, postsResult, commentsResult, likesResult, feedbackResult] = await Promise.all([
-      supabase.from('profiles').select('*', { count: 'exact', head: true }),
-      supabase.from('posts').select('*', { count: 'exact', head: true }),
-      supabase.from('comments').select('*', { count: 'exact', head: true }),
-      supabase.from('likes').select('*', { count: 'exact', head: true }),
-      supabase.from('feedback').select('*', { count: 'exact', head: true }),
-    ])
-
-    setStats({
-      totalUsers: usersResult.count || 0,
-      totalPosts: postsResult.count || 0,
-      totalComments: commentsResult.count || 0,
-      totalLikes: likesResult.count || 0,
-      totalFeedback: feedbackResult.count || 0,
-    })
-  }
+  }, [supabase, isAdmin, fetchUsers, fetchPosts, fetchFeedback, fetchStats])
 
   const handleRoleChange = async (userId: string, newRole: string) => {
     const { error } = await supabase
@@ -311,9 +358,21 @@ export default function AdminPage() {
         </div>
 
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Admin-panel</h1>
-          <p className="text-gray-500 mt-1">Administrer brukere og innhold</p>
+        <div className="mb-8 flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Admin-panel</h1>
+            <p className="text-gray-500 mt-1">Administrer brukere og innhold</p>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="flex items-center gap-2"
+          >
+            <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+            {refreshing ? 'Oppdaterer...' : 'Oppdater'}
+          </Button>
         </div>
 
         {/* Stats */}
