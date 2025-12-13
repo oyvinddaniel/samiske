@@ -13,7 +13,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
-import { Pencil, Trash2 } from 'lucide-react'
+import { Pencil, Trash2, MapPin } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { ProfileOverlay } from '@/components/profile/ProfileOverlay'
 
@@ -484,6 +484,15 @@ export function PostCard({ post, currentUserId, onClick }: PostCardProps) {
             </button>
             <span className="text-xs text-gray-400">·</span>
             <span className="text-xs text-gray-500">{formatDate(postData.created_at)}</span>
+            {postData.posted_from_name && postData.posted_from_type !== 'sapmi' && (
+              <>
+                <span className="text-xs text-gray-400">·</span>
+                <span className="flex items-center gap-0.5 text-xs text-gray-500">
+                  <MapPin className="w-3 h-3" />
+                  {postData.posted_from_name}
+                </span>
+              </>
+            )}
             <div className="flex-1" />
 
             {/* Edit and delete buttons for owner */}

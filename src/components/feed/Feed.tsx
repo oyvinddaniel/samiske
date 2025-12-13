@@ -8,8 +8,14 @@ import { CreatePostSheet } from '@/components/posts/CreatePostSheet'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
 
+interface GeographyFilter {
+  type: 'sapmi' | 'country' | 'language_area' | 'municipality' | 'place'
+  id?: string  // UUID, null for 'sapmi'
+}
+
 interface FeedProps {
   categorySlug?: string
+  geography?: GeographyFilter
 }
 
 interface Post {
@@ -36,9 +42,12 @@ interface Post {
   comment_count: number
   like_count: number
   user_has_liked: boolean
+  // Geografisk info
+  posted_from_name?: string
+  posted_from_type?: 'place' | 'municipality' | 'sapmi'
 }
 
-export function Feed({ categorySlug }: FeedProps) {
+export function Feed({ categorySlug, geography }: FeedProps) {
   const [posts, setPosts] = useState<Post[]>([])
   const [loading, setLoading] = useState(true)
   const [currentUserId, setCurrentUserId] = useState<string | undefined>()
@@ -52,49 +61,99 @@ export function Feed({ categorySlug }: FeedProps) {
       const { data: { user } } = await supabase.auth.getUser()
       setCurrentUserId(user?.id)
 
-      // Build query - show all posts (members-only will be blurred for non-logged in)
-      let query = supabase
-        .from('posts')
-        .select(`
-          id,
-          title,
-          content,
-          image_url,
-          type,
-          visibility,
-          event_date,
-          event_time,
-          event_location,
-          created_at,
-          pinned,
-          user:profiles!posts_user_id_fkey (
-            id,
-            full_name,
-            avatar_url
-          ),
-          category:categories (
-            name,
-            slug,
-            color
-          )
-        `)
-        .order('pinned', { ascending: false, nullsFirst: false })
-        .order('created_at', { ascending: false })
+      let postsData: Array<{
+        id: string
+        title: string
+        content: string
+        image_url: string | null
+        type: string
+        visibility: string
+        event_date: string | null
+        event_time: string | null
+        event_location: string | null
+        created_at: string
+        pinned: boolean | null
+        user_id: string
+        category_id: string | null
+        posted_from_name?: string
+        posted_from_type?: string
+        user?: unknown
+        category?: unknown
+      }> | null = null
+      let fetchError: Error | null = null
 
-      // Filter by category if provided
-      if (categorySlug) {
-        const { data: category } = await supabase
-          .from('categories')
-          .select('id')
-          .eq('slug', categorySlug)
-          .single()
+      // Use RPC function if geography filter is provided
+      if (geography) {
+        const { data, error } = await supabase.rpc('get_posts_for_geography', {
+          geography_type_param: geography.type,
+          geography_id_param: geography.id || null,
+          limit_param: 50,
+          offset_param: 0
+        })
 
-        if (category) {
-          query = query.eq('category_id', category.id)
+        if (error) {
+          // Fallback to standard query if RPC fails (function might not exist yet)
+          console.warn('RPC function not available, falling back to standard query:', error)
+          fetchError = error
+        } else {
+          // RPC returns posts without user/category joins, need to fetch those separately
+          postsData = data
         }
       }
 
-      const { data: postsData, error } = await query
+      // Standard query (no geography filter or RPC fallback)
+      if (!postsData) {
+        let query = supabase
+          .from('posts')
+          .select(`
+            id,
+            title,
+            content,
+            image_url,
+            type,
+            visibility,
+            event_date,
+            event_time,
+            event_location,
+            created_at,
+            pinned,
+            user_id,
+            category_id,
+            municipality_id,
+            place_id,
+            user:profiles!posts_user_id_fkey (
+              id,
+              full_name,
+              avatar_url
+            ),
+            category:categories (
+              name,
+              slug,
+              color
+            )
+          `)
+          .order('pinned', { ascending: false, nullsFirst: false })
+          .order('created_at', { ascending: false })
+
+        // Filter by category if provided
+        if (categorySlug) {
+          const { data: category } = await supabase
+            .from('categories')
+            .select('id')
+            .eq('slug', categorySlug)
+            .single()
+
+          if (category) {
+            query = query.eq('category_id', category.id)
+          }
+        }
+
+        const { data, error } = await query
+        postsData = data
+        fetchError = error
+      }
+
+      const error = fetchError
 
       if (error) {
         console.error('Error fetching posts:', error)
@@ -109,8 +168,36 @@ export function Feed({ categorySlug }: FeedProps) {
         return
       }
 
-      // Get all post IDs for batch queries
+      // Get all post IDs and user IDs for batch queries
       const postIds = postsData.map(p => p.id)
+      const userIds = [...new Set(postsData.map(p => p.user_id).filter(Boolean))]
+      const categoryIds = [...new Set(postsData.map(p => p.category_id).filter(Boolean))]
+
+      // Batch fetch user data if not included (RPC doesn't include joins)
+      let usersMap: Record<string, { id: string; full_name: string | null; avatar_url: string | null }> = {}
+      if (userIds.length > 0 && !postsData[0]?.user) {
+        const { data: users } = await supabase
+          .from('profiles')
+          .select('id, full_name, avatar_url')
+          .in('id', userIds)
+        usersMap = (users || []).reduce((acc, u) => {
+          acc[u.id] = u
+          return acc
+        }, {} as typeof usersMap)
+      }
+
+      // Batch fetch category data if not included
+      let categoriesMap: Record<string, { name: string; slug: string; color: string }> = {}
+      if (categoryIds.length > 0 && !postsData[0]?.category) {
+        const { data: categories } = await supabase
+          .from('categories')
+          .select('id, name, slug, color')
+          .in('id', categoryIds as string[])
+        categoriesMap = (categories || []).reduce((acc, c) => {
+          acc[c.id] = c
+          return acc
+        }, {} as typeof categoriesMap)
+      }
 
       // Batch fetch comment counts (single query instead of N queries)
       const { data: commentCounts } = await supabase
@@ -147,23 +234,41 @@ export function Feed({ categorySlug }: FeedProps) {
       }, {} as Record<string, number>)
 
       // Map posts with counts
-      const postsWithCounts = postsData.map((post) => {
-        const userData = Array.isArray(post.user) ? post.user[0] : post.user
-        const categoryData = Array.isArray(post.category) ? post.category[0] : post.category
+      const postsWithCounts: Post[] = postsData.map((post) => {
+        // Get user data from join or from separate fetch
+        const userData = post.user
+          ? (Array.isArray(post.user) ? post.user[0] : post.user)
+          : usersMap[post.user_id]
+
+        // Get category data from join or from separate fetch
+        const categoryData = post.category
+          ? (Array.isArray(post.category) ? post.category[0] : post.category)
+          : (post.category_id ? categoriesMap[post.category_id] : null)
 
         return {
-          ...post,
+          id: post.id,
+          title: post.title,
+          content: post.content,
+          image_url: post.image_url,
+          type: post.type as 'standard' | 'event',
+          visibility: post.visibility as 'public' | 'members',
+          event_date: post.event_date,
+          event_time: post.event_time,
+          event_location: post.event_location,
+          created_at: post.created_at,
           user: userData as Post['user'],
           category: categoryData as Post['category'],
           comment_count: commentCountMap[post.id] || 0,
           like_count: likeCountMap[post.id] || 0,
           user_has_liked: userLikedPostIds.includes(post.id),
+          posted_from_name: post.posted_from_name,
+          posted_from_type: post.posted_from_type as Post['posted_from_type'],
         }
       })
 
       setPosts(postsWithCounts)
       setLoading(false)
-  }, [categorySlug, supabase])
+  }, [categorySlug, geography, supabase])
 
   useEffect(() => {
     fetchPosts()

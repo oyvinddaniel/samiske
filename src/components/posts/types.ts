@@ -1,5 +1,7 @@
 // Shared types for post components
 
+import type { GeographyScope } from '@/lib/types/geography'
+
 export interface CommentLikeUser {
   id: string
   full_name: string | null
@@ -51,6 +53,23 @@ export interface PostData {
   comment_count: number
   like_count: number
   user_has_liked?: boolean
+  // Geography fields
+  municipality_id?: string | null
+  place_id?: string | null
+  geography_scope?: GeographyScope
+  municipality?: {
+    id: string
+    name: string
+    slug: string
+  } | null
+  place?: {
+    id: string
+    name: string
+    slug: string
+  } | null
+  // Display fields from RPC
+  posted_from_name?: string
+  posted_from_type?: 'place' | 'municipality' | 'sapmi'
 }
 
 export interface PostCardProps {
