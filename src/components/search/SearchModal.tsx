@@ -35,12 +35,18 @@ export function SearchModal({ open, onClose, anchorRef }: SearchModalProps) {
   const [mounted, setMounted] = useState(false)
   const [position, setPosition] = useState({ top: 0, right: 0 })
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null)
+  const [isMobile, setIsMobile] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
   const supabase = createClient()
 
   useEffect(() => {
     setMounted(true)
+    // Check if mobile
+    const checkMobile = () => setIsMobile(window.innerWidth < 640)
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
   }, [])
 
   // Calculate position based on anchor
@@ -268,10 +274,14 @@ export function SearchModal({ open, onClose, anchorRef }: SearchModalProps) {
       ref={panelRef}
       className={cn(
         'fixed z-[10000] bg-white rounded-xl shadow-2xl border border-gray-200 overflow-hidden',
-        'w-[90vw] sm:w-96 max-h-[70vh]',
-        'animate-in fade-in-0 zoom-in-95 duration-200'
+        'max-h-[70vh]',
+        'animate-in fade-in-0 zoom-in-95 duration-200',
+        // Mobile: centered, Desktop: anchored to button
+        isMobile
+          ? 'w-[90vw] left-1/2 -translate-x-1/2 top-20'
+          : 'w-96'
       )}
-      style={{
+      style={isMobile ? {} : {
         top: position.top,
         right: Math.max(16, position.right)
       }}
