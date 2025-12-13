@@ -7,17 +7,24 @@ import { RightSidebar } from '@/components/layout/RightSidebar'
 import { BottomNav } from '@/components/layout/BottomNav'
 import { FriendsListPanel } from '@/components/social/FriendsListPanel'
 import { MessagesListPanel } from '@/components/social/MessagesListPanel'
+import { ChatPanel } from '@/components/social/ChatPanel'
 
 interface HomeLayoutProps {
   children: React.ReactNode
   currentCategory?: string
 }
 
-type ActivePanel = 'feed' | 'friends' | 'messages'
+type ActivePanel = 'feed' | 'friends' | 'messages' | 'chat'
+
+interface ChatTarget {
+  id: string
+  name: string
+}
 
 export function HomeLayout({ children, currentCategory = '' }: HomeLayoutProps) {
   const [showMobileSidebar, setShowMobileSidebar] = useState(false)
   const [activePanel, setActivePanel] = useState<ActivePanel>('feed')
+  const [chatTarget, setChatTarget] = useState<ChatTarget | null>(null)
 
   useEffect(() => {
     // Listen for mobile sidebar events
@@ -61,16 +68,28 @@ export function HomeLayout({ children, currentCategory = '' }: HomeLayoutProps) 
         {/* Main content */}
         <div className="flex-1 flex flex-col min-w-0">
           <div className="flex-1 flex gap-6 p-4 md:p-6 pb-20 lg:pb-6">
-            {/* Feed/Calendar/Friends/Messages column */}
+            {/* Feed/Calendar/Friends/Messages/Chat column */}
             <main className="flex-1 max-w-2xl">
               {activePanel === 'friends' ? (
                 <FriendsListPanel
                   onClose={() => setActivePanel('feed')}
-                  onOpenMessages={() => setActivePanel('messages')}
+                  onStartConversation={(friendId, friendName) => {
+                    setChatTarget({ id: friendId, name: friendName })
+                    setActivePanel('chat')
+                  }}
                 />
               ) : activePanel === 'messages' ? (
                 <MessagesListPanel
                   onClose={() => setActivePanel('feed')}
+                />
+              ) : activePanel === 'chat' && chatTarget ? (
+                <ChatPanel
+                  friendId={chatTarget.id}
+                  friendName={chatTarget.name}
+                  onClose={() => {
+                    setActivePanel('friends')
+                    setChatTarget(null)
+                  }}
                 />
               ) : (
                 children
