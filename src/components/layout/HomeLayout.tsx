@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { usePathname, useSearchParams } from 'next/navigation'
 import { Sidebar } from '@/components/layout/Sidebar'
 import { Header } from '@/components/layout/Header'
 import { RightSidebar } from '@/components/layout/RightSidebar'
@@ -22,9 +23,17 @@ interface ChatTarget {
 }
 
 export function HomeLayout({ children, currentCategory = '' }: HomeLayoutProps) {
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
   const [showMobileSidebar, setShowMobileSidebar] = useState(false)
   const [activePanel, setActivePanel] = useState<ActivePanel>('feed')
   const [chatTarget, setChatTarget] = useState<ChatTarget | null>(null)
+
+  // Reset to feed when navigating via sidebar links
+  useEffect(() => {
+    setActivePanel('feed')
+    setChatTarget(null)
+  }, [pathname, searchParams])
 
   useEffect(() => {
     // Listen for mobile sidebar events
