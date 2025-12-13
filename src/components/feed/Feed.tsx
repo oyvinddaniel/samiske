@@ -66,6 +66,7 @@ export function Feed({ categorySlug }: FeedProps) {
           event_time,
           event_location,
           created_at,
+          pinned,
           user:profiles!posts_user_id_fkey (
             id,
             full_name,
@@ -77,6 +78,7 @@ export function Feed({ categorySlug }: FeedProps) {
             color
           )
         `)
+        .order('pinned', { ascending: false, nullsFirst: false })
         .order('created_at', { ascending: false })
 
       // Filter by category if provided
