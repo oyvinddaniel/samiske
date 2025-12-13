@@ -159,23 +159,22 @@ export function Sidebar({ currentCategory = '' }: SidebarProps) {
                   </li>
                 )
               })}
-              <li>
-                <Link
-                  href="/?visning=kalender"
-                  onClick={() => setShowCategories(false)}
-                  className={cn(
-                    'flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors',
-                    currentVisning === 'kalender'
-                      ? 'bg-gray-100 text-gray-900 font-medium'
-                      : 'text-gray-500 hover:bg-gray-50 hover:text-gray-700'
-                  )}
-                >
-                  <Calendar className="w-3 h-3 text-red-500" />
-                  Kalender
-                </Link>
-              </li>
             </ul>
           )}
+
+          {/* Kalender - always visible under Aktivitet */}
+          <Link
+            href="/?visning=kalender"
+            className={cn(
+              'flex items-center gap-3 px-3 py-2 mt-1 rounded-lg text-sm font-medium transition-colors',
+              currentVisning === 'kalender'
+                ? 'bg-gray-100 text-gray-900'
+                : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+            )}
+          >
+            <Calendar className="w-4 h-4 text-red-500" />
+            Kalender
+          </Link>
         </div>
 
         {/* Social section - only show when logged in */}
