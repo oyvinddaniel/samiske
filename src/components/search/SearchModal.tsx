@@ -283,7 +283,7 @@ export function SearchModal({ open, onClose, anchorRef }: SearchModalProps) {
       )}
       style={isMobile ? {} : {
         top: position.top,
-        right: Math.max(16, position.right)
+        right: Math.max(16, position.right - 40)
       }}
     >
       {/* Search input */}
