@@ -33,25 +33,6 @@ export function FloatingSocialBubbles() {
     return () => subscription.unsubscribe()
   }, [supabase])
 
-  // Listen for external open requests (from sidebar, etc.)
-  useEffect(() => {
-    const handleOpenFriends = () => {
-      setActiveTab('friends')
-      setShowSocialPanel(true)
-    }
-    const handleOpenMessages = () => {
-      setActiveTab('messages')
-      setShowSocialPanel(true)
-    }
-
-    window.addEventListener('open-friends-panel', handleOpenFriends)
-    window.addEventListener('open-messages-panel', handleOpenMessages)
-
-    return () => {
-      window.removeEventListener('open-friends-panel', handleOpenFriends)
-      window.removeEventListener('open-messages-panel', handleOpenMessages)
-    }
-  }, [])
 
   const togglePanel = (tab: 'friends' | 'messages') => {
     if (showSocialPanel && activeTab === tab) {
