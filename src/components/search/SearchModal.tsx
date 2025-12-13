@@ -9,6 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Search, X, FileText, User, Calendar, MessageCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { ProfileOverlay } from '@/components/profile/ProfileOverlay'
 
 interface SearchResult {
   type: 'post' | 'user' | 'event' | 'comment'
@@ -33,6 +34,7 @@ export function SearchModal({ open, onClose, anchorRef }: SearchModalProps) {
   const [loading, setLoading] = useState(false)
   const [mounted, setMounted] = useState(false)
   const [position, setPosition] = useState({ top: 0, right: 0 })
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
   const supabase = createClient()
@@ -52,16 +54,36 @@ export function SearchModal({ open, onClose, anchorRef }: SearchModalProps) {
     }
   }, [open, anchorRef])
 
-  // Focus input when modal opens
+  // Fetch all profiles when modal opens
+  const fetchAllProfiles = useCallback(async () => {
+    const { data: users } = await supabase
+      .from('profiles')
+      .select('id, full_name, avatar_url, created_at')
+      .order('created_at', { ascending: false })
+
+    if (users) {
+      const profileResults: SearchResult[] = users.map(user => ({
+        type: 'user' as const,
+        id: user.id,
+        title: user.full_name || 'Ukjent',
+        image: user.avatar_url,
+        link: '#',
+      }))
+      setResults(profileResults)
+    }
+  }, [supabase])
+
+  // Focus input and load profiles when modal opens
   useEffect(() => {
-    if (open && inputRef.current) {
+    if (open) {
       setTimeout(() => inputRef.current?.focus(), 50)
+      fetchAllProfiles()
     }
     if (!open) {
       setQuery('')
       setResults([])
     }
-  }, [open])
+  }, [open, fetchAllProfiles])
 
   // Close on Escape or click outside
   useEffect(() => {
@@ -91,13 +113,33 @@ export function SearchModal({ open, onClose, anchorRef }: SearchModalProps) {
   // Search function with debounce
   const search = useCallback(async (searchQuery: string) => {
     if (!searchQuery.trim() || searchQuery.length < 2) {
-      setResults([])
+      // Show all profiles when no search query
+      fetchAllProfiles()
       return
     }
 
     setLoading(true)
     const searchResults: SearchResult[] = []
     const searchTerm = `%${searchQuery}%`
+
+    // Search users FIRST
+    const { data: users } = await supabase
+      .from('profiles')
+      .select('id, full_name, avatar_url')
+      .ilike('full_name', searchTerm)
+      .limit(5)
+
+    if (users) {
+      users.forEach(user => {
+        searchResults.push({
+          type: 'user',
+          id: user.id,
+          title: user.full_name || 'Ukjent',
+          image: user.avatar_url,
+          link: '#',
+        })
+      })
+    }
 
     // Search posts
     const { data: posts } = await supabase
@@ -126,25 +168,6 @@ export function SearchModal({ open, onClose, anchorRef }: SearchModalProps) {
           link: `/#post-${post.id}`,
           date: post.created_at,
           categoryColor: categoryData?.color,
-        })
-      })
-    }
-
-    // Search users
-    const { data: users } = await supabase
-      .from('profiles')
-      .select('id, full_name, avatar_url')
-      .ilike('full_name', searchTerm)
-      .limit(5)
-
-    if (users) {
-      users.forEach(user => {
-        searchResults.push({
-          type: 'user',
-          id: user.id,
-          title: user.full_name || 'Ukjent',
-          image: user.avatar_url,
-          link: '#',
         })
       })
     }
@@ -178,7 +201,7 @@ export function SearchModal({ open, onClose, anchorRef }: SearchModalProps) {
 
     setResults(searchResults)
     setLoading(false)
-  }, [supabase])
+  }, [supabase, fetchAllProfiles])
 
   // Debounced search
   useEffect(() => {
@@ -220,13 +243,27 @@ export function SearchModal({ open, onClose, anchorRef }: SearchModalProps) {
     }
   }
 
-  const handleResultClick = () => {
+  const handleResultClick = (result: SearchResult) => {
+    if (result.type === 'user') {
+      setSelectedUserId(result.id)
+    }
     onClose()
   }
 
-  if (!mounted || !open) return null
+  if (!mounted) return null
 
-  return createPortal(
+  return (
+    <>
+      {/* Profile Overlay */}
+      {selectedUserId && (
+        <ProfileOverlay
+          userId={selectedUserId}
+          onClose={() => setSelectedUserId(null)}
+        />
+      )}
+
+      {/* Search Modal */}
+      {open && createPortal(
     <div
       ref={panelRef}
       className={cn(
@@ -267,11 +304,6 @@ export function SearchModal({ open, onClose, anchorRef }: SearchModalProps) {
             <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600 mx-auto" />
             <p className="text-sm text-gray-500 mt-2">Søker...</p>
           </div>
-        ) : query.length < 2 ? (
-          <div className="p-4 text-center text-gray-500">
-            <Search className="w-6 h-6 mx-auto mb-2 text-gray-300" />
-            <p className="text-sm">Skriv minst 2 tegn</p>
-          </div>
         ) : results.length === 0 ? (
           <div className="p-4 text-center text-gray-500">
             <p className="text-sm">Ingen resultater</p>
@@ -279,47 +311,61 @@ export function SearchModal({ open, onClose, anchorRef }: SearchModalProps) {
         ) : (
           <div className="divide-y divide-gray-50">
             {results.map((result) => (
-              <Link
-                key={`${result.type}-${result.id}`}
-                href={result.link}
-                onClick={handleResultClick}
-                className="flex items-start gap-3 p-3 hover:bg-gray-50 transition-colors"
-              >
-                <div className="flex-shrink-0 mt-0.5">
-                  {result.type === 'user' && result.image ? (
+              result.type === 'user' ? (
+                <button
+                  key={`${result.type}-${result.id}`}
+                  onClick={() => handleResultClick(result)}
+                  className="flex items-start gap-3 p-3 hover:bg-gray-50 transition-colors w-full text-left"
+                >
+                  <div className="flex-shrink-0 mt-0.5">
                     <Avatar className="w-7 h-7">
-                      <AvatarImage src={result.image} />
+                      <AvatarImage src={result.image || undefined} />
                       <AvatarFallback className="bg-blue-100 text-blue-600 text-xs">
                         {getInitials(result.title)}
                       </AvatarFallback>
                     </Avatar>
-                  ) : (
-                    <div className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center">
-                      {getIcon(result.type)}
-                    </div>
-                  )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
+                  </div>
+                  <div className="flex-1 min-w-0">
                     <p className="font-medium text-gray-900 text-sm truncate">
                       {result.title}
                     </p>
-                    {result.categoryColor && (
-                      <Badge
-                        style={{ backgroundColor: result.categoryColor }}
-                        className="text-white text-[9px] px-1 py-0"
-                      >
-                        {result.type === 'event' ? 'Arr.' : 'Innlegg'}
-                      </Badge>
+                    <p className="text-xs text-gray-500">Bruker</p>
+                  </div>
+                </button>
+              ) : (
+                <Link
+                  key={`${result.type}-${result.id}`}
+                  href={result.link}
+                  onClick={() => handleResultClick(result)}
+                  className="flex items-start gap-3 p-3 hover:bg-gray-50 transition-colors"
+                >
+                  <div className="flex-shrink-0 mt-0.5">
+                    <div className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center">
+                      {getIcon(result.type)}
+                    </div>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium text-gray-900 text-sm truncate">
+                        {result.title}
+                      </p>
+                      {result.categoryColor && (
+                        <Badge
+                          style={{ backgroundColor: result.categoryColor }}
+                          className="text-white text-[9px] px-1 py-0"
+                        >
+                          {result.type === 'event' ? 'Arr.' : 'Innlegg'}
+                        </Badge>
+                      )}
+                    </div>
+                    {result.subtitle && (
+                      <p className="text-xs text-gray-500 truncate">
+                        {result.subtitle}
+                      </p>
                     )}
                   </div>
-                  {result.subtitle && (
-                    <p className="text-xs text-gray-500 truncate">
-                      {result.subtitle}
-                    </p>
-                  )}
-                </div>
-              </Link>
+                </Link>
+              )
             ))}
           </div>
         )}
@@ -331,5 +377,7 @@ export function SearchModal({ open, onClose, anchorRef }: SearchModalProps) {
       </div>
     </div>,
     document.body
+  )}
+    </>
   )
 }
