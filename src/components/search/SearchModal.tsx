@@ -1,13 +1,13 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { Input } from '@/components/ui/input'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
-import { Search, X, FileText, User, Calendar, MessageCircle } from 'lucide-react'
+import { Search, X, FileText, User, Calendar, MessageCircle, UserPlus, Undo2, UserCheck, Clock } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { ProfileOverlay } from '@/components/profile/ProfileOverlay'
 
@@ -28,6 +28,12 @@ interface SearchModalProps {
   anchorRef?: React.RefObject<HTMLButtonElement | null>
 }
 
+type FriendshipStatus = 'none' | 'pending_sent' | 'pending_received' | 'accepted' | 'blocked'
+
+interface FriendshipMap {
+  [userId: string]: FriendshipStatus
+}
+
 export function SearchModal({ open, onClose, anchorRef }: SearchModalProps) {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<SearchResult[]>([])
@@ -36,6 +42,9 @@ export function SearchModal({ open, onClose, anchorRef }: SearchModalProps) {
   const [position, setPosition] = useState({ top: 0, right: 0 })
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null)
   const [isMobile, setIsMobile] = useState(false)
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
+  const [friendships, setFriendships] = useState<FriendshipMap>({})
+  const [pendingRequests, setPendingRequests] = useState<Set<string>>(new Set())
   const inputRef = useRef<HTMLInputElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
   const supabase = createClient()
@@ -48,6 +57,40 @@ export function SearchModal({ open, onClose, anchorRef }: SearchModalProps) {
     window.addEventListener('resize', checkMobile)
     return () => window.removeEventListener('resize', checkMobile)
   }, [])
+
+  // Fetch current user and friendships
+  const fetchFriendships = useCallback(async (userId: string) => {
+    const { data: friendshipData } = await supabase
+      .from('friendships')
+      .select('user_id, friend_id, status')
+      .or(`user_id.eq.${userId},friend_id.eq.${userId}`)
+
+    if (friendshipData) {
+      const map: FriendshipMap = {}
+      friendshipData.forEach(f => {
+        const otherUserId = f.user_id === userId ? f.friend_id : f.user_id
+        if (f.status === 'accepted') {
+          map[otherUserId] = 'accepted'
+        } else if (f.status === 'pending') {
+          map[otherUserId] = f.user_id === userId ? 'pending_sent' : 'pending_received'
+        } else if (f.status === 'blocked') {
+          map[otherUserId] = 'blocked'
+        }
+      })
+      setFriendships(map)
+    }
+  }, [supabase])
+
+  useEffect(() => {
+    const fetchCurrentUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        setCurrentUserId(user.id)
+        fetchFriendships(user.id)
+      }
+    }
+    fetchCurrentUser()
+  }, [supabase, fetchFriendships])
 
   // Calculate position based on anchor
   useEffect(() => {
@@ -249,6 +292,53 @@ export function SearchModal({ open, onClose, anchorRef }: SearchModalProps) {
     }
   }
 
+  const sendFriendRequest = async (friendId: string, e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (!currentUserId) return
+
+    const { error } = await supabase
+      .from('friendships')
+      .insert({
+        user_id: currentUserId,
+        friend_id: friendId,
+        status: 'pending'
+      })
+
+    if (!error) {
+      setPendingRequests(prev => new Set(prev).add(friendId))
+      setFriendships(prev => ({ ...prev, [friendId]: 'pending_sent' }))
+    }
+  }
+
+  const cancelFriendRequest = async (friendId: string, e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (!currentUserId) return
+
+    const { error } = await supabase
+      .from('friendships')
+      .delete()
+      .eq('user_id', currentUserId)
+      .eq('friend_id', friendId)
+
+    if (!error) {
+      setPendingRequests(prev => {
+        const newSet = new Set(prev)
+        newSet.delete(friendId)
+        return newSet
+      })
+      setFriendships(prev => {
+        const newMap = { ...prev }
+        delete newMap[friendId]
+        return newMap
+      })
+    }
+  }
+
+  const getFriendshipStatus = (userId: string): FriendshipStatus => {
+    if (pendingRequests.has(userId)) return 'pending_sent'
+    return friendships[userId] || 'none'
+  }
+
   const handleResultClick = (result: SearchResult) => {
     if (result.type === 'user') {
       setSelectedUserId(result.id)
@@ -322,26 +412,73 @@ export function SearchModal({ open, onClose, anchorRef }: SearchModalProps) {
           <div className="divide-y divide-gray-50">
             {results.map((result) => (
               result.type === 'user' ? (
-                <button
+                <div
                   key={`${result.type}-${result.id}`}
-                  onClick={() => handleResultClick(result)}
-                  className="flex items-start gap-3 p-3 hover:bg-gray-50 transition-colors w-full text-left"
+                  className="flex items-center gap-3 p-3 hover:bg-gray-50 transition-colors w-full"
                 >
-                  <div className="flex-shrink-0 mt-0.5">
-                    <Avatar className="w-7 h-7">
-                      <AvatarImage src={result.image || undefined} />
-                      <AvatarFallback className="bg-blue-100 text-blue-600 text-xs">
-                        {getInitials(result.title)}
-                      </AvatarFallback>
-                    </Avatar>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-gray-900 text-sm truncate">
-                      {result.title}
-                    </p>
-                    <p className="text-xs text-gray-500">Bruker</p>
-                  </div>
-                </button>
+                  <button
+                    onClick={() => handleResultClick(result)}
+                    className="flex items-center gap-3 flex-1 min-w-0 text-left"
+                  >
+                    <div className="flex-shrink-0">
+                      <Avatar className="w-7 h-7">
+                        <AvatarImage src={result.image || undefined} />
+                        <AvatarFallback className="bg-blue-100 text-blue-600 text-xs">
+                          {getInitials(result.title)}
+                        </AvatarFallback>
+                      </Avatar>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-gray-900 text-sm truncate">
+                        {result.title}
+                      </p>
+                      <p className="text-xs text-gray-500">Bruker</p>
+                    </div>
+                  </button>
+                  {/* Friend action button - only show if not self */}
+                  {currentUserId && result.id !== currentUserId && (
+                    <div className="flex-shrink-0">
+                      {(() => {
+                        const status = getFriendshipStatus(result.id)
+                        if (status === 'accepted') {
+                          return (
+                            <div className="p-1.5 text-green-500" title="Venn">
+                              <UserCheck className="w-4 h-4" />
+                            </div>
+                          )
+                        }
+                        if (status === 'pending_sent') {
+                          return (
+                            <button
+                              onClick={(e) => cancelFriendRequest(result.id, e)}
+                              className="p-1.5 text-orange-500 hover:text-orange-600 hover:bg-orange-50 rounded transition-colors"
+                              title="Angre venneforespørsel"
+                            >
+                              <Undo2 className="w-4 h-4" />
+                            </button>
+                          )
+                        }
+                        if (status === 'pending_received') {
+                          return (
+                            <div className="p-1.5 text-blue-500" title="Venter på deg">
+                              <Clock className="w-4 h-4" />
+                            </div>
+                          )
+                        }
+                        // status === 'none'
+                        return (
+                          <button
+                            onClick={(e) => sendFriendRequest(result.id, e)}
+                            className="p-1.5 text-gray-400 hover:text-blue-500 hover:bg-blue-50 rounded transition-colors"
+                            title="Legg til som venn"
+                          >
+                            <UserPlus className="w-4 h-4" />
+                          </button>
+                        )
+                      })()}
+                    </div>
+                  )}
+                </div>
               ) : (
                 <Link
                   key={`${result.type}-${result.id}`}
