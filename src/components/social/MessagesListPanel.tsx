@@ -157,17 +157,13 @@ export function MessagesListPanel({ onClose }: MessagesListPanelProps) {
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center gap-2 pb-2 border-b border-gray-100">
         <button
           onClick={onClose}
-          className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
+          className="p-1 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors"
         >
           <ArrowLeft className="w-5 h-5" />
-          <span className="font-medium">Tilbake til feed</span>
         </button>
-      </div>
-
-      <div className="flex items-center gap-2 pb-2 border-b border-gray-100">
         <MessageCircle className="w-6 h-6 text-green-500" />
         <h2 className="text-xl font-bold text-gray-900">Meldinger</h2>
         {conversations.filter(c => c.unreadCount > 0).length > 0 && (
