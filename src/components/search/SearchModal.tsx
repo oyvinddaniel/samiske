@@ -62,17 +62,17 @@ export function SearchModal({ open, onClose, anchorRef }: SearchModalProps) {
   const fetchFriendships = useCallback(async (userId: string) => {
     const { data: friendshipData } = await supabase
       .from('friendships')
-      .select('user_id, friend_id, status')
-      .or(`user_id.eq.${userId},friend_id.eq.${userId}`)
+      .select('requester_id, addressee_id, status')
+      .or(`requester_id.eq.${userId},addressee_id.eq.${userId}`)
 
     if (friendshipData) {
       const map: FriendshipMap = {}
       friendshipData.forEach(f => {
-        const otherUserId = f.user_id === userId ? f.friend_id : f.user_id
+        const otherUserId = f.requester_id === userId ? f.addressee_id : f.requester_id
         if (f.status === 'accepted') {
           map[otherUserId] = 'accepted'
         } else if (f.status === 'pending') {
-          map[otherUserId] = f.user_id === userId ? 'pending_sent' : 'pending_received'
+          map[otherUserId] = f.requester_id === userId ? 'pending_sent' : 'pending_received'
         } else if (f.status === 'blocked') {
           map[otherUserId] = 'blocked'
         }
@@ -299,14 +299,16 @@ export function SearchModal({ open, onClose, anchorRef }: SearchModalProps) {
     const { error } = await supabase
       .from('friendships')
       .insert({
-        user_id: currentUserId,
-        friend_id: friendId,
+        requester_id: currentUserId,
+        addressee_id: friendId,
         status: 'pending'
       })
 
     if (!error) {
       setPendingRequests(prev => new Set(prev).add(friendId))
       setFriendships(prev => ({ ...prev, [friendId]: 'pending_sent' }))
+    } else {
+      console.error('Feil ved sending av venneforespørsel:', error)
     }
   }
 
@@ -317,8 +319,8 @@ export function SearchModal({ open, onClose, anchorRef }: SearchModalProps) {
     const { error } = await supabase
       .from('friendships')
       .delete()
-      .eq('user_id', currentUserId)
-      .eq('friend_id', friendId)
+      .eq('requester_id', currentUserId)
+      .eq('addressee_id', friendId)
 
     if (!error) {
       setPendingRequests(prev => {
@@ -331,6 +333,8 @@ export function SearchModal({ open, onClose, anchorRef }: SearchModalProps) {
         delete newMap[friendId]
         return newMap
       })
+    } else {
+      console.error('Feil ved kansellering av venneforespørsel:', error)
     }
   }
 
