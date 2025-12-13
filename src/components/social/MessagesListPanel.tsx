@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Card, CardContent } from '@/components/ui/card'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { MessageCircle, ArrowLeft } from 'lucide-react'
+import { MessageCircle } from 'lucide-react'
 import { ProfileOverlay } from '@/components/profile/ProfileOverlay'
 
 interface Conversation {
@@ -158,12 +158,6 @@ export function MessagesListPanel({ onClose }: MessagesListPanelProps) {
     <div className="space-y-4">
       {/* Header */}
       <div className="flex items-center gap-2 pb-2 border-b border-gray-100">
-        <button
-          onClick={onClose}
-          className="p-1 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors"
-        >
-          <ArrowLeft className="w-5 h-5" />
-        </button>
         <MessageCircle className="w-6 h-6 text-green-500" />
         <h2 className="text-xl font-bold text-gray-900">Meldinger</h2>
         {conversations.filter(c => c.unreadCount > 0).length > 0 && (
