@@ -193,57 +193,53 @@ export function MessagesListPanel({ onClose }: MessagesListPanelProps) {
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-1.5 max-w-md">
           {conversations.map(conv => (
-            <Card
+            <div
               key={conv.id}
-              className={`hover:shadow-md transition-shadow cursor-pointer ${
+              className={`flex items-center gap-2 py-2 pl-4 pr-3 bg-white rounded-lg border border-gray-100 hover:border-gray-200 hover:bg-gray-50/50 transition-all cursor-pointer ${
                 conv.unreadCount > 0 ? 'border-blue-200 bg-blue-50/30' : ''
               }`}
               onClick={() => setSelectedUserId(conv.otherUser.id)}
             >
-              <CardContent className="p-4">
-                <div className="flex items-center gap-4">
-                  <div className="relative">
-                    <Avatar className="w-14 h-14">
-                      <AvatarImage src={conv.otherUser.avatar_url || undefined} />
-                      <AvatarFallback className="bg-blue-100 text-blue-600 text-lg">
-                        {getInitials(conv.otherUser.full_name)}
-                      </AvatarFallback>
-                    </Avatar>
-                    {conv.unreadCount > 0 && (
-                      <span className="absolute -top-1 -right-1 w-5 h-5 bg-blue-500 text-white text-[10px] rounded-full flex items-center justify-center">
-                        {conv.unreadCount}
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between">
-                      <span className={`font-semibold text-gray-900 ${
-                        conv.unreadCount > 0 ? 'text-blue-900' : ''
-                      }`}>
-                        {conv.otherUser.full_name || 'Ukjent'}
-                      </span>
-                      {conv.lastMessage && (
-                        <span className="text-xs text-gray-400">
-                          {getTimeAgo(conv.lastMessage.created_at)}
-                        </span>
-                      )}
-                    </div>
-                    {conv.lastMessage && (
-                      <p className={`text-sm line-clamp-1 mt-0.5 ${
-                        conv.unreadCount > 0 ? 'text-gray-700 font-medium' : 'text-gray-500'
-                      }`}>
-                        {conv.lastMessage.sender_id === currentUserId && (
-                          <span className="text-gray-400">Du: </span>
-                        )}
-                        {conv.lastMessage.content}
-                      </p>
-                    )}
-                  </div>
+              <div className="relative flex-shrink-0">
+                <Avatar className="w-9 h-9">
+                  <AvatarImage src={conv.otherUser.avatar_url || undefined} />
+                  <AvatarFallback className="bg-blue-100 text-blue-600 text-xs">
+                    {getInitials(conv.otherUser.full_name)}
+                  </AvatarFallback>
+                </Avatar>
+                {conv.unreadCount > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-blue-500 text-white text-[9px] rounded-full flex items-center justify-center">
+                    {conv.unreadCount}
+                  </span>
+                )}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between">
+                  <span className={`font-medium text-sm text-gray-900 truncate ${
+                    conv.unreadCount > 0 ? 'text-blue-900' : ''
+                  }`}>
+                    {conv.otherUser.full_name || 'Ukjent'}
+                  </span>
+                  {conv.lastMessage && (
+                    <span className="text-[10px] text-gray-400 flex-shrink-0 ml-2">
+                      {getTimeAgo(conv.lastMessage.created_at)}
+                    </span>
+                  )}
                 </div>
-              </CardContent>
-            </Card>
+                {conv.lastMessage && (
+                  <p className={`text-xs line-clamp-1 ${
+                    conv.unreadCount > 0 ? 'text-gray-700 font-medium' : 'text-gray-500'
+                  }`}>
+                    {conv.lastMessage.sender_id === currentUserId && (
+                      <span className="text-gray-400">Du: </span>
+                    )}
+                    {conv.lastMessage.content}
+                  </p>
+                )}
+              </div>
+            </div>
           ))}
         </div>
       )}
