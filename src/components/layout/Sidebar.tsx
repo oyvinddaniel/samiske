@@ -132,14 +132,14 @@ export function Sidebar({ currentCategory = '', activePanel = 'feed' }: SidebarP
             href="/?visning=kalender"
             className={cn(
               'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
-              currentVisning === 'kalender'
+              currentVisning === 'kalender' && activePanel === 'feed'
                 ? 'bg-blue-50 text-blue-700'
                 : 'text-gray-500 hover:bg-blue-50/50 hover:text-gray-700'
             )}
           >
             <Calendar className={cn(
               'w-4 h-4 transition-colors',
-              currentVisning === 'kalender' ? 'text-blue-600' : 'text-red-500'
+              currentVisning === 'kalender' && activePanel === 'feed' ? 'text-blue-600' : 'text-red-500'
             )} />
             Kalender
           </Link>
