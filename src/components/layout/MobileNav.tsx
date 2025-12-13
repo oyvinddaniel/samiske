@@ -1,29 +1,22 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo, Suspense } from 'react'
 import { createPortal } from 'react-dom'
 import Link from 'next/link'
+import { usePathname, useSearchParams } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
-import { Users, MessageCircle, ChevronRight } from 'lucide-react'
+import { Users, MessageCircle, ChevronRight, Newspaper, Calendar } from 'lucide-react'
 import { SocialPanel } from '@/components/social/SocialPanel'
-
-const categories = [
-  { name: 'Alle', slug: '', color: '#6B7280' },
-  { name: 'Generelt', slug: 'generelt', color: '#6B7280' },
-  { name: 'Arrangement', slug: 'arrangement', color: '#EF4444' },
-  { name: 'Aktivitet', slug: 'aktivitet', color: '#3B82F6' },
-  { name: 'Nyhet', slug: 'nyhet', color: '#10B981' },
-  { name: 'Møte', slug: 'mote', color: '#F59E0B' },
-  { name: 'Spørsmål', slug: 'sporsmal', color: '#8B5CF6' },
-  { name: 'Kunngjøring', slug: 'kunngjoring', color: '#EC4899' },
-]
 
 interface MobileNavProps {
   currentCategory?: string
 }
 
-export function MobileNav({ currentCategory = '' }: MobileNavProps) {
+function MobileNavContent({ currentCategory = '' }: MobileNavProps) {
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const currentVisning = searchParams.get('visning') || ''
   const [isOpen, setIsOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
   const [rightMenuOpen, setRightMenuOpen] = useState(false)
@@ -318,93 +311,110 @@ export function MobileNav({ currentCategory = '' }: MobileNavProps) {
               </button>
             </div>
 
-            {/* Social section - only show when logged in */}
-            {currentUserId && (
-              <div className="p-4 border-b border-gray-100">
-                <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 px-3">
-                  Sosial
-                </h2>
-                <ul className="space-y-1">
-                  <li>
-                    <button
-                      onClick={() => {
-                        setIsOpen(false)
-                        setShowSocialPanel(true)
-                      }}
-                      className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors"
-                    >
-                      <span className="flex items-center gap-3">
-                        <Users className="w-4 h-4 text-blue-500" />
-                        Venner
-                      </span>
-                      <span className="flex items-center gap-2">
-                        {pendingRequests > 0 && (
-                          <span className="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">
-                            {pendingRequests}
-                          </span>
-                        )}
-                        <ChevronRight className="w-4 h-4 text-gray-400" />
-                      </span>
-                    </button>
-                  </li>
-                  <li>
-                    <button
-                      onClick={() => {
-                        setIsOpen(false)
-                        setShowSocialPanel(true)
-                      }}
-                      className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors"
-                    >
-                      <span className="flex items-center gap-3">
-                        <MessageCircle className="w-4 h-4 text-green-500" />
-                        Meldinger
-                      </span>
-                      <span className="flex items-center gap-2">
-                        {unreadMessages > 0 && (
-                          <span className="bg-blue-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">
-                            {unreadMessages}
-                          </span>
-                        )}
-                        <ChevronRight className="w-4 h-4 text-gray-400" />
-                      </span>
-                    </button>
-                  </li>
-                </ul>
-              </div>
-            )}
-
-            {/* Categories */}
+            {/* Navigation */}
             <nav className="p-4">
-              <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 px-3">
-                Kategorier
-              </h2>
-              <ul className="space-y-1">
-                {categories.map((category) => {
-                  const isActive = currentCategory === category.slug
-                  const href = category.slug ? `/?kategori=${category.slug}` : '/'
+              {/* Navigation links */}
+              <div className="mb-4 pb-4 border-b border-gray-100 space-y-1">
+                {/* Aktivitet - primary/dominant link */}
+                <Link
+                  href="/"
+                  onClick={() => setIsOpen(false)}
+                  className={cn(
+                    'flex items-center justify-between px-3 py-2.5 rounded-xl text-base font-semibold transition-colors',
+                    pathname === '/' && !currentVisning
+                      ? 'bg-blue-50 text-blue-700'
+                      : 'text-gray-800 hover:bg-blue-50/50'
+                  )}
+                >
+                  <span className="flex items-center gap-3">
+                    <div className={cn(
+                      'p-1.5 rounded-lg transition-colors',
+                      pathname === '/' && !currentVisning
+                        ? 'bg-blue-100'
+                        : 'bg-gray-100'
+                    )}>
+                      <Newspaper className={cn(
+                        'w-5 h-5 transition-colors',
+                        pathname === '/' && !currentVisning
+                          ? 'text-blue-600'
+                          : 'text-gray-600'
+                      )} />
+                    </div>
+                    Aktivitet
+                  </span>
+                  <ChevronRight className="w-4 h-4 text-gray-400" />
+                </Link>
 
-                  return (
-                    <li key={category.slug}>
-                      <Link
-                        href={href}
-                        onClick={() => setIsOpen(false)}
-                        className={cn(
-                          'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
-                          isActive
-                            ? 'bg-gray-100 text-gray-900'
-                            : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                        )}
-                      >
-                        <span
-                          className="w-3 h-3 rounded-full"
-                          style={{ backgroundColor: category.color }}
-                        />
-                        {category.name}
-                      </Link>
-                    </li>
-                  )
-                })}
-              </ul>
+                {/* Kalender */}
+                <Link
+                  href="/?visning=kalender"
+                  onClick={() => setIsOpen(false)}
+                  className={cn(
+                    'flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-colors',
+                    currentVisning === 'kalender'
+                      ? 'bg-blue-50 text-blue-700'
+                      : 'text-gray-500 hover:bg-blue-50/50 hover:text-gray-700'
+                  )}
+                >
+                  <span className="flex items-center gap-3">
+                    <Calendar className={cn(
+                      'w-4 h-4 transition-colors',
+                      currentVisning === 'kalender' ? 'text-blue-600' : 'text-red-500'
+                    )} />
+                    Kalender
+                  </span>
+                  <ChevronRight className="w-4 h-4 text-gray-400" />
+                </Link>
+              </div>
+
+              {/* Social section - only show when logged in */}
+              {currentUserId && (
+                <div className="space-y-1">
+                  <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 px-3">
+                    Sosial
+                  </h2>
+                  <button
+                    onClick={() => {
+                      setIsOpen(false)
+                      setShowSocialPanel(true)
+                    }}
+                    className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-blue-50/50 hover:text-gray-700 transition-colors"
+                  >
+                    <span className="flex items-center gap-3">
+                      <Users className="w-4 h-4 text-blue-500" />
+                      Venner
+                    </span>
+                    <span className="flex items-center gap-2">
+                      {pendingRequests > 0 && (
+                        <span className="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">
+                          {pendingRequests}
+                        </span>
+                      )}
+                      <ChevronRight className="w-4 h-4 text-gray-400" />
+                    </span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      setIsOpen(false)
+                      setShowSocialPanel(true)
+                    }}
+                    className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-blue-50/50 hover:text-gray-700 transition-colors"
+                  >
+                    <span className="flex items-center gap-3">
+                      <MessageCircle className="w-4 h-4 text-green-500" />
+                      Meldinger
+                    </span>
+                    <span className="flex items-center gap-2">
+                      {unreadMessages > 0 && (
+                        <span className="bg-blue-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">
+                          {unreadMessages}
+                        </span>
+                      )}
+                      <ChevronRight className="w-4 h-4 text-gray-400" />
+                    </span>
+                  </button>
+                </div>
+              )}
             </nav>
 
             {/* Footer */}
@@ -461,5 +471,19 @@ export function MobileNav({ currentCategory = '' }: MobileNavProps) {
         document.body
       )}
     </>
+  )
+}
+
+export function MobileNav(props: MobileNavProps) {
+  return (
+    <Suspense fallback={
+      <button className="md:hidden p-2 -ml-2 text-white/80">
+        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+        </svg>
+      </button>
+    }>
+      <MobileNavContent {...props} />
+    </Suspense>
   )
 }
