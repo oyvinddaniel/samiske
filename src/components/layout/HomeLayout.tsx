@@ -5,26 +5,47 @@ import { Sidebar } from '@/components/layout/Sidebar'
 import { Header } from '@/components/layout/Header'
 import { RightSidebar } from '@/components/layout/RightSidebar'
 import { BottomNav } from '@/components/layout/BottomNav'
+import { FriendsListPanel } from '@/components/social/FriendsListPanel'
+import { MessagesListPanel } from '@/components/social/MessagesListPanel'
 
 interface HomeLayoutProps {
   children: React.ReactNode
   currentCategory?: string
 }
 
+type ActivePanel = 'feed' | 'friends' | 'messages'
+
 export function HomeLayout({ children, currentCategory = '' }: HomeLayoutProps) {
   const [showMobileSidebar, setShowMobileSidebar] = useState(false)
+  const [activePanel, setActivePanel] = useState<ActivePanel>('feed')
 
   useEffect(() => {
     // Listen for mobile sidebar events
     const handleOpenLeftSidebar = () => setShowMobileSidebar(true)
     const handleCloseLeftSidebar = () => setShowMobileSidebar(false)
 
+    // Listen for friends/messages panel events
+    const handleOpenFriendsPanel = () => {
+      setActivePanel('friends')
+      // Close mobile sidebar if open
+      window.dispatchEvent(new CustomEvent('close-left-sidebar'))
+    }
+    const handleOpenMessagesPanel = () => {
+      setActivePanel('messages')
+      // Close mobile sidebar if open
+      window.dispatchEvent(new CustomEvent('close-left-sidebar'))
+    }
+
     window.addEventListener('open-left-sidebar', handleOpenLeftSidebar)
     window.addEventListener('close-left-sidebar', handleCloseLeftSidebar)
+    window.addEventListener('open-friends-panel', handleOpenFriendsPanel)
+    window.addEventListener('open-messages-panel', handleOpenMessagesPanel)
 
     return () => {
       window.removeEventListener('open-left-sidebar', handleOpenLeftSidebar)
       window.removeEventListener('close-left-sidebar', handleCloseLeftSidebar)
+      window.removeEventListener('open-friends-panel', handleOpenFriendsPanel)
+      window.removeEventListener('open-messages-panel', handleOpenMessagesPanel)
     }
   }, [])
 
@@ -40,9 +61,20 @@ export function HomeLayout({ children, currentCategory = '' }: HomeLayoutProps) 
         {/* Main content */}
         <div className="flex-1 flex flex-col min-w-0">
           <div className="flex-1 flex gap-6 p-4 md:p-6 pb-20 lg:pb-6">
-            {/* Feed/Calendar column */}
+            {/* Feed/Calendar/Friends/Messages column */}
             <main className="flex-1 max-w-2xl">
-              {children}
+              {activePanel === 'friends' ? (
+                <FriendsListPanel
+                  onClose={() => setActivePanel('feed')}
+                  onOpenMessages={() => setActivePanel('messages')}
+                />
+              ) : activePanel === 'messages' ? (
+                <MessagesListPanel
+                  onClose={() => setActivePanel('feed')}
+                />
+              ) : (
+                children
+              )}
             </main>
 
             {/* Right Sidebar */}
