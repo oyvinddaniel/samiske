@@ -29,6 +29,7 @@ interface NotificationItem {
   actorName?: string
   actorAvatar?: string
   createdAt: string
+  isNew: boolean // true if notification is newer than last_seen_at
 }
 
 interface NotificationBellProps {
@@ -58,6 +59,12 @@ export function NotificationBell({ userId }: NotificationBellProps) {
       .single()
 
     const lastSeenAt = profile?.last_seen_at || new Date(0).toISOString()
+    const lastSeenDate = new Date(lastSeenAt)
+
+    // Fetch notifications from last 7 days (to show history)
+    const sevenDaysAgo = new Date()
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+    const historyDate = sevenDaysAgo.toISOString()
 
     // 1. Count new posts since last seen
     const { count: newPostsCount } = await supabase
@@ -124,10 +131,10 @@ export function NotificationBell({ userId }: NotificationBellProps) {
       likesOnMyPosts: likesOnMyPostsCount,
     })
 
-    // Fetch actual notification items for the dropdown
+    // Fetch actual notification items for the dropdown (last 7 days)
     const items: NotificationItem[] = []
 
-    // Get recent comments on my posts
+    // Get recent comments on my posts (last 7 days)
     if (myPostIds.length > 0) {
       const { data: recentComments } = await supabase
         .from('comments')
@@ -146,14 +153,15 @@ export function NotificationBell({ userId }: NotificationBellProps) {
           )
         `)
         .in('post_id', myPostIds)
-        .gt('created_at', lastSeenAt)
+        .gt('created_at', historyDate)
         .neq('user_id', userId)
         .order('created_at', { ascending: false })
-        .limit(5)
+        .limit(10)
 
       recentComments?.forEach(comment => {
         const userData = Array.isArray(comment.user) ? comment.user[0] : comment.user
         const postData = Array.isArray(comment.post) ? comment.post[0] : comment.post
+        const commentDate = new Date(comment.created_at)
         items.push({
           id: `comment-${comment.id}`,
           type: 'comment_on_my_post',
@@ -163,11 +171,12 @@ export function NotificationBell({ userId }: NotificationBellProps) {
           actorName: userData?.full_name || 'Ukjent',
           actorAvatar: userData?.avatar_url || undefined,
           createdAt: comment.created_at,
+          isNew: commentDate > lastSeenDate,
         })
       })
     }
 
-    // Get recent likes on my posts
+    // Get recent likes on my posts (last 7 days)
     if (myPostIds.length > 0) {
       const { data: recentLikes } = await supabase
         .from('likes')
@@ -185,14 +194,15 @@ export function NotificationBell({ userId }: NotificationBellProps) {
           )
         `)
         .in('post_id', myPostIds)
-        .gt('created_at', lastSeenAt)
+        .gt('created_at', historyDate)
         .neq('user_id', userId)
         .order('created_at', { ascending: false })
-        .limit(5)
+        .limit(10)
 
       recentLikes?.forEach(like => {
         const userData = Array.isArray(like.user) ? like.user[0] : like.user
         const postData = Array.isArray(like.post) ? like.post[0] : like.post
+        const likeDate = new Date(like.created_at)
         items.push({
           id: `like-${like.id}`,
           type: 'like_on_my_post',
@@ -202,11 +212,12 @@ export function NotificationBell({ userId }: NotificationBellProps) {
           actorName: userData?.full_name || 'Ukjent',
           actorAvatar: userData?.avatar_url || undefined,
           createdAt: like.created_at,
+          isNew: likeDate > lastSeenDate,
         })
       })
     }
 
-    // Get recent new posts
+    // Get recent new posts (last 7 days)
     const { data: recentPosts } = await supabase
       .from('posts')
       .select(`
@@ -218,13 +229,14 @@ export function NotificationBell({ userId }: NotificationBellProps) {
           avatar_url
         )
       `)
-      .gt('created_at', lastSeenAt)
+      .gt('created_at', historyDate)
       .neq('user_id', userId)
       .order('created_at', { ascending: false })
-      .limit(3)
+      .limit(5)
 
     recentPosts?.forEach(post => {
       const userData = Array.isArray(post.user) ? post.user[0] : post.user
+      const postDate = new Date(post.created_at)
       items.push({
         id: `post-${post.id}`,
         type: 'new_post',
@@ -234,12 +246,13 @@ export function NotificationBell({ userId }: NotificationBellProps) {
         actorName: userData?.full_name || 'Ukjent',
         actorAvatar: userData?.avatar_url || undefined,
         createdAt: post.created_at,
+        isNew: postDate > lastSeenDate,
       })
     })
 
     // Sort by date and limit
     items.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-    setNotifications(items.slice(0, 10))
+    setNotifications(items.slice(0, 15))
     setLoading(false)
   }, [supabase, userId])
 
@@ -263,13 +276,16 @@ export function NotificationBell({ userId }: NotificationBellProps) {
         .update({ last_seen_at: new Date().toISOString() })
         .eq('id', userId)
 
-      // Reset counts but keep notifications visible (marked as read)
+      // Reset counts and mark all notifications as read locally
       setCounts({
         newPosts: 0,
         commentsOnMyPosts: 0,
         commentsOnFollowedPosts: 0,
         likesOnMyPosts: 0,
       })
+
+      // Mark all notifications as read in UI
+      setNotifications(prev => prev.map(n => ({ ...n, isNew: false })))
     }
   }
 
@@ -345,9 +361,9 @@ export function NotificationBell({ userId }: NotificationBellProps) {
         ) : notifications.length === 0 ? (
           <div className="p-6 text-center">
             <Bell className="w-8 h-8 text-gray-300 mx-auto mb-2" />
-            <p className="text-sm text-gray-500">Ingen nye varsler</p>
+            <p className="text-sm text-gray-500">Ingen varsler</p>
             <p className="text-xs text-gray-400 mt-1">
-              Du er oppdatert!
+              Ingen aktivitet de siste 7 dagene
             </p>
           </div>
         ) : (
@@ -386,33 +402,50 @@ export function NotificationBell({ userId }: NotificationBellProps) {
               <DropdownMenuItem key={notification.id} asChild>
                 <Link
                   href={notification.postId ? `/#post-${notification.postId}` : '/'}
-                  className="flex items-start gap-3 px-3 py-2 cursor-pointer hover:bg-gray-50"
+                  className={`flex items-start gap-3 px-3 py-2 cursor-pointer hover:bg-gray-50 ${
+                    notification.isNew ? 'bg-blue-50/50' : ''
+                  }`}
                 >
                   <div className="relative flex-shrink-0">
-                    <Avatar className="w-8 h-8">
+                    <Avatar className={`w-8 h-8 ${!notification.isNew ? 'opacity-60' : ''}`}>
                       <AvatarImage src={notification.actorAvatar} />
-                      <AvatarFallback className="bg-blue-100 text-blue-600 text-xs">
+                      <AvatarFallback className={`text-xs ${
+                        notification.isNew
+                          ? 'bg-blue-100 text-blue-600'
+                          : 'bg-gray-100 text-gray-500'
+                      }`}>
                         {getInitials(notification.actorName)}
                       </AvatarFallback>
                     </Avatar>
-                    <span className="absolute -bottom-1 -right-1 bg-white rounded-full p-0.5">
+                    <span className={`absolute -bottom-1 -right-1 bg-white rounded-full p-0.5 ${
+                      !notification.isNew ? 'opacity-60' : ''
+                    }`}>
                       {getNotificationIcon(notification.type)}
                     </span>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm">
-                      <span className="font-medium">{notification.actorName}</span>{' '}
-                      <span className="text-gray-600">{notification.message}</span>
+                    <p className={`text-sm ${!notification.isNew ? 'text-gray-500' : ''}`}>
+                      <span className={notification.isNew ? 'font-medium' : 'font-normal text-gray-500'}>
+                        {notification.actorName}
+                      </span>{' '}
+                      <span className={notification.isNew ? 'text-gray-600' : 'text-gray-400'}>
+                        {notification.message}
+                      </span>
                     </p>
                     {notification.postTitle && (
-                      <p className="text-xs text-gray-500 truncate">
+                      <p className={`text-xs truncate ${notification.isNew ? 'text-gray-500' : 'text-gray-400'}`}>
                         «{notification.postTitle}»
                       </p>
                     )}
-                    <p className="text-[10px] text-gray-400 mt-0.5">
+                    <p className={`text-[10px] mt-0.5 ${notification.isNew ? 'text-gray-400' : 'text-gray-300'}`}>
                       {getTimeAgo(notification.createdAt)}
                     </p>
                   </div>
+                  {notification.isNew && (
+                    <div className="flex-shrink-0 self-center">
+                      <div className="w-2 h-2 bg-blue-500 rounded-full" />
+                    </div>
+                  )}
                 </Link>
               </DropdownMenuItem>
             ))}
