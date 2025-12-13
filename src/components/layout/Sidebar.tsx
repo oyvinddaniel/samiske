@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { usePathname, useSearchParams } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
-import { Users, MessageCircle, ChevronRight, Calendar } from 'lucide-react'
+import { Users, MessageCircle, ChevronRight, ChevronDown, Calendar, Sparkles } from 'lucide-react'
 
 const categories = [
   { name: 'Alle', slug: '', color: '#6B7280' },
@@ -29,6 +29,7 @@ export function Sidebar({ currentCategory = '' }: SidebarProps) {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const [pendingRequests, setPendingRequests] = useState(0)
   const [unreadMessages, setUnreadMessages] = useState(0)
+  const [showCategories, setShowCategories] = useState(false)
 
   // Create stable supabase client reference
   const supabase = useMemo(() => createClient(), [])
@@ -107,25 +108,79 @@ export function Sidebar({ currentCategory = '' }: SidebarProps) {
 
   return (
     <aside className="hidden md:flex md:flex-col md:w-64 bg-white border-r border-gray-200 min-h-[calc(100vh-4rem)]">
-      {/* Logo */}
-      <div className="p-6 pt-8 border-b border-gray-100">
-        <Link href="/" className="flex items-center gap-2">
-          <div className="w-10 h-10 rounded-xl overflow-hidden shadow-md">
-            <img
-              src="/images/sami.jpg"
-              alt="Samisk flagg"
-              className="w-full h-full object-cover"
-            />
-          </div>
-          <h1 className="font-bold text-lg text-gray-900">samiske.no</h1>
-        </Link>
-      </div>
-
       {/* Navigation */}
-      <nav className="flex-1 p-4">
+      <nav className="flex-1 p-4 pt-6">
+        {/* Aktivitet - collapsible categories */}
+        <div className="mb-4 pb-4 border-b border-gray-100">
+          <button
+            onClick={() => setShowCategories(!showCategories)}
+            className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors"
+          >
+            <span className="flex items-center gap-3">
+              <Sparkles className="w-4 h-4 text-amber-500" />
+              Aktivitet
+              {currentCategory && (
+                <span className="text-xs text-gray-400">
+                  ({categories.find(c => c.slug === currentCategory)?.name || 'Alle'})
+                </span>
+              )}
+            </span>
+            <ChevronDown className={cn(
+              "w-4 h-4 text-gray-400 transition-transform",
+              showCategories && "rotate-180"
+            )} />
+          </button>
+
+          {/* Expandable category list */}
+          {showCategories && (
+            <ul className="mt-2 ml-3 space-y-0.5 border-l-2 border-gray-100 pl-3">
+              {categories.map((category) => {
+                const isActive = currentCategory === category.slug
+                const href = category.slug ? `/?kategori=${category.slug}` : '/'
+
+                return (
+                  <li key={category.slug}>
+                    <Link
+                      href={href}
+                      onClick={() => setShowCategories(false)}
+                      className={cn(
+                        'flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors',
+                        isActive
+                          ? 'bg-gray-100 text-gray-900 font-medium'
+                          : 'text-gray-500 hover:bg-gray-50 hover:text-gray-700'
+                      )}
+                    >
+                      <span
+                        className="w-2 h-2 rounded-full"
+                        style={{ backgroundColor: category.color }}
+                      />
+                      {category.name}
+                    </Link>
+                  </li>
+                )
+              })}
+              <li>
+                <Link
+                  href="/?visning=kalender"
+                  onClick={() => setShowCategories(false)}
+                  className={cn(
+                    'flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors',
+                    currentVisning === 'kalender'
+                      ? 'bg-gray-100 text-gray-900 font-medium'
+                      : 'text-gray-500 hover:bg-gray-50 hover:text-gray-700'
+                  )}
+                >
+                  <Calendar className="w-3 h-3 text-red-500" />
+                  Kalender
+                </Link>
+              </li>
+            </ul>
+          )}
+        </div>
+
         {/* Social section - only show when logged in */}
         {currentUserId && (
-          <div className="mb-4 pb-4 border-b border-gray-100">
+          <div className="mb-4">
             <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 px-3">
               Sosial
             </h2>
@@ -171,85 +226,13 @@ export function Sidebar({ currentCategory = '' }: SidebarProps) {
             </ul>
           </div>
         )}
-
-        {/* Quick links */}
-        <div className="mb-4 pb-4 border-b border-gray-100">
-          <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 px-3">
-            Snarveier
-          </h2>
-          <ul className="space-y-1">
-            <li>
-              <Link
-                href="/?visning=kalender"
-                className={cn(
-                  'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
-                  currentVisning === 'kalender'
-                    ? 'bg-gray-100 text-gray-900'
-                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                )}
-              >
-                <Calendar className="w-4 h-4 text-red-500" />
-                Kalender
-              </Link>
-            </li>
-          </ul>
-        </div>
-
-        <div className="mb-4">
-          <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 px-3">
-            Kategorier
-          </h2>
-          <ul className="space-y-1">
-            {categories.map((category) => {
-              const isActive = currentCategory === category.slug
-              const href = category.slug ? `/?kategori=${category.slug}` : '/'
-
-              return (
-                <li key={category.slug}>
-                  <Link
-                    href={href}
-                    className={cn(
-                      'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
-                      isActive
-                        ? 'bg-gray-100 text-gray-900'
-                        : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                    )}
-                  >
-                    <span
-                      className="w-3 h-3 rounded-full"
-                      style={{ backgroundColor: category.color }}
-                    />
-                    {category.name}
-                  </Link>
-                </li>
-              )
-            })}
-          </ul>
-        </div>
       </nav>
 
-      {/* About section */}
-      <div className="p-4 border-t border-gray-100 mt-[100px]">
-        <div className="text-center space-y-3">
-          <div className="w-10 h-10 rounded-xl overflow-hidden shadow-md mx-auto">
-            <img
-              src="/images/sami.jpg"
-              alt="Samisk flagg"
-              className="w-full h-full object-cover"
-            />
-          </div>
-          <div>
-            <h3 className="font-semibold text-gray-900 text-sm">samiske.no</h3>
-            <p className="text-xs text-gray-500 mt-1">
-              Kommunikasjonsplattform for det samiske miljøet i Trondheim
-            </p>
-          </div>
-          <div className="pt-2 border-t border-gray-100">
-            <p className="text-[10px] text-gray-400">
-              Et alternativ til Facebook der alle innlegg når frem
-            </p>
-          </div>
-        </div>
+      {/* About section - compact */}
+      <div className="p-4 border-t border-gray-100">
+        <p className="text-[10px] text-gray-400 text-center">
+          Kommunikasjonsplattform for det samiske miljøet i Trondheim
+        </p>
       </div>
     </aside>
   )

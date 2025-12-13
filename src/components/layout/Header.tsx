@@ -198,17 +198,25 @@ export function Header({ currentCategory }: HeaderProps) {
           </Link>
         </div>
 
-        {/* Desktop title with gradient accent */}
-        <div className="hidden md:flex items-center gap-3">
-          <div className="h-8 w-1 rounded-full bg-gradient-to-b from-red-400 via-white to-green-400" />
-          <div>
-            <h1 className="text-lg font-semibold text-white">
-              {currentCategory
-                ? currentCategory === 'mote' ? 'Møte' : currentCategory.charAt(0).toUpperCase() + currentCategory.slice(1)
-                : 'Hjem'
-              }
-            </h1>
-          </div>
+        {/* Desktop logo and title */}
+        <div className="hidden md:flex items-center gap-4">
+          <Link href="/" className="flex items-center gap-2">
+            <div className="w-9 h-9 rounded-xl overflow-hidden shadow-md">
+              <img
+                src="/images/sami.jpg"
+                alt="Samisk flagg"
+                className="w-full h-full object-cover"
+              />
+            </div>
+            <span className="font-bold text-white">samiske.no</span>
+          </Link>
+          <div className="h-6 w-px bg-white/30" />
+          <h1 className="text-base font-medium text-white/90">
+            {currentCategory
+              ? currentCategory === 'mote' ? 'Møte' : currentCategory.charAt(0).toUpperCase() + currentCategory.slice(1)
+              : 'Hjem'
+            }
+          </h1>
         </div>
 
         {/* Right side */}
