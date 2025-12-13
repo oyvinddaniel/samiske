@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { usePathname, useSearchParams } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
-import { Users, MessageCircle, ChevronRight, Calendar, Sparkles } from 'lucide-react'
+import { Users, MessageCircle, ChevronRight, Calendar, Newspaper } from 'lucide-react'
 
 interface SidebarProps {
   currentCategory?: string
@@ -100,26 +100,40 @@ export function Sidebar({ currentCategory = '' }: SidebarProps) {
       <nav className="flex-1 p-4 pt-6">
         {/* Navigation links */}
         <div className="mb-4 pb-4 border-b border-gray-100 space-y-1">
+          {/* Aktivitet - primary/dominant link */}
           <Link
             href="/"
             className={cn(
-              'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
+              'flex items-center gap-3 px-3 py-2.5 rounded-xl text-base font-semibold transition-colors',
               pathname === '/' && !currentVisning
-                ? 'bg-gray-100 text-gray-900'
-                : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                ? 'bg-blue-50 text-blue-700 shadow-sm'
+                : 'text-gray-800 hover:bg-blue-50 hover:text-blue-700'
             )}
           >
-            <Sparkles className="w-4 h-4 text-amber-500" />
+            <div className={cn(
+              'p-1.5 rounded-lg',
+              pathname === '/' && !currentVisning
+                ? 'bg-blue-100'
+                : 'bg-gray-100'
+            )}>
+              <Newspaper className={cn(
+                'w-5 h-5',
+                pathname === '/' && !currentVisning
+                  ? 'text-blue-600'
+                  : 'text-gray-600'
+              )} />
+            </div>
             Aktivitet
           </Link>
 
+          {/* Secondary links */}
           <Link
             href="/?visning=kalender"
             className={cn(
               'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
               currentVisning === 'kalender'
                 ? 'bg-gray-100 text-gray-900'
-                : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                : 'text-gray-500 hover:bg-gray-50 hover:text-gray-700'
             )}
           >
             <Calendar className="w-4 h-4 text-red-500" />
