@@ -105,43 +105,49 @@ export function Sidebar({ currentCategory = '', activePanel = 'feed' }: SidebarP
           <Link
             href="/"
             className={cn(
-              'flex items-center gap-3 px-3 py-2.5 rounded-xl text-base font-semibold transition-colors',
+              'flex items-center justify-between px-3 py-2.5 rounded-xl text-base font-semibold transition-colors',
               pathname === '/' && !currentVisning && activePanel === 'feed'
                 ? 'bg-blue-50 text-blue-700'
                 : 'text-gray-800 hover:bg-blue-50/50'
             )}
           >
-            <div className={cn(
-              'p-1.5 rounded-lg transition-colors',
-              pathname === '/' && !currentVisning && activePanel === 'feed'
-                ? 'bg-blue-100'
-                : 'bg-gray-100'
-            )}>
-              <Newspaper className={cn(
-                'w-5 h-5 transition-colors',
+            <span className="flex items-center gap-3">
+              <div className={cn(
+                'p-1.5 rounded-lg transition-colors',
                 pathname === '/' && !currentVisning && activePanel === 'feed'
-                  ? 'text-blue-600'
-                  : 'text-gray-600'
-              )} />
-            </div>
-            Aktivitet
+                  ? 'bg-blue-100'
+                  : 'bg-gray-100'
+              )}>
+                <Newspaper className={cn(
+                  'w-5 h-5 transition-colors',
+                  pathname === '/' && !currentVisning && activePanel === 'feed'
+                    ? 'text-blue-600'
+                    : 'text-gray-600'
+                )} />
+              </div>
+              Aktivitet
+            </span>
+            <ChevronRight className="w-4 h-4 text-gray-400" />
           </Link>
 
           {/* Kalender */}
           <Link
             href="/?visning=kalender"
             className={cn(
-              'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
+              'flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-colors',
               currentVisning === 'kalender' && activePanel === 'feed'
                 ? 'bg-blue-50 text-blue-700'
                 : 'text-gray-500 hover:bg-blue-50/50 hover:text-gray-700'
             )}
           >
-            <Calendar className={cn(
-              'w-4 h-4 transition-colors',
-              currentVisning === 'kalender' && activePanel === 'feed' ? 'text-blue-600' : 'text-red-500'
-            )} />
-            Kalender
+            <span className="flex items-center gap-3">
+              <Calendar className={cn(
+                'w-4 h-4 transition-colors',
+                currentVisning === 'kalender' && activePanel === 'feed' ? 'text-blue-600' : 'text-red-500'
+              )} />
+              Kalender
+            </span>
+            <ChevronRight className="w-4 h-4 text-gray-400" />
           </Link>
         </div>
 
