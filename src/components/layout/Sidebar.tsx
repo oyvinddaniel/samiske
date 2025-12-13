@@ -5,18 +5,7 @@ import Link from 'next/link'
 import { usePathname, useSearchParams } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
-import { Users, MessageCircle, ChevronRight, ChevronDown, Calendar, Sparkles } from 'lucide-react'
-
-const categories = [
-  { name: 'Alle', slug: '', color: '#6B7280' },
-  { name: 'Generelt', slug: 'generelt', color: '#6B7280' },
-  { name: 'Arrangement', slug: 'arrangement', color: '#EF4444' },
-  { name: 'Aktivitet', slug: 'aktivitet', color: '#3B82F6' },
-  { name: 'Nyhet', slug: 'nyhet', color: '#10B981' },
-  { name: 'Møte', slug: 'mote', color: '#F59E0B' },
-  { name: 'Spørsmål', slug: 'sporsmal', color: '#8B5CF6' },
-  { name: 'Kunngjøring', slug: 'kunngjoring', color: '#EC4899' },
-]
+import { Users, MessageCircle, ChevronRight, Calendar, Sparkles } from 'lucide-react'
 
 interface SidebarProps {
   currentCategory?: string
@@ -29,7 +18,6 @@ export function Sidebar({ currentCategory = '' }: SidebarProps) {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const [pendingRequests, setPendingRequests] = useState(0)
   const [unreadMessages, setUnreadMessages] = useState(0)
-  const [showCategories, setShowCategories] = useState(false)
 
   // Create stable supabase client reference
   const supabase = useMemo(() => createClient(), [])
@@ -110,63 +98,25 @@ export function Sidebar({ currentCategory = '' }: SidebarProps) {
     <aside className="hidden md:flex md:flex-col md:w-64 bg-white border-r border-gray-200 min-h-[calc(100vh-4rem)]">
       {/* Navigation */}
       <nav className="flex-1 p-4 pt-6">
-        {/* Aktivitet - collapsible categories */}
-        <div className="mb-4 pb-4 border-b border-gray-100">
-          <button
-            onClick={() => setShowCategories(!showCategories)}
-            className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors"
+        {/* Navigation links */}
+        <div className="mb-4 pb-4 border-b border-gray-100 space-y-1">
+          <Link
+            href="/"
+            className={cn(
+              'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
+              pathname === '/' && !currentVisning
+                ? 'bg-gray-100 text-gray-900'
+                : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+            )}
           >
-            <span className="flex items-center gap-3">
-              <Sparkles className="w-4 h-4 text-amber-500" />
-              Aktivitet
-              {currentCategory && (
-                <span className="text-xs text-gray-400">
-                  ({categories.find(c => c.slug === currentCategory)?.name || 'Alle'})
-                </span>
-              )}
-            </span>
-            <ChevronDown className={cn(
-              "w-4 h-4 text-gray-400 transition-transform",
-              showCategories && "rotate-180"
-            )} />
-          </button>
+            <Sparkles className="w-4 h-4 text-amber-500" />
+            Aktivitet
+          </Link>
 
-          {/* Expandable category list */}
-          {showCategories && (
-            <ul className="mt-2 ml-3 space-y-0.5 border-l-2 border-gray-100 pl-3">
-              {categories.map((category) => {
-                const isActive = currentCategory === category.slug
-                const href = category.slug ? `/?kategori=${category.slug}` : '/'
-
-                return (
-                  <li key={category.slug}>
-                    <Link
-                      href={href}
-                      onClick={() => setShowCategories(false)}
-                      className={cn(
-                        'flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors',
-                        isActive
-                          ? 'bg-gray-100 text-gray-900 font-medium'
-                          : 'text-gray-500 hover:bg-gray-50 hover:text-gray-700'
-                      )}
-                    >
-                      <span
-                        className="w-2 h-2 rounded-full"
-                        style={{ backgroundColor: category.color }}
-                      />
-                      {category.name}
-                    </Link>
-                  </li>
-                )
-              })}
-            </ul>
-          )}
-
-          {/* Kalender - always visible under Aktivitet */}
           <Link
             href="/?visning=kalender"
             className={cn(
-              'flex items-center gap-3 px-3 py-2 mt-1 rounded-lg text-sm font-medium transition-colors',
+              'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
               currentVisning === 'kalender'
                 ? 'bg-gray-100 text-gray-900'
                 : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
