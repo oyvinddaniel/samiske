@@ -9,9 +9,10 @@ import { Users, MessageCircle, ChevronRight, Calendar, Newspaper } from 'lucide-
 
 interface SidebarProps {
   currentCategory?: string
+  activePanel?: 'feed' | 'friends' | 'messages' | 'chat'
 }
 
-export function Sidebar({ currentCategory = '' }: SidebarProps) {
+export function Sidebar({ currentCategory = '', activePanel = 'feed' }: SidebarProps) {
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const currentVisning = searchParams.get('visning') || ''
@@ -105,20 +106,20 @@ export function Sidebar({ currentCategory = '' }: SidebarProps) {
             href="/"
             className={cn(
               'flex items-center gap-3 px-3 py-2.5 rounded-xl text-base font-semibold transition-colors',
-              pathname === '/' && !currentVisning
-                ? 'bg-blue-50 text-blue-700 shadow-sm'
-                : 'text-gray-800 hover:bg-blue-50 hover:text-blue-700'
+              pathname === '/' && !currentVisning && activePanel === 'feed'
+                ? 'bg-blue-50 text-blue-700'
+                : 'text-gray-800 hover:bg-blue-50/50'
             )}
           >
             <div className={cn(
-              'p-1.5 rounded-lg',
-              pathname === '/' && !currentVisning
+              'p-1.5 rounded-lg transition-colors',
+              pathname === '/' && !currentVisning && activePanel === 'feed'
                 ? 'bg-blue-100'
                 : 'bg-gray-100'
             )}>
               <Newspaper className={cn(
-                'w-5 h-5',
-                pathname === '/' && !currentVisning
+                'w-5 h-5 transition-colors',
+                pathname === '/' && !currentVisning && activePanel === 'feed'
                   ? 'text-blue-600'
                   : 'text-gray-600'
               )} />
@@ -126,17 +127,20 @@ export function Sidebar({ currentCategory = '' }: SidebarProps) {
             Aktivitet
           </Link>
 
-          {/* Secondary links */}
+          {/* Kalender */}
           <Link
             href="/?visning=kalender"
             className={cn(
               'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
               currentVisning === 'kalender'
-                ? 'bg-gray-100 text-gray-900'
-                : 'text-gray-500 hover:bg-gray-50 hover:text-gray-700'
+                ? 'bg-blue-50 text-blue-700'
+                : 'text-gray-500 hover:bg-blue-50/50 hover:text-gray-700'
             )}
           >
-            <Calendar className="w-4 h-4 text-red-500" />
+            <Calendar className={cn(
+              'w-4 h-4 transition-colors',
+              currentVisning === 'kalender' ? 'text-blue-600' : 'text-red-500'
+            )} />
             Kalender
           </Link>
         </div>
@@ -151,10 +155,18 @@ export function Sidebar({ currentCategory = '' }: SidebarProps) {
               <li>
                 <button
                   onClick={() => window.dispatchEvent(new CustomEvent('open-friends-panel'))}
-                  className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors"
+                  className={cn(
+                    'w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-colors',
+                    activePanel === 'friends' || activePanel === 'chat'
+                      ? 'bg-blue-50 text-blue-700'
+                      : 'text-gray-600 hover:bg-blue-50/50 hover:text-gray-700'
+                  )}
                 >
                   <span className="flex items-center gap-3">
-                    <Users className="w-4 h-4 text-blue-500" />
+                    <Users className={cn(
+                      'w-4 h-4 transition-colors',
+                      activePanel === 'friends' || activePanel === 'chat' ? 'text-blue-600' : 'text-blue-500'
+                    )} />
                     Venner
                   </span>
                   <span className="flex items-center gap-2">
@@ -170,10 +182,18 @@ export function Sidebar({ currentCategory = '' }: SidebarProps) {
               <li>
                 <button
                   onClick={() => window.dispatchEvent(new CustomEvent('open-messages-panel'))}
-                  className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors"
+                  className={cn(
+                    'w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-colors',
+                    activePanel === 'messages'
+                      ? 'bg-blue-50 text-blue-700'
+                      : 'text-gray-600 hover:bg-blue-50/50 hover:text-gray-700'
+                  )}
                 >
                   <span className="flex items-center gap-3">
-                    <MessageCircle className="w-4 h-4 text-green-500" />
+                    <MessageCircle className={cn(
+                      'w-4 h-4 transition-colors',
+                      activePanel === 'messages' ? 'text-blue-600' : 'text-green-500'
+                    )} />
                     Meldinger
                   </span>
                   <span className="flex items-center gap-2">

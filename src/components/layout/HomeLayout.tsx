@@ -72,7 +72,7 @@ export function HomeLayout({ children, currentCategory = '' }: HomeLayoutProps) 
 
       <div className="flex">
         {/* Left Sidebar */}
-        <Sidebar currentCategory={currentCategory} />
+        <Sidebar currentCategory={currentCategory} activePanel={activePanel} />
 
         {/* Main content */}
         <div className="flex-1 flex flex-col min-w-0">
