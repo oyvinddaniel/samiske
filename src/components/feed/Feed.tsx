@@ -213,52 +213,93 @@ export function Feed({ categorySlug, geography, geographyName, showFilters = fal
           query = query.in('created_for_group_id', idsToQuery)
         } else {
           // When NOT viewing a specific group:
-          // ALWAYS EXCLUDE posts from hidden/closed groups (except user's own posts in personal feed)
+          // 1. ALWAYS EXCLUDE posts from ALL groups (open/closed/hidden) unless:
+          //    - Group is associated with current geography (for geographic feeds)
+          //    - User is member (for personal feeds)
 
-          // Get IDs of hidden/closed groups
-          const { data: hiddenClosedGroups } = await supabase
+          // Get ALL groups
+          const { data: allGroups } = await supabase
             .from('groups')
-            .select('id')
-            .in('group_type', ['hidden', 'closed'])
+            .select('id, group_type')
 
-          const hiddenClosedGroupIds = (hiddenClosedGroups || []).map(g => g.id)
+          const allGroupIds = (allGroups || []).map(g => g.id)
 
-          if (hiddenClosedGroupIds.length > 0) {
-            // Exclude posts from these groups, UNLESS:
-            // 1. Viewing own profile (filterUserId is set), OR
-            // 2. User is viewing their personal feed with friendsOnly
-            const shouldShowOwnGroupPosts = (filterUserId && filterUserId === currentUserId) || friendsOnly
+          if (allGroupIds.length > 0) {
+            // For geographic feeds: only show posts from groups associated with this geography
+            if (geography) {
+              const { data: geographicGroups } = await supabase
+                .from('group_places')
+                .select('group_id, place_id, municipality_id')
 
-            if (!shouldShowOwnGroupPosts) {
-              // Completely exclude posts from closed/hidden groups
-              query = query.or(`created_for_group_id.is.null,created_for_group_id.not.in.(${hiddenClosedGroupIds.join(',')})`)
-            } else if (currentUserId) {
-              // For personal feed: only show posts from groups where user is a member
-              const { data: userGroupMemberships } = await supabase
-                .from('group_members')
-                .select('group_id')
-                .eq('user_id', currentUserId)
-                .eq('status', 'approved')
+              let allowedGroupIds: string[] = []
 
-              const userGroupIds = (userGroupMemberships || []).map(gm => gm.group_id)
-              const allowedGroupIds = userGroupIds.filter(id => !hiddenClosedGroupIds.includes(id))
+              if (geography.type === 'place' && geography.id) {
+                // Show groups associated with this specific place
+                allowedGroupIds = (geographicGroups || [])
+                  .filter(gp => gp.place_id === geography.id)
+                  .map(gp => gp.group_id)
+              } else if (geography.type === 'municipality' && geography.id) {
+                // Show groups associated with this municipality OR places within it
+                const { data: placesInMunicipality } = await supabase
+                  .from('places')
+                  .select('id')
+                  .eq('municipality_id', geography.id)
 
-              if (allowedGroupIds.length > 0) {
-                query = query.or(`created_for_group_id.is.null,created_for_group_id.in.(${allowedGroupIds.join(',')})`)
-              } else {
-                query = query.is('created_for_group_id', null)
+                const placeIds = (placesInMunicipality || []).map(p => p.id)
+
+                allowedGroupIds = (geographicGroups || [])
+                  .filter(gp =>
+                    gp.municipality_id === geography.id ||
+                    (gp.place_id && placeIds.includes(gp.place_id))
+                  )
+                  .map(gp => gp.group_id)
+              } else if (geography.type === 'language_area' && geography.id) {
+                // Show groups from municipalities in this language area
+                const { data: municipalitiesInArea } = await supabase
+                  .from('municipalities')
+                  .select('id')
+                  .eq('language_area_id', geography.id)
+
+                const municipalityIds = (municipalitiesInArea || []).map(m => m.id)
+
+                allowedGroupIds = (geographicGroups || [])
+                  .filter(gp => gp.municipality_id && municipalityIds.includes(gp.municipality_id))
+                  .map(gp => gp.group_id)
               }
+
+              // Exclude ALL group posts except those from geographically-associated groups
+              const excludeGroupIds = allGroupIds.filter(id => !allowedGroupIds.includes(id))
+
+              if (excludeGroupIds.length > 0) {
+                query = query.or(`created_for_group_id.is.null,created_for_group_id.not.in.(${excludeGroupIds.join(',')})`)
+              }
+            }
+            // For personal/profile feeds: show posts from groups user is a member of
+            else if (filterUserId === currentUserId || friendsOnly) {
+              if (currentUserId) {
+                const { data: userGroupMemberships } = await supabase
+                  .from('group_members')
+                  .select('group_id')
+                  .eq('user_id', currentUserId)
+                  .eq('status', 'approved')
+
+                const userGroupIds = (userGroupMemberships || []).map(gm => gm.group_id)
+                const excludeGroupIds = allGroupIds.filter(id => !userGroupIds.includes(id))
+
+                if (excludeGroupIds.length > 0) {
+                  query = query.or(`created_for_group_id.is.null,created_for_group_id.not.in.(${excludeGroupIds.join(',')})`)
+                }
+              }
+            }
+            // For main feed / other feeds: exclude ALL group posts
+            else {
+              query = query.is('created_for_group_id', null)
             }
           }
 
-          // KRITISK: Ekskluder personlige innlegg KUN fra geografiske feeds og starred locations
-          // Personlige innlegg skal vises i:
-          // - Brukerens egen profilfeed (filterUserId er satt)
-          // - Hovedfeed (ingen filtre)
-          // - Venners feed (friendsOnly er satt)
+          // Ekskluder personlige innlegg fra geografiske feeds
           if (geography || starredLocations) {
-            // Geographic feeds should only show posts with geographic context
-            // Exclude personal posts (null group_id AND null community_id)
+            // Only show posts with geographic or community context (not personal posts)
             query = query.or('created_for_group_id.not.is.null,created_for_community_id.not.is.null,municipality_id.not.is.null,place_id.not.is.null')
           }
         }

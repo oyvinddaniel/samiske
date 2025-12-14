@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Search, UserPlus, Check, X, Clock, Loader2 } from 'lucide-react'
+import { Search, UserPlus, Check, X, Clock, Loader2, MapPin } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { GeographySelector } from '@/components/geography/GeographySelector'
 import { createClient } from '@/lib/supabase/client'
 import { approveMember, rejectMember } from '@/lib/groups'
 import { toast } from 'sonner'
@@ -44,23 +45,49 @@ export function GroupSettingsDialog({
   const [inviting, setInviting] = useState<string | null>(null)
   const [processing, setProcessing] = useState<string | null>(null)
   const [existingMemberIds, setExistingMemberIds] = useState<string[]>([])
+  const [currentGeography, setCurrentGeography] = useState<{ type: 'municipality' | 'place', id: string, name: string } | null>(null)
+  const [savingGeography, setSavingGeography] = useState(false)
 
   const supabase = createClient()
 
-  // Fetch existing member IDs
+  // Fetch existing member IDs and geography
   useEffect(() => {
-    const fetchMembers = async () => {
+    const fetchData = async () => {
       if (!open) return
 
-      const { data } = await supabase
+      // Fetch members
+      const { data: members } = await supabase
         .from('group_members')
         .select('user_id')
         .eq('group_id', group.id)
 
-      setExistingMemberIds((data || []).map(m => m.user_id))
+      setExistingMemberIds((members || []).map(m => m.user_id))
+
+      // Fetch current geography association
+      const { data: groupPlace } = await supabase
+        .from('group_places')
+        .select('place_id, municipality_id, place:places(name), municipality:municipalities(name)')
+        .eq('group_id', group.id)
+        .single()
+
+      if (groupPlace) {
+        if (groupPlace.place_id) {
+          setCurrentGeography({
+            type: 'place',
+            id: groupPlace.place_id,
+            name: (groupPlace.place as any)?.name || 'Ukjent sted'
+          })
+        } else if (groupPlace.municipality_id) {
+          setCurrentGeography({
+            type: 'municipality',
+            id: groupPlace.municipality_id,
+            name: (groupPlace.municipality as any)?.name || 'Ukjent kommune'
+          })
+        }
+      }
     }
 
-    fetchMembers()
+    fetchData()
   }, [open, group.id, supabase])
 
   // Search for users
@@ -178,6 +205,48 @@ export function GroupSettingsDialog({
     }
   }
 
+  // Save geography association
+  const handleSaveGeography = async (geography: { type: 'municipality' | 'place', id: string, name: string } | null) => {
+    setSavingGeography(true)
+
+    try {
+      // First, delete any existing association
+      await supabase
+        .from('group_places')
+        .delete()
+        .eq('group_id', group.id)
+
+      // If a geography is selected, create new association
+      if (geography) {
+        const { error } = await supabase
+          .from('group_places')
+          .insert({
+            group_id: group.id,
+            place_id: geography.type === 'place' ? geography.id : null,
+            municipality_id: geography.type === 'municipality' ? geography.id : null,
+          })
+
+        if (error) throw error
+
+        toast.success(`Gruppen er nå koblet til ${geography.name}`)
+        setCurrentGeography(geography)
+      } else {
+        toast.success('Geografisk tilknytning fjernet')
+        setCurrentGeography(null)
+      }
+    } catch (error) {
+      console.error('Error saving geography:', error)
+      toast.error('Kunne ikke lagre geografisk tilknytning')
+    } finally {
+      setSavingGeography(false)
+    }
+  }
+
+  // Remove geography association
+  const handleRemoveGeography = async () => {
+    await handleSaveGeography(null)
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md max-h-[80vh] overflow-y-auto">
@@ -186,14 +255,18 @@ export function GroupSettingsDialog({
         </DialogHeader>
 
         <Tabs defaultValue="invite" className="mt-4">
-          <TabsList className="w-full">
-            <TabsTrigger value="invite" className="flex-1">
+          <TabsList className="w-full grid grid-cols-3">
+            <TabsTrigger value="invite">
               <UserPlus className="w-4 h-4 mr-2" />
               Inviter
             </TabsTrigger>
-            <TabsTrigger value="pending" className="flex-1">
+            <TabsTrigger value="pending">
               <Clock className="w-4 h-4 mr-2" />
               Ventende ({pendingMembers.length})
+            </TabsTrigger>
+            <TabsTrigger value="geography">
+              <MapPin className="w-4 h-4 mr-2" />
+              Geografi
             </TabsTrigger>
           </TabsList>
 
@@ -309,6 +382,103 @@ export function GroupSettingsDialog({
                 ))}
               </div>
             )}
+          </TabsContent>
+
+          {/* Geography tab */}
+          <TabsContent value="geography" className="mt-4">
+            <div className="space-y-4">
+              <div className="text-sm text-gray-600 bg-blue-50 border border-blue-200 rounded-lg p-3">
+                <p className="font-medium mb-1">Hvorfor koble til et sted?</p>
+                <p>
+                  Når gruppen kobles til en kommune eller et sted, vil gruppens innlegg vises i
+                  stedets feed. Dette gjør det lettere for folk i området å finne gruppen.
+                </p>
+              </div>
+
+              {currentGeography ? (
+                <div className="border rounded-lg p-4 bg-white">
+                  <div className="flex items-start justify-between mb-3">
+                    <div>
+                      <p className="text-sm text-gray-500">Koblet til</p>
+                      <p className="font-medium">{currentGeography.name}</p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {currentGeography.type === 'place' ? 'Sted' : 'Kommune'}
+                      </p>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleRemoveGeography}
+                      disabled={savingGeography}
+                    >
+                      Fjern
+                    </Button>
+                  </div>
+                  <p className="text-sm text-gray-600">
+                    Gruppens innlegg vises nå i feeden for {currentGeography.name}
+                  </p>
+                </div>
+              ) : (
+                <div className="border-2 border-dashed rounded-lg p-6 text-center bg-gray-50">
+                  <MapPin className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                  <p className="text-gray-600 mb-4">
+                    Gruppen er ikke koblet til et geografisk område
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    Gruppens innlegg vises kun inne i gruppen og i medlemmers personlige feed
+                  </p>
+                </div>
+              )}
+
+              <div className="pt-4 border-t">
+                <p className="text-sm font-medium mb-3">
+                  {currentGeography ? 'Endre geografisk tilknytning' : 'Velg geografisk område'}
+                </p>
+                <GeographySelector
+                  value={{
+                    municipalityId: currentGeography?.type === 'municipality' ? currentGeography.id : null,
+                    placeId: currentGeography?.type === 'place' ? currentGeography.id : null
+                  }}
+                  onChange={async (value) => {
+                    if (value.placeId) {
+                      // Fetch place name
+                      const { data: place } = await supabase
+                        .from('places')
+                        .select('name')
+                        .eq('id', value.placeId)
+                        .single()
+
+                      if (place) {
+                        handleSaveGeography({
+                          type: 'place',
+                          id: value.placeId,
+                          name: place.name
+                        })
+                      }
+                    } else if (value.municipalityId) {
+                      // Fetch municipality name
+                      const { data: municipality } = await supabase
+                        .from('municipalities')
+                        .select('name')
+                        .eq('id', value.municipalityId)
+                        .single()
+
+                      if (municipality) {
+                        handleSaveGeography({
+                          type: 'municipality',
+                          id: value.municipalityId,
+                          name: municipality.name
+                        })
+                      }
+                    } else {
+                      // Both null - remove association
+                      handleSaveGeography(null)
+                    }
+                  }}
+                  placeholder="Søk etter kommune eller sted..."
+                />
+              </div>
+            </div>
           </TabsContent>
         </Tabs>
       </DialogContent>
