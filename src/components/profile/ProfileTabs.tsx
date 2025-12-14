@@ -11,8 +11,17 @@ interface ProfileTabsProps {
   isOwnProfile: boolean
 }
 
+interface PostData {
+  id: string
+  user_id: string
+  content: string | null
+  image_url: string | null
+  created_at: string
+  [key: string]: unknown
+}
+
 export function ProfileTabs({ profileId, isOwnProfile }: ProfileTabsProps) {
-  const [personalPosts, setPersonalPosts] = useState<any[]>([])
+  const [personalPosts, setPersonalPosts] = useState<PostData[]>([])
   const [loading, setLoading] = useState(true)
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const supabase = createClient()
@@ -75,7 +84,7 @@ export function ProfileTabs({ profileId, isOwnProfile }: ProfileTabsProps) {
         ) : (
           <div className="space-y-4">
             {personalPosts.map(post => (
-              <PostCard key={post.id} post={post} currentUserId={currentUserId} />
+              <PostCard key={post.id} post={post as never} currentUserId={currentUserId} />
             ))}
           </div>
         )}

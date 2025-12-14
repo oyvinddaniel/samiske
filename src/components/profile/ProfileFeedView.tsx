@@ -44,7 +44,7 @@ export function ProfileFeedView({ userId: viewUserId, onClose }: ProfileFeedView
     setRefreshKey(prev => prev + 1)
   }, [])
 
-  const handleSaveProfile = useCallback(async (updates: any) => {
+  const handleSaveProfile = useCallback(async (updates: Record<string, unknown>) => {
     if (!profileUserId || !isOwnProfile) return
 
     const { error } = await supabase

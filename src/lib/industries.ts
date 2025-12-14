@@ -101,7 +101,13 @@ export async function getCommunityIndustries(communityId: string): Promise<Indus
     return []
   }
 
-  return (data?.map((item: any) => item.industry).filter(Boolean) as Industry[]) || []
+  return (data?.map((item: { industry: Industry | Industry[] | null }) => {
+    // Handle both single object and array responses from Supabase
+    if (Array.isArray(item.industry)) {
+      return item.industry[0] ?? null
+    }
+    return item.industry
+  }).filter((industry): industry is Industry => industry !== null)) || []
 }
 
 /**

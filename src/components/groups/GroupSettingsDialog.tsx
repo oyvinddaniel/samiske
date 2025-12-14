@@ -71,17 +71,22 @@ export function GroupSettingsDialog({
         .single()
 
       if (groupPlace) {
+        const placeData = groupPlace.place as { name: string } | { name: string }[] | null
+        const municipalityData = groupPlace.municipality as { name: string } | { name: string }[] | null
+
         if (groupPlace.place_id) {
+          const place = Array.isArray(placeData) ? placeData[0] : placeData
           setCurrentGeography({
             type: 'place',
             id: groupPlace.place_id,
-            name: (groupPlace.place as any)?.name || 'Ukjent sted'
+            name: place?.name || 'Ukjent sted'
           })
         } else if (groupPlace.municipality_id) {
+          const municipality = Array.isArray(municipalityData) ? municipalityData[0] : municipalityData
           setCurrentGeography({
             type: 'municipality',
             id: groupPlace.municipality_id,
-            name: (groupPlace.municipality as any)?.name || 'Ukjent kommune'
+            name: municipality?.name || 'Ukjent kommune'
           })
         }
       }

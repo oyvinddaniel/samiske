@@ -10,8 +10,17 @@ interface UserProfileTabsProps {
   userId: string
 }
 
+interface PostData {
+  id: string
+  user_id: string
+  content: string | null
+  image_url: string | null
+  created_at: string
+  [key: string]: unknown
+}
+
 export function UserProfileTabs({ userId }: UserProfileTabsProps) {
-  const [allPosts, setAllPosts] = useState<any[]>([])
+  const [allPosts, setAllPosts] = useState<PostData[]>([])
   const [loading, setLoading] = useState(true)
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const supabase = useMemo(() => createClient(), [])
@@ -118,7 +127,7 @@ export function UserProfileTabs({ userId }: UserProfileTabsProps) {
         ) : (
           <div className="space-y-[66px]">
             {allPosts.map(post => (
-              <PostCard key={post.id} post={post} currentUserId={currentUserId} />
+              <PostCard key={post.id} post={post as never} currentUserId={currentUserId} />
             ))}
           </div>
         )}
@@ -133,7 +142,7 @@ export function UserProfileTabs({ userId }: UserProfileTabsProps) {
         ) : (
           <div className="space-y-[66px]">
             {imagePosts.map(post => (
-              <PostCard key={post.id} post={post} currentUserId={currentUserId} />
+              <PostCard key={post.id} post={post as never} currentUserId={currentUserId} />
             ))}
           </div>
         )}

@@ -12,8 +12,25 @@ interface AllMyPostsProps {
 
 type FilterType = 'all' | 'geographic' | 'groups' | 'communities'
 
+interface PostWithRelations {
+  id: string
+  user_id: string
+  content: string | null
+  image_url: string | null
+  created_at: string
+  municipality_id?: string | null
+  place_id?: string | null
+  created_for_group_id?: string | null
+  created_for_community_id?: string | null
+  municipality?: { id: string; name: string } | null
+  place?: { id: string; name: string } | null
+  group?: { id: string; name: string; slug: string } | null
+  community?: { id: string; name: string; slug: string } | null
+  [key: string]: unknown
+}
+
 export function AllMyPosts({ userId, showOnlyOtherFeeds = false }: AllMyPostsProps) {
-  const [posts, setPosts] = useState<any[]>([])
+  const [posts, setPosts] = useState<PostWithRelations[]>([])
   const [filter, setFilter] = useState<FilterType>('all')
   const [loading, setLoading] = useState(true)
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
@@ -156,7 +173,7 @@ export function AllMyPosts({ userId, showOnlyOtherFeeds = false }: AllMyPostsPro
                 )}
               </div>
               <div className="p-0">
-                <PostCard post={post} currentUserId={currentUserId} />
+                <PostCard post={post as never} currentUserId={currentUserId} />
               </div>
             </div>
           ))}

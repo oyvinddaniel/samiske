@@ -10,10 +10,28 @@ import type { Service } from '@/lib/types/services'
 
 type CatalogFilter = 'all' | 'products' | 'services'
 
+interface ProductWithCommunity extends Product {
+  community?: {
+    id: string
+    name: string
+    slug: string
+    logo_url?: string | null
+  } | null
+}
+
+interface ServiceWithCommunity extends Service {
+  community?: {
+    id: string
+    name: string
+    slug: string
+    logo_url?: string | null
+  } | null
+}
+
 export function SamfunnKatalogTab() {
   const [filter, setFilter] = useState<CatalogFilter>('all')
-  const [products, setProducts] = useState<Product[]>([])
-  const [services, setServices] = useState<Service[]>([])
+  const [products, setProducts] = useState<ProductWithCommunity[]>([])
+  const [services, setServices] = useState<ServiceWithCommunity[]>([])
   const [loading, setLoading] = useState(true)
 
   const supabase = createClient()
@@ -38,11 +56,11 @@ export function SamfunnKatalogTab() {
       ])
 
       if (productsData.data) {
-        setProducts(productsData.data as any[])
+        setProducts(productsData.data as ProductWithCommunity[])
       }
 
       if (servicesData.data) {
-        setServices(servicesData.data as any[])
+        setServices(servicesData.data as ServiceWithCommunity[])
       }
 
       setLoading(false)
@@ -96,7 +114,7 @@ export function SamfunnKatalogTab() {
         <section>
           <h3 className="font-semibold mb-3">Produkter</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {products.map((product: any) => (
+            {products.map((product) => (
               <ProductCard
                 key={product.id}
                 product={product}
@@ -112,7 +130,7 @@ export function SamfunnKatalogTab() {
         <section>
           <h3 className="font-semibold mb-3">Tjenester</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {services.map((service: any) => (
+            {services.map((service) => (
               <ServiceCard
                 key={service.id}
                 service={service}
