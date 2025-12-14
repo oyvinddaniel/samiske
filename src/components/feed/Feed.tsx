@@ -1,10 +1,11 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { PostCard } from '@/components/posts/PostCard'
-import { CreatePostSheet } from '@/components/posts/CreatePostSheet'
+import { CreatePostSheet, type DefaultGeography } from '@/components/posts/CreatePostSheet'
+import { FeedFilters, FeedFilterType } from './FeedFilters'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
 
@@ -13,9 +14,24 @@ interface GeographyFilter {
   id?: string  // UUID, null for 'sapmi'
 }
 
+export interface StarredLocations {
+  languageAreaIds: string[]
+  municipalityIds: string[]
+  placeIds: string[]
+}
+
 interface FeedProps {
   categorySlug?: string
   geography?: GeographyFilter
+  geographyName?: string  // Name of the geography for auto-setting in create post
+  showFilters?: boolean
+  groupId?: string
+  groupIds?: string[]  // Filter by multiple groups (for combined feed)
+  communityIds?: string[]
+  userId?: string  // Filter posts by specific user
+  hideCreateButton?: boolean  // Hide the create post button
+  starredLocations?: StarredLocations  // Filter by starred locations
+  friendsOnly?: boolean  // Filter to show only friends' posts
 }
 
 interface Post {
@@ -47,12 +63,49 @@ interface Post {
   posted_from_type?: 'place' | 'municipality' | 'sapmi'
 }
 
-export function Feed({ categorySlug, geography }: FeedProps) {
+export function Feed({ categorySlug, geography, geographyName, showFilters = false, groupId, groupIds, communityIds, userId: filterUserId, hideCreateButton = false, starredLocations, friendsOnly = false }: FeedProps) {
   const [posts, setPosts] = useState<Post[]>([])
   const [loading, setLoading] = useState(true)
   const [currentUserId, setCurrentUserId] = useState<string | undefined>()
   const [showCreatePost, setShowCreatePost] = useState(false)
+  const [currentFilter, setCurrentFilter] = useState<FeedFilterType>('sapmi')
   const supabase = createClient()
+
+  // Use refs for filter data to avoid infinite loops
+  const starredMunicipalityIdsRef = useRef<string[]>([])
+  const starredPlaceIdsRef = useRef<string[]>([])
+  const friendIdsRef = useRef<string[]>([])
+
+  // Fetch user's starred places and friends
+  const fetchUserData = useCallback(async (userId: string) => {
+    // Fetch starred municipalities
+    const { data: starredMunicipalities } = await supabase
+      .from('user_starred_municipalities')
+      .select('municipality_id')
+      .eq('user_id', userId)
+
+    starredMunicipalityIdsRef.current = (starredMunicipalities || []).map(s => s.municipality_id)
+
+    // Fetch starred places
+    const { data: starredPlaces } = await supabase
+      .from('user_starred_places')
+      .select('place_id')
+      .eq('user_id', userId)
+
+    starredPlaceIdsRef.current = (starredPlaces || []).map(s => s.place_id)
+
+    // Fetch friends (accepted friendships)
+    const { data: friendships } = await supabase
+      .from('friendships')
+      .select('requester_id, addressee_id')
+      .eq('status', 'accepted')
+      .or(`requester_id.eq.${userId},addressee_id.eq.${userId}`)
+
+    const friends = (friendships || []).map(f =>
+      f.requester_id === userId ? f.addressee_id : f.requester_id
+    )
+    friendIdsRef.current = friends
+  }, [supabase])
 
   const fetchPosts = useCallback(async () => {
       setLoading(true)
@@ -60,6 +113,11 @@ export function Feed({ categorySlug, geography }: FeedProps) {
       // Get current user
       const { data: { user } } = await supabase.auth.getUser()
       setCurrentUserId(user?.id)
+
+      // Fetch user data for filtering if logged in
+      if (user) {
+        await fetchUserData(user.id)
+      }
 
       let postsData: Array<{
         id: string
@@ -148,9 +206,156 @@ export function Feed({ categorySlug, geography }: FeedProps) {
           }
         }
 
-        const { data, error } = await query
-        postsData = data
-        fetchError = error
+        // Filter by group(s) if provided
+        if (groupId || (groupIds && groupIds.length > 0)) {
+          // Get posts that belong to the group(s) via created_for_group_id
+          const idsToQuery = groupIds && groupIds.length > 0 ? groupIds : [groupId!]
+          query = query.in('created_for_group_id', idsToQuery)
+        } else {
+          // When NOT viewing a specific group:
+          // ALWAYS EXCLUDE posts from hidden/closed groups (except user's own posts in personal feed)
+
+          // Get IDs of hidden/closed groups
+          const { data: hiddenClosedGroups } = await supabase
+            .from('groups')
+            .select('id')
+            .in('group_type', ['hidden', 'closed'])
+
+          const hiddenClosedGroupIds = (hiddenClosedGroups || []).map(g => g.id)
+
+          if (hiddenClosedGroupIds.length > 0) {
+            // Exclude posts from these groups, UNLESS:
+            // 1. Viewing own profile (filterUserId is set), OR
+            // 2. User is viewing their personal feed with friendsOnly
+            const shouldShowOwnGroupPosts = (filterUserId && filterUserId === currentUserId) || friendsOnly
+
+            if (!shouldShowOwnGroupPosts) {
+              // Completely exclude posts from closed/hidden groups
+              query = query.or(`created_for_group_id.is.null,created_for_group_id.not.in.(${hiddenClosedGroupIds.join(',')})`)
+            } else if (currentUserId) {
+              // For personal feed: only show posts from groups where user is a member
+              const { data: userGroupMemberships } = await supabase
+                .from('group_members')
+                .select('group_id')
+                .eq('user_id', currentUserId)
+                .eq('status', 'approved')
+
+              const userGroupIds = (userGroupMemberships || []).map(gm => gm.group_id)
+              const allowedGroupIds = userGroupIds.filter(id => !hiddenClosedGroupIds.includes(id))
+
+              if (allowedGroupIds.length > 0) {
+                query = query.or(`created_for_group_id.is.null,created_for_group_id.in.(${allowedGroupIds.join(',')})`)
+              } else {
+                query = query.is('created_for_group_id', null)
+              }
+            }
+          }
+
+          // KRITISK: Ekskluder personlige innlegg KUN fra geografiske feeds og starred locations
+          // Personlige innlegg skal vises i:
+          // - Brukerens egen profilfeed (filterUserId er satt)
+          // - Hovedfeed (ingen filtre)
+          // - Venners feed (friendsOnly er satt)
+          if (geography || starredLocations) {
+            // Geographic feeds should only show posts with geographic context
+            // Exclude personal posts (null group_id AND null community_id)
+            query = query.or('created_for_group_id.not.is.null,created_for_community_id.not.is.null,municipality_id.not.is.null,place_id.not.is.null')
+          }
+        }
+
+        // Filter by community IDs if provided
+        if (communityIds && communityIds.length > 0) {
+          // Get posts that belong to these communities via community_posts junction table
+          const { data: communityPosts } = await supabase
+            .from('community_posts')
+            .select('post_id')
+            .in('community_id', communityIds)
+
+          const communityPostIds = (communityPosts || []).map(cp => cp.post_id)
+          if (communityPostIds.length > 0) {
+            query = query.in('id', communityPostIds)
+          } else {
+            // No posts from followed communities
+            postsData = []
+          }
+        }
+
+        // Filter by specific user if provided
+        if (filterUserId) {
+          query = query.eq('user_id', filterUserId)
+        }
+
+        // Apply starred locations filter if provided
+        if (starredLocations && !geography) {
+          const { languageAreaIds, municipalityIds, placeIds } = starredLocations
+          if (languageAreaIds.length > 0 || municipalityIds.length > 0 || placeIds.length > 0) {
+            const orFilters: string[] = []
+            if (languageAreaIds.length > 0) {
+              orFilters.push(`language_area_id.in.(${languageAreaIds.join(',')})`)
+            }
+            if (municipalityIds.length > 0) {
+              orFilters.push(`municipality_id.in.(${municipalityIds.join(',')})`)
+            }
+            if (placeIds.length > 0) {
+              orFilters.push(`place_id.in.(${placeIds.join(',')})`)
+            }
+            query = query.or(orFilters.join(','))
+          } else {
+            // No starred locations, return empty
+            postsData = []
+            fetchError = null
+          }
+        }
+
+        // Apply friends-only filter if provided
+        if (friendsOnly && !geography) {
+          if (friendIdsRef.current.length > 0) {
+            query = query.in('user_id', friendIdsRef.current)
+          } else {
+            // No friends, return empty
+            postsData = []
+            fetchError = null
+          }
+        }
+
+        // Apply feed filters (only when showFilters is true and no other filters)
+        if (showFilters && !geography && !starredLocations && !friendsOnly) {
+          if (currentFilter === 'mine') {
+            // Filter by user's starred places and municipalities
+            // We need to use OR filter for places and municipalities
+            if (starredMunicipalityIdsRef.current.length > 0 || starredPlaceIdsRef.current.length > 0) {
+              const orFilters: string[] = []
+              if (starredMunicipalityIdsRef.current.length > 0) {
+                orFilters.push(`municipality_id.in.(${starredMunicipalityIdsRef.current.join(',')})`)
+              }
+              if (starredPlaceIdsRef.current.length > 0) {
+                orFilters.push(`place_id.in.(${starredPlaceIdsRef.current.join(',')})`)
+              }
+              query = query.or(orFilters.join(','))
+            } else {
+              // No starred places, return empty
+              postsData = []
+              fetchError = null
+            }
+          } else if (currentFilter === 'venner') {
+            // Filter by friends' posts
+            if (friendIdsRef.current.length > 0) {
+              query = query.in('user_id', friendIdsRef.current)
+            } else {
+              // No friends, return empty
+              postsData = []
+              fetchError = null
+            }
+          }
+          // 'sapmi' is default - no additional filter
+        }
+
+        // Only execute query if postsData hasn't been set to empty array
+        if (postsData === null) {
+          const { data, error } = await query
+          postsData = data
+          fetchError = error
+        }
       }
 
       const error = fetchError
@@ -268,9 +473,10 @@ export function Feed({ categorySlug, geography }: FeedProps) {
 
       setPosts(postsWithCounts)
       setLoading(false)
-  }, [categorySlug, geography, supabase])
+  }, [categorySlug, geography, supabase, currentFilter, showFilters, fetchUserData, groupId, groupIds, communityIds, filterUserId, starredLocations, friendsOnly])
 
   useEffect(() => {
+     
     fetchPosts()
   }, [fetchPosts])
 
@@ -298,18 +504,20 @@ export function Feed({ categorySlug, geography }: FeedProps) {
   return (
     <div className="relative">
       {/* Create post button - only for logged in users */}
-      {currentUserId && (
-        <button onClick={() => setShowCreatePost(true)} className="block mb-5 w-full">
-          <div className="w-40 mx-auto">
-            <div className="bg-white rounded-xl p-4 border-2 border-dashed border-gray-200 hover:border-blue-400 hover:bg-blue-50/50 transition-all cursor-pointer group flex items-center justify-center">
-              <div className="w-10 h-10 rounded-full bg-blue-100 group-hover:bg-blue-200 flex items-center justify-center transition-colors">
-                <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-              </div>
+      {currentUserId && !hideCreateButton && (
+        <div className="flex justify-center mb-6">
+          <button
+            onClick={() => setShowCreatePost(true)}
+            className="group flex items-center gap-2.5 px-5 py-2.5 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white rounded-full shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/30 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
+          >
+            <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center group-hover:bg-white/30 transition-colors">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
+              </svg>
             </div>
-          </div>
-        </button>
+            <span className="font-medium text-sm">Nytt innlegg</span>
+          </button>
+        </div>
       )}
 
       {/* Create post sheet */}
@@ -319,6 +527,13 @@ export function Feed({ categorySlug, geography }: FeedProps) {
           onClose={() => setShowCreatePost(false)}
           onSuccess={fetchPosts}
           userId={currentUserId}
+          defaultGeography={geography && geography.id && geographyName ? {
+            type: geography.type as 'language_area' | 'municipality' | 'place',
+            id: geography.id,
+            name: geographyName
+          } : undefined}
+          groupId={groupId || null}
+          communityId={communityIds && communityIds.length > 0 ? communityIds[0] : null}
         />
       )}
 
