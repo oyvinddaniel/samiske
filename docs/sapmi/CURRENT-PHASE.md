@@ -1,113 +1,64 @@
-# Aktiv Fase: 3 - Innleggsbobling
+# Aktiv Fase: 9 - Universelt sok
 
-> **Status:** FULLFORT
-> **Startet:** 2025-12-13
-> **Fullfort:** 2025-12-13
-> **Forrige fase:** Fase 2 (fullfort 2025-12-13)
-> **Risiko:** MEDIUM
+> **Status:** PENDING
+> **Forrige fase:** Fase 8 (fullfort 2025-12-13)
+> **Risiko:** LAV
 
 ---
 
 ## Mal
 
-Implementere logikk for at innlegg "bobler opp" i geografihierarkiet, slik at innlegg fra et sted ogsa vises i kommunen, sprakområdet, landet og hele Sapmi.
+Implementere universelt sok pa tvers av alle innholdstyper:
+- Sok i innlegg, brukere, grupper, samfunn, steder
+- Samlet sokegrensesnitt
+- Resultater gruppert etter type
 
 ---
 
-## Boblingslogikk
+## Oppgaver
 
-```
-Innlegg postet i Drag (sted)
-    |
-    v vises ogsa i
-Hamaroy kommune
-    |
-    v vises ogsa i
-Lulesamisk område + Norge
-    |
-    v vises ogsa i
-Hele Sapmi
-```
+- [ ] Opprett universal_search database-funksjon
+- [ ] Utvid SearchModal med alle sokbare typer
+- [ ] Legg til full-text search indexes
+- [ ] Test sok pa alle innholdstyper
 
 ---
 
-## Fullforte oppgaver
+## Sokbare entiteter
 
-- [x] Opprett database-funksjon `get_posts_for_geography` (migrasjonsfil klar)
-- [x] Migrer eksisterende innlegg til Trondheim (i migrasjonsfilen)
-- [x] Modifiser Feed.tsx for geografisk filtrering
-- [x] Legg til "Postet fra [sted]" indikator pa PostCard
-- [x] Oppdater alle geografiske sider til a bruke Feed med filter
-
-## Ventende oppgaver
-
-- [x] ~~Kjor migrering~~ (kjort via psql 2025-12-13)
-
----
-
-## Migrasjonsfil
-
-Filen `supabase/migrations/20241213_phase3_bubbling.sql` ma kjores manuelt:
-
-1. Ga til [Supabase Dashboard](https://supabase.com/dashboard)
-2. Velg prosjektet
-3. Ga til SQL Editor
-4. Lim inn innholdet fra migrasjonsfilen
-5. Kjor SQL
-
-**Innhold:**
-- `get_posts_for_geography()` - RPC-funksjon for a hente innlegg med bobling
-- `count_posts_for_geography()` - Hjelpefunksjon for telling
-- Migrering av eksisterende innlegg til Trondheim
-- Indekser for ytelse
+| Type | Tabell | Sokefelter |
+|------|--------|------------|
+| Innlegg | `posts` | title, content |
+| Brukere | `profiles` | username, full_name |
+| Grupper | `groups` | name, description |
+| Samfunn | `communities` | name, description |
+| Kommuner | `municipalities` | name |
+| Steder | `places` | name |
 
 ---
 
-## Filer endret
+## Filer som skal endres
 
 | Fil | Endring |
 |-----|---------|
-| `supabase/migrations/20241213_phase3_bubbling.sql` | NY - Boblingslogikk |
-| `src/components/feed/Feed.tsx` | Geografisk filtrering via RPC |
-| `src/components/posts/PostCard.tsx` | "Postet fra [sted]" indikator |
-| `src/components/posts/types.ts` | Lagt til posted_from_name/type |
-| `src/app/sapmi/page.tsx` | Bruker Feed med geography={type:'sapmi'} |
-| `src/app/sapmi/[countryCode]/page.tsx` | Bruker Feed med geography={type:'country'} |
-| `src/app/sapmi/sprak/[code]/page.tsx` | Bruker Feed med geography={type:'language_area'} |
-| `src/app/sapmi/[countryCode]/[municipalitySlug]/page.tsx` | Bruker Feed med geography={type:'municipality'} |
-| `src/app/sapmi/.../[placeSlug]/page.tsx` | Bruker Feed med geography={type:'place'} |
+| `src/components/search/SearchModal.tsx` | Utvid med alle typer |
+| `supabase/migrations/` | Ny migrasjon for search |
 
 ---
 
-## Hvordan det fungerer
+## Forrige fase (Fase 8) - FULLFORT
 
-### Feed.tsx
+### Implementert
+- [x] Database-migrasjon: `20241213_phase8_rsvp.sql`
+- [x] TypeScript-typer: `src/lib/types/events.ts`
+- [x] Lib-funksjoner: `src/lib/events.ts`
+- [x] Komponenter: RSVPButton, RSVPList
+- [x] PostCard oppdatert med RSVP-knapper for events
+- [x] PostDialogContent oppdatert med RSVP
 
-Feed-komponenten aksepterer na en `geography` prop:
-
-```typescript
-interface GeographyFilter {
-  type: 'sapmi' | 'country' | 'language_area' | 'municipality' | 'place'
-  id?: string  // UUID, undefined for 'sapmi'
-}
-
-<Feed geography={{ type: 'municipality', id: municipalityId }} />
-```
-
-### RPC-funksjon
-
-Nar RPC-funksjonen er tilgjengelig, brukes den for geografisk filtrering med bobling. Hvis funksjonen ikke finnes (migrering ikke kjort), faller Feed tilbake til standard query.
-
-### PostCard
-
-Viser "Postet fra [sted]" hvis:
-- `posted_from_name` er satt
-- `posted_from_type` er 'place' eller 'municipality' (ikke 'sapmi')
-
----
-
-## Neste fase
-
-Etter at migreringen er kjort og testet:
-
-**Fase 4: Grupper** - Implementere gruppetyper (apen/lukket/skjult)
+### RPC-funksjoner opprettet
+- `set_event_rsvp(post_id, status)`
+- `remove_event_rsvp(post_id)`
+- `get_user_rsvp_status(post_id)`
+- `get_event_rsvp_counts(post_id)`
+- `get_event_rsvp_users(post_id, status, limit, offset)`

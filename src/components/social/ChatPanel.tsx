@@ -41,11 +41,16 @@ export function ChatPanel({ friendId, friendName, onClose }: ChatPanelProps) {
   // Fetch friend profile
   useEffect(() => {
     const fetchFriend = async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('profiles')
         .select('avatar_url')
         .eq('id', friendId)
         .single()
+
+      if (error) {
+        console.error('Error fetching friend profile:', error)
+        return
+      }
 
       if (data) setFriendProfile(data)
     }
@@ -103,11 +108,15 @@ export function ChatPanel({ friendId, friendName, onClose }: ChatPanelProps) {
 
   // Fetch messages
   const fetchMessages = useCallback(async (convId: string) => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('messages')
       .select('id, content, sender_id, created_at')
       .eq('conversation_id', convId)
       .order('created_at', { ascending: true })
+
+    if (error) {
+      console.error('Error fetching messages:', error)
+    }
 
     if (data) setMessages(data)
     setLoading(false)

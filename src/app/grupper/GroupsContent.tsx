@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Users, Plus, Search, FileText, Grid, ArrowLeft, Settings } from 'lucide-react'
+import { Users, Plus, Search, FileText, Grid, ArrowLeft, Settings, PenSquare } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { GroupCard, CreateGroupModal, JoinGroupButton, GroupSettingsDialog } from '@/components/groups'
 import { Feed } from '@/components/feed/Feed'
+import { CreatePostSheet } from '@/components/posts/CreatePostSheet'
 import { getUserGroups, getGroupBySlug, getGroupMembers, isGroupMember } from '@/lib/groups'
 import { createClient } from '@/lib/supabase/client'
 import type { Group, UserGroup, GroupMember, MemberStatus } from '@/lib/types/groups'
@@ -34,6 +35,7 @@ export function GroupsContent() {
   }>({ isMember: false, role: null, status: null })
   const [showSettings, setShowSettings] = useState(false)
   const [groupTab, setGroupTab] = useState('posts')
+  const [showCreatePost, setShowCreatePost] = useState(false)
 
   const supabase = createClient()
 
@@ -220,6 +222,23 @@ export function GroupsContent() {
           </div>
         </div>
 
+        {/* Create post button - only show for members who can view content */}
+        {canViewContent && currentUserId && membership.isMember && (
+          <div className="flex justify-center mb-6">
+            <button
+              onClick={() => setShowCreatePost(true)}
+              className="group flex items-center gap-2.5 px-5 py-2.5 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white rounded-full shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/30 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
+            >
+              <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center group-hover:bg-white/30 transition-colors">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
+                </svg>
+              </div>
+              <span className="font-medium text-sm">Nytt innlegg</span>
+            </button>
+          </div>
+        )}
+
         {/* Group content */}
         {canViewContent ? (
           <Tabs value={groupTab} onValueChange={setGroupTab}>
@@ -302,6 +321,20 @@ export function GroupsContent() {
             onMembershipChange={refreshGroupData}
           />
         )}
+
+        {/* Create Post Sheet */}
+        {membership.isMember && currentUserId && (
+          <CreatePostSheet
+            open={showCreatePost}
+            onClose={() => setShowCreatePost(false)}
+            userId={currentUserId}
+            groupId={selectedGroup.id}
+            onSuccess={() => {
+              setShowCreatePost(false)
+              window.dispatchEvent(new CustomEvent('post-created'))
+            }}
+          />
+        )}
       </>
     )
   }
@@ -336,7 +369,7 @@ export function GroupsContent() {
           <TabsList>
             <TabsTrigger value="feed">
               <FileText className="w-4 h-4" />
-              Aktivitet
+              Innlegg fra mine grupper
             </TabsTrigger>
             <TabsTrigger value="mine">
               <Users className="w-4 h-4" />

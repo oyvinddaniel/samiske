@@ -6,7 +6,14 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { ChevronLeft, ChevronRight, Calendar, MapPin, Clock, X, ExternalLink } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Calendar, MapPin, Clock, X, ExternalLink, Video, Globe, Filter, Share2, Users } from 'lucide-react'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 
 interface Event {
   id: string
@@ -17,9 +24,24 @@ interface Event {
   event_time: string | null
   event_end_time: string | null
   event_location: string | null
+  is_digital?: boolean
+  meeting_url?: string | null
+  meeting_platform?: string | null
+  max_participants?: number | null
+  posted_from_name?: string | null
+  posted_from_type?: string | null
+  source_type?: string | null // 'primary', 'bubbled', 'shared'
   user: {
     full_name: string | null
   }
+}
+
+type GeographyType = 'sapmi' | 'country' | 'language_area' | 'municipality' | 'place' | 'user_locations'
+
+interface GeographyOption {
+  type: GeographyType
+  id: string | null
+  name: string
 }
 
 interface EventPopupProps {
@@ -33,6 +55,7 @@ function EventPopup({ event, anchorRect, onClose }: EventPopupProps) {
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
+     
     setMounted(true)
   }, [])
 
@@ -138,9 +161,23 @@ function EventPopup({ event, anchorRect, onClose }: EventPopupProps) {
 
         {/* Event details */}
         <div className="p-4">
-          <h3 className="font-bold text-lg text-gray-900 pr-8">
-            {event.title}
-          </h3>
+          <div className="flex items-start gap-2 pr-8">
+            <h3 className="font-bold text-lg text-gray-900">
+              {event.title}
+            </h3>
+            {event.is_digital && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs bg-purple-100 text-purple-700 flex-shrink-0">
+                <Video className="w-3 h-3" />
+                Digital
+              </span>
+            )}
+            {event.source_type === 'shared' && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs bg-blue-100 text-blue-700 flex-shrink-0">
+                <Share2 className="w-3 h-3" />
+                Delt
+              </span>
+            )}
+          </div>
 
           <div className="mt-3 space-y-2">
             <div className="flex items-center gap-2 text-sm text-gray-600">
@@ -155,10 +192,37 @@ function EventPopup({ event, anchorRect, onClose }: EventPopupProps) {
               </div>
             )}
 
-            {event.event_location && (
+            {event.is_digital ? (
+              <>
+                {event.meeting_platform && (
+                  <div className="flex items-center gap-2 text-sm text-purple-600">
+                    <Video className="w-4 h-4" />
+                    {event.meeting_platform}
+                  </div>
+                )}
+                {event.meeting_url && (
+                  <a
+                    href={event.meeting_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 text-sm text-purple-600 hover:text-purple-700 underline"
+                  >
+                    <Globe className="w-4 h-4" />
+                    Bli med på møtet
+                  </a>
+                )}
+              </>
+            ) : event.event_location && (
               <div className="flex items-center gap-2 text-sm text-gray-600">
                 <MapPin className="w-4 h-4 text-green-500" />
                 {event.event_location}
+              </div>
+            )}
+
+            {event.max_participants && (
+              <div className="flex items-center gap-2 text-sm text-gray-600">
+                <Users className="w-4 h-4 text-orange-500" />
+                Maks {event.max_participants} deltakere
               </div>
             )}
           </div>
@@ -169,9 +233,9 @@ function EventPopup({ event, anchorRect, onClose }: EventPopupProps) {
             </p>
           )}
 
-          {event.user?.full_name && (
+          {(event.user?.full_name || event.posted_from_name) && (
             <p className="mt-2 text-xs text-gray-400">
-              Arrangert av {event.user.full_name}
+              Arrangert av {event.posted_from_name || event.user?.full_name}
             </p>
           )}
 
@@ -194,7 +258,22 @@ const MONTHS = [
   'Juli', 'August', 'September', 'Oktober', 'November', 'Desember'
 ]
 
-export function CalendarView() {
+interface CalendarViewProps {
+  groupId?: string
+  communityIds?: string[]
+  // Geografisk filtrering
+  geographyType?: GeographyType
+  geographyId?: string | null
+  showFilter?: boolean
+}
+
+export function CalendarView({
+  groupId,
+  communityIds,
+  geographyType: initialGeographyType,
+  geographyId: initialGeographyId,
+  showFilter = true
+}: CalendarViewProps = {}) {
   const [currentDate, setCurrentDate] = useState(new Date())
   const [events, setEvents] = useState<Event[]>([])
   const [loading, setLoading] = useState(true)
@@ -202,6 +281,41 @@ export function CalendarView() {
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null)
   const [eventAnchorRect, setEventAnchorRect] = useState<DOMRect | null>(null)
   const supabase = useMemo(() => createClient(), [])
+
+  // Geografisk filtrering
+  const [geographyType, setGeographyType] = useState<GeographyType>(initialGeographyType || 'user_locations')
+  const [geographyId, setGeographyId] = useState<string | null>(initialGeographyId || null)
+  const [geographyOptions, setGeographyOptions] = useState<GeographyOption[]>([])
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
+
+  // Hent bruker og geografiske alternativer
+  useEffect(() => {
+    const init = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      setCurrentUserId(user?.id || null)
+
+      // Hent språkområder og kommuner for filter
+      const [langAreasRes, municipalitiesRes] = await Promise.all([
+        supabase.from('language_areas').select('id, name').order('sort_order'),
+        supabase.from('municipalities').select('id, name').order('name').limit(50)
+      ])
+
+      const options: GeographyOption[] = [
+        { type: 'user_locations', id: null, name: 'Mine steder' },
+        { type: 'sapmi', id: null, name: 'Hele Sapmi' },
+      ]
+
+      if (langAreasRes.data) {
+        langAreasRes.data.forEach(la => {
+          options.push({ type: 'language_area', id: la.id, name: la.name })
+        })
+      }
+
+      setGeographyOptions(options)
+    }
+
+    init()
+  }, [supabase])
 
   // Fetch events for the current month
   useEffect(() => {
@@ -215,38 +329,130 @@ export function CalendarView() {
       const firstDay = new Date(year, month, 1).toISOString().split('T')[0]
       const lastDay = new Date(year, month + 1, 0).toISOString().split('T')[0]
 
-      const { data, error } = await supabase
-        .from('posts')
-        .select(`
-          id,
-          title,
-          content,
-          image_url,
-          event_date,
-          event_time,
-          event_end_time,
-          event_location,
-          user:profiles!posts_user_id_fkey (full_name)
-        `)
-        .eq('type', 'event')
-        .gte('event_date', firstDay)
-        .lte('event_date', lastDay)
-        .order('event_date', { ascending: true })
-        .order('event_time', { ascending: true })
+      // If filtering by group or community, use old method
+      if (groupId || (communityIds && communityIds.length > 0)) {
+        let postIds: string[] | null = null
 
-      if (!error && data) {
-        const formatted = data.map(event => ({
-          ...event,
-          user: Array.isArray(event.user) ? event.user[0] : event.user
-        }))
-        setEvents(formatted as Event[])
+        if (groupId) {
+          const { data: groupPosts } = await supabase
+            .from('group_posts')
+            .select('post_id')
+            .eq('group_id', groupId)
+          postIds = groupPosts?.map(gp => gp.post_id) || []
+        }
+
+        if (communityIds && communityIds.length > 0) {
+          const { data: communityPosts } = await supabase
+            .from('community_posts')
+            .select('post_id')
+            .in('community_id', communityIds)
+          postIds = communityPosts?.map(cp => cp.post_id) || []
+        }
+
+        if (postIds !== null && postIds.length === 0) {
+          setEvents([])
+          setLoading(false)
+          return
+        }
+
+        let query = supabase
+          .from('posts')
+          .select(`
+            id, title, content, image_url, event_date, event_time,
+            event_end_time, event_location, is_digital, meeting_url,
+            meeting_platform, max_participants,
+            user:profiles!posts_user_id_fkey (full_name)
+          `)
+          .eq('type', 'event')
+          .gte('event_date', firstDay)
+          .lte('event_date', lastDay)
+          .order('event_date', { ascending: true })
+          .order('event_time', { ascending: true })
+
+        if (postIds !== null) {
+          query = query.in('id', postIds)
+        }
+
+        const { data, error } = await query
+        if (!error && data) {
+          const formatted = data.map(event => ({
+            ...event,
+            user: Array.isArray(event.user) ? event.user[0] : event.user
+          }))
+          setEvents(formatted as Event[])
+        }
+        setLoading(false)
+        return
+      }
+
+      // Use RPC functions for geographic filtering
+      try {
+        let data: Event[] = []
+
+        if (geographyType === 'user_locations' && currentUserId) {
+          // Fetch events for user's starred locations
+          const { data: rpcData, error } = await supabase.rpc('get_events_for_user_locations', {
+            p_user_id: currentUserId,
+            p_date_from: firstDay,
+            p_date_to: lastDay
+          })
+          if (error) throw error
+          data = rpcData || []
+        } else if (geographyType === 'sapmi') {
+          // Fetch all events in Sápmi
+          const { data: rpcData, error } = await supabase.rpc('get_events_for_geography', {
+            p_geography_type: 'sapmi',
+            p_geography_id: null,
+            p_date_from: firstDay,
+            p_date_to: lastDay
+          })
+          if (error) throw error
+          data = rpcData || []
+        } else if (geographyId) {
+          // Fetch events for specific geography
+          const { data: rpcData, error } = await supabase.rpc('get_events_for_geography', {
+            p_geography_type: geographyType,
+            p_geography_id: geographyId,
+            p_date_from: firstDay,
+            p_date_to: lastDay
+          })
+          if (error) throw error
+          data = rpcData || []
+        } else {
+          // Fallback: fetch all events
+          const { data: fallbackData, error } = await supabase
+            .from('posts')
+            .select(`
+              id, title, content, image_url, event_date, event_time,
+              event_end_time, event_location, is_digital, meeting_url,
+              meeting_platform, max_participants,
+              user:profiles!posts_user_id_fkey (full_name)
+            `)
+            .eq('type', 'event')
+            .gte('event_date', firstDay)
+            .lte('event_date', lastDay)
+            .order('event_date', { ascending: true })
+            .order('event_time', { ascending: true })
+
+          if (!error && fallbackData) {
+            data = fallbackData.map(event => ({
+              ...event,
+              user: Array.isArray(event.user) ? event.user[0] : event.user
+            })) as Event[]
+          }
+        }
+
+        setEvents(data)
+      } catch (error) {
+        console.error('Error fetching events:', error)
+        setEvents([])
       }
 
       setLoading(false)
     }
 
     fetchEvents()
-  }, [currentDate, supabase])
+  }, [currentDate, supabase, groupId, communityIds, geographyType, geographyId, currentUserId])
 
   // Generate calendar days
   const calendarDays = useMemo(() => {
@@ -340,22 +546,69 @@ export function CalendarView() {
       {/* Calendar */}
       <Card>
         <CardHeader className="pb-2">
-          <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2">
-              <Calendar className="w-5 h-5 text-blue-600" />
-              {MONTHS[currentDate.getMonth()]} {currentDate.getFullYear()}
-            </CardTitle>
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={goToToday}>
-                I dag
-              </Button>
-              <Button variant="ghost" size="icon" onClick={goToPreviousMonth}>
-                <ChevronLeft className="w-4 h-4" />
-              </Button>
-              <Button variant="ghost" size="icon" onClick={goToNextMonth}>
-                <ChevronRight className="w-4 h-4" />
-              </Button>
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2">
+                <Calendar className="w-5 h-5 text-blue-600" />
+                {MONTHS[currentDate.getMonth()]} {currentDate.getFullYear()}
+              </CardTitle>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" onClick={goToToday}>
+                  I dag
+                </Button>
+                <Button variant="ghost" size="icon" onClick={goToPreviousMonth}>
+                  <ChevronLeft className="w-4 h-4" />
+                </Button>
+                <Button variant="ghost" size="icon" onClick={goToNextMonth}>
+                  <ChevronRight className="w-4 h-4" />
+                </Button>
+              </div>
             </div>
+
+            {/* Geographic filter */}
+            {showFilter && !groupId && !communityIds && (
+              <div className="flex items-center gap-2">
+                <Filter className="w-4 h-4 text-gray-400" />
+                <Select
+                  value={geographyType === 'user_locations' ? 'user_locations' : `${geographyType}:${geographyId || ''}`}
+                  onValueChange={(value) => {
+                    if (value === 'user_locations') {
+                      setGeographyType('user_locations')
+                      setGeographyId(null)
+                    } else if (value === 'sapmi') {
+                      setGeographyType('sapmi')
+                      setGeographyId(null)
+                    } else {
+                      const [type, id] = value.split(':')
+                      setGeographyType(type as GeographyType)
+                      setGeographyId(id || null)
+                    }
+                  }}
+                >
+                  <SelectTrigger className="w-[200px] h-8 text-sm">
+                    <SelectValue placeholder="Velg område" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {geographyOptions.map((option) => (
+                      <SelectItem
+                        key={option.type === 'user_locations' || option.type === 'sapmi'
+                          ? option.type
+                          : `${option.type}:${option.id}`}
+                        value={option.type === 'user_locations' || option.type === 'sapmi'
+                          ? option.type
+                          : `${option.type}:${option.id}`}
+                      >
+                        <span className="flex items-center gap-2">
+                          {option.type === 'user_locations' && <MapPin className="w-3 h-3" />}
+                          {option.type === 'sapmi' && <Globe className="w-3 h-3" />}
+                          {option.name}
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </div>
         </CardHeader>
         <CardContent>
@@ -399,9 +652,19 @@ export function CalendarView() {
                       {dayEvents.slice(0, 2).map(event => (
                         <div
                           key={event.id}
-                          className="text-[9px] md:text-[10px] truncate bg-red-100 text-red-700 px-1 py-0.5 rounded"
+                          className={`
+                            text-[9px] md:text-[10px] truncate px-1 py-0.5 rounded flex items-center gap-0.5
+                            ${event.is_digital
+                              ? 'bg-purple-100 text-purple-700'
+                              : event.source_type === 'shared'
+                              ? 'bg-blue-100 text-blue-700'
+                              : 'bg-red-100 text-red-700'
+                            }
+                          `}
                         >
-                          {event.title}
+                          {event.is_digital && <Video className="w-2 h-2 flex-shrink-0" />}
+                          {event.source_type === 'shared' && <Share2 className="w-2 h-2 flex-shrink-0" />}
+                          <span className="truncate">{event.title}</span>
                         </div>
                       ))}
                       {dayEvents.length > 2 && (
@@ -452,19 +715,44 @@ export function CalendarView() {
                         />
                       </div>
                     )}
-                    <h3 className="font-medium text-gray-900 text-sm mb-1">
-                      {event.title}
-                    </h3>
+                    <div className="flex items-center gap-2 mb-1">
+                      <h3 className="font-medium text-gray-900 text-sm">
+                        {event.title}
+                      </h3>
+                      {event.is_digital && (
+                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] bg-purple-100 text-purple-700">
+                          <Video className="w-2.5 h-2.5" />
+                          Digital
+                        </span>
+                      )}
+                      {event.source_type === 'shared' && (
+                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] bg-blue-100 text-blue-700">
+                          <Share2 className="w-2.5 h-2.5" />
+                          Delt
+                        </span>
+                      )}
+                    </div>
                     {event.event_time && (
                       <div className="flex items-center gap-1 text-xs text-gray-500">
                         <Clock className="w-3 h-3" />
                         {formatTime(event.event_time, event.event_end_time)}
                       </div>
                     )}
-                    {event.event_location && (
+                    {event.is_digital && event.meeting_platform ? (
+                      <div className="flex items-center gap-1 text-xs text-purple-600 mt-0.5">
+                        <Video className="w-3 h-3" />
+                        {event.meeting_platform}
+                      </div>
+                    ) : event.event_location && (
                       <div className="flex items-center gap-1 text-xs text-gray-500 mt-0.5">
                         <MapPin className="w-3 h-3" />
                         {event.event_location}
+                      </div>
+                    )}
+                    {event.max_participants && (
+                      <div className="flex items-center gap-1 text-xs text-gray-500 mt-0.5">
+                        <Users className="w-3 h-3" />
+                        Maks {event.max_participants} deltakere
                       </div>
                     )}
                     <p className="text-xs text-gray-600 mt-2 line-clamp-2">

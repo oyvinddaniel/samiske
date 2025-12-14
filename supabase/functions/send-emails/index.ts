@@ -1,16 +1,20 @@
 // Supabase Edge Function for sending emails from the queue
-// Supports SMTP (cPanel/webhotell) - no external service needed!
+// Supports SMTP (cPanel/webhotell) AND Resend (recommended)
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts"
 
 // Environment variables - sett disse i Supabase Dashboard
+const SMTP_SERVICE = Deno.env.get('SMTP_SERVICE') || 'smtp' // 'smtp' or 'resend'
 const SMTP_HOST = Deno.env.get('SMTP_HOST') // f.eks. mail.dittdomene.no
 const SMTP_PORT = parseInt(Deno.env.get('SMTP_PORT') || '465')
 const SMTP_USER = Deno.env.get('SMTP_USER') // f.eks. noreply@samiske.no
 const SMTP_PASS = Deno.env.get('SMTP_PASS') // passordet til e-postkontoen
 const SMTP_FROM = Deno.env.get('SMTP_FROM') || 'samiske.no <noreply@samiske.no>'
+
+// Resend API
+const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
@@ -59,6 +63,48 @@ async function sendEmailSMTP(email: EmailQueueItem): Promise<{ success: boolean;
     return {
       success: false,
       error: error instanceof Error ? error.message : 'SMTP error',
+    }
+  }
+}
+
+// Send email via Resend API (recommended - better deliverability)
+async function sendEmailResend(email: EmailQueueItem): Promise<{ success: boolean; error?: string }> {
+  if (!RESEND_API_KEY) {
+    return { success: false, error: 'Resend API key not configured. Set RESEND_API_KEY' }
+  }
+
+  try {
+    const response = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${RESEND_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: SMTP_FROM,
+        to: [email.recipient_email],
+        subject: email.subject,
+        html: email.body_html,
+        text: email.body_text || undefined,
+      }),
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ message: 'Unknown error' }))
+      return {
+        success: false,
+        error: errorData.message || `Resend API error: ${response.status}`,
+      }
+    }
+
+    const result = await response.json()
+    console.log(`✓ Resend email sent with ID: ${result.id}`)
+
+    return { success: true }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Resend API error',
     }
   }
 }
@@ -185,8 +231,13 @@ serve(async (req) => {
   let failed = 0
   const results: { id: string; success: boolean; error?: string }[] = []
 
+  console.log(`📧 Sending ${emails.length} emails using ${SMTP_SERVICE}`)
+
   for (const email of emails) {
-    const result = await sendEmailSMTP(email)
+    // Choose sending method based on SMTP_SERVICE
+    const result = SMTP_SERVICE === 'resend'
+      ? await sendEmailResend(email)
+      : await sendEmailSMTP(email)
 
     // Update status in database
     await supabase.rpc('mark_email_sent', {
@@ -197,7 +248,7 @@ serve(async (req) => {
 
     if (result.success) {
       sent++
-      console.log(`✓ Sent email to ${email.recipient_email}`)
+      console.log(`✓ Sent email to ${email.recipient_email} via ${SMTP_SERVICE}`)
     } else {
       failed++
       console.error(`✗ Failed to send to ${email.recipient_email}: ${result.error}`)

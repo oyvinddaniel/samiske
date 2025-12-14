@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
@@ -10,9 +11,11 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
-import { Pencil, MessageCircle } from 'lucide-react'
+import { Pencil, MessageCircle, Share2 } from 'lucide-react'
 import { PostData, Comment, CommentLikeUser, categoryColors } from './types'
 import { getInitials, formatDate, formatEventDate } from './utils'
+import { RSVPButton } from '@/components/events/RSVPButton'
+import { ShareEventDialog } from '@/components/events/ShareEventDialog'
 
 interface CommentLikeData {
   count: number
@@ -31,7 +34,7 @@ interface PostDialogContentProps {
   replyingTo: string | null
   replyContent: string
   submitting: boolean
-  currentUserId?: string
+  currentUserId?: string | null
   isOwner: boolean
   commentLikes: Record<string, CommentLikeData>
   onLike: () => void
@@ -68,6 +71,7 @@ export function PostDialogContent({
   onEdit,
 }: PostDialogContentProps) {
   const categoryColor = postData.category?.color || categoryColors[postData.category?.slug || ''] || '#6B7280'
+  const [showShareDialog, setShowShareDialog] = useState(false)
 
   // Render a single comment with replies
   const renderComment = (comment: Comment, depth = 0) => {
@@ -213,10 +217,32 @@ export function PostDialogContent({
 
       {/* Event info */}
       {postData.type === 'event' && postData.event_date && (
-        <div className="flex flex-wrap items-center gap-2 text-sm text-gray-600 bg-gray-50 rounded-lg p-3">
-          <span>📅 {formatEventDate(postData.event_date, postData.event_time)}</span>
-          {postData.event_location && <span>📍 {postData.event_location}</span>}
+        <div className="space-y-2">
+          <div className="flex flex-wrap items-center gap-2 text-sm text-gray-600 bg-gray-50 rounded-lg p-3">
+            <span>📅 {formatEventDate(postData.event_date, postData.event_time)}</span>
+            {postData.event_location && <span>📍 {postData.event_location}</span>}
+          </div>
+          {/* Share to other areas - for event owner */}
+          {isOwner && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowShareDialog(true)}
+              className="w-full"
+            >
+              <Share2 className="w-4 h-4 mr-2" />
+              Del til andre områder
+            </Button>
+          )}
         </div>
+      )}
+
+      {/* RSVP for events */}
+      {postData.type === 'event' && (
+        <RSVPButton
+          postId={postData.id}
+          isLoggedIn={!!currentUserId}
+        />
       )}
 
       {/* Full content */}
@@ -281,6 +307,15 @@ export function PostDialogContent({
           </p>
         )}
       </div>
+
+      {/* Share Event Dialog */}
+      {postData.type === 'event' && isOwner && (
+        <ShareEventDialog
+          open={showShareDialog}
+          onOpenChange={setShowShareDialog}
+          postId={postData.id}
+        />
+      )}
     </div>
   )
 }

@@ -1,0 +1,34 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash(git commit:*)",
+        "command": "bash -c 'if grep -rE \"(sk_live|sb_secret|service_role|password\\s*=\\s*[\\\"'\\'']).{8,}\" --include=\"*.ts\" --include=\"*.tsx\" --include=\"*.js\" --include=\"*.json\" src/ 2>/dev/null | grep -v node_modules | grep -v \".env\"; then echo \"BLOKKERT: Fant mulige secrets i koden. Fjern før commit.\" >&2; exit 2; fi'",
+        "timeout": 10000
+      },
+      {
+        "matcher": "Edit:src/lib/supabase/*|Edit:src/app/api/*",
+        "command": "echo '⚠️  ADVARSEL: Du redigerer sikkerhetskritisk kode. Husk å sjekke RLS policies og autentisering.'",
+        "timeout": 5000
+      },
+      {
+        "matcher": "Edit:.env*|Read:.env.local",
+        "command": "bash -c 'echo \"BLOKKERT: Kan ikke redigere eller lese .env-filer via Claude.\" >&2; exit 2'",
+        "timeout": 5000
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit:*.tsx|Edit:*.ts",
+        "command": "bash -c 'cd \"$(pwd)\" && npm run lint --silent 2>&1 | head -20 || true'",
+        "timeout": 30000
+      }
+    ],
+    "Stop": [
+      {
+        "command": "bash -c 'if [ -f package.json ]; then echo \"\\n📋 Husk: Kjør npm run build før deploy\"; fi'",
+        "timeout": 5000
+      }
+    ]
+  }
+}

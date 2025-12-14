@@ -6,8 +6,22 @@ import Link from 'next/link'
 import { usePathname, useSearchParams } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
-import { Users, MessageCircle, ChevronRight, Newspaper, Calendar } from 'lucide-react'
+import { Users, MessageCircle, ChevronRight, Home, Calendar, Bookmark, Building2, MapPin, Languages, Plus, Settings2, Landmark, User } from 'lucide-react'
 import { SocialPanel } from '@/components/social/SocialPanel'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { sidebarConfig, buildLocationUrl } from '@/lib/config/sidebar'
+
+interface StarredLocationItem {
+  type: 'language_area' | 'municipality' | 'place'
+  id: string
+  name: string
+  href: string
+}
+
+interface UserProfile {
+  full_name: string | null
+  avatar_url: string | null
+}
 
 interface MobileNavProps {
   currentCategory?: string
@@ -24,6 +38,9 @@ function MobileNavContent({ currentCategory = '' }: MobileNavProps) {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const [pendingRequests, setPendingRequests] = useState(0)
   const [unreadMessages, setUnreadMessages] = useState(0)
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
+  const [starredLocations, setStarredLocations] = useState<StarredLocationItem[]>([])
+  const [maxVisibleLocations, setMaxVisibleLocations] = useState(sidebarConfig.defaultMaxVisibleLocations)
   const touchStartX = useRef<number | null>(null)
   const touchStartY = useRef<number | null>(null)
   const menuRef = useRef<HTMLDivElement>(null)
@@ -103,6 +120,149 @@ function MobileNavContent({ currentCategory = '' }: MobileNavProps) {
       supabase.removeChannel(channel)
     }
   }, [currentUserId, supabase, fetchCounts])
+
+  // Fetch user profile
+  useEffect(() => {
+    const fetchProfile = async () => {
+      if (!currentUserId) {
+        setUserProfile(null)
+        return
+      }
+
+      try {
+        const { data } = await supabase
+          .from('profiles')
+          .select('full_name, avatar_url')
+          .eq('id', currentUserId)
+          .single()
+
+        setUserProfile(data)
+      } catch {
+        setUserProfile(null)
+      }
+    }
+    fetchProfile()
+  }, [currentUserId, supabase])
+
+  // Fetch starred locations
+  const fetchStarredLocations = useCallback(async () => {
+    if (!currentUserId) {
+      setStarredLocations([])
+      return
+    }
+
+    try {
+      // Fetch starred language areas
+      const { data: starredLanguageAreas } = await supabase
+        .from('user_starred_language_areas')
+        .select(`
+          language_area:language_areas(
+            id,
+            name,
+            code
+          )
+        `)
+        .eq('user_id', currentUserId)
+
+      // Fetch starred municipalities
+      const { data: starredMunicipalities } = await supabase
+        .from('user_starred_municipalities')
+        .select(`
+          municipality:municipalities(
+            id,
+            name,
+            slug,
+            country:countries(code)
+          )
+        `)
+        .eq('user_id', currentUserId)
+
+      // Fetch starred places
+      const { data: starredPlaces } = await supabase
+        .from('user_starred_places')
+        .select(`
+          place:places(
+            id,
+            name,
+            slug,
+            municipality:municipalities(
+              slug,
+              country:countries(code)
+            )
+          )
+        `)
+        .eq('user_id', currentUserId)
+
+      const locations: StarredLocationItem[] = []
+
+      // Process language areas
+      if (starredLanguageAreas) {
+        for (const item of starredLanguageAreas) {
+          const la = item.language_area as unknown as { id: string; name: string; code: string } | null
+          if (la) {
+            locations.push({
+              type: 'language_area',
+              id: la.id,
+              name: la.name,
+              href: `/sapmi/sprak/${la.code}`
+            })
+          }
+        }
+      }
+
+      // Process municipalities
+      if (starredMunicipalities) {
+        for (const item of starredMunicipalities) {
+          const m = item.municipality as unknown as { id: string; name: string; slug: string; country: { code: string } | null } | null
+          if (m && m.country) {
+            locations.push({
+              type: 'municipality',
+              id: m.id,
+              name: m.name,
+              href: buildLocationUrl('municipality', m.country.code, m.slug)
+            })
+          }
+        }
+      }
+
+      // Process places
+      if (starredPlaces) {
+        for (const item of starredPlaces) {
+          const p = item.place as unknown as { id: string; name: string; slug: string; municipality: { slug: string; country: { code: string } | null } | null } | null
+          if (p && p.municipality && p.municipality.country) {
+            locations.push({
+              type: 'place',
+              id: p.id,
+              name: p.name,
+              href: buildLocationUrl('place', p.municipality.country.code, p.municipality.slug, p.slug)
+            })
+          }
+        }
+      }
+
+      // Sort by name
+      locations.sort((a, b) => a.name.localeCompare(b.name, 'nb'))
+      setStarredLocations(locations)
+    } catch (error) {
+      console.error('Error fetching starred locations:', error)
+      setStarredLocations([])
+    }
+  }, [currentUserId, supabase])
+
+  useEffect(() => {
+    fetchStarredLocations()
+  }, [fetchStarredLocations])
+
+  // Load max visible locations preference from localStorage
+  useEffect(() => {
+    const saved = localStorage.getItem(sidebarConfig.storageKeys.maxLocations)
+    if (saved) {
+      setMaxVisibleLocations(parseInt(saved, 10))
+    }
+  }, [])
+
+  const visibleLocations = starredLocations.slice(0, maxVisibleLocations)
+  const hasMoreLocations = starredLocations.length > maxVisibleLocations
 
   // Listen for open-left-sidebar event from BottomNav
   useEffect(() => {
@@ -312,10 +472,39 @@ function MobileNavContent({ currentCategory = '' }: MobileNavProps) {
             </div>
 
             {/* Navigation */}
-            <nav className="p-4">
+            <nav className="p-4 overflow-y-auto max-h-[calc(100vh-140px)]">
+              {/* User profile link at top */}
+              {currentUserId && userProfile && (
+                <div className="mb-4 pb-4 border-b border-gray-100">
+                  <button
+                    onClick={() => {
+                      setIsOpen(false)
+                      window.dispatchEvent(new CustomEvent('open-profile-panel'))
+                    }}
+                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors text-left hover:bg-gray-50"
+                  >
+                    <Avatar className="w-10 h-10 border-2 border-white shadow-sm">
+                      <AvatarImage src={userProfile.avatar_url || undefined} alt={userProfile.full_name || 'Profil'} />
+                      <AvatarFallback className="bg-blue-100 text-blue-600 text-sm">
+                        {userProfile.full_name
+                          ? userProfile.full_name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
+                          : <User className="w-4 h-4" />}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-sm truncate text-gray-900">
+                        {userProfile.full_name || 'Min profil'}
+                      </p>
+                      <p className="text-xs text-gray-500">Se dine innlegg</p>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                  </button>
+                </div>
+              )}
+
               {/* Navigation links */}
               <div className="mb-4 pb-4 border-b border-gray-100 space-y-1">
-                {/* Aktivitet - primary/dominant link */}
+                {/* Start - primary/dominant link */}
                 <Link
                   href="/"
                   onClick={() => setIsOpen(false)}
@@ -333,14 +522,14 @@ function MobileNavContent({ currentCategory = '' }: MobileNavProps) {
                         ? 'bg-blue-100'
                         : 'bg-gray-100'
                     )}>
-                      <Newspaper className={cn(
+                      <Home className={cn(
                         'w-5 h-5 transition-colors',
                         pathname === '/' && !currentVisning
                           ? 'text-blue-600'
                           : 'text-gray-600'
                       )} />
                     </div>
-                    Aktivitet
+                    Start
                   </span>
                   <ChevronRight className="w-4 h-4 text-gray-400" />
                 </Link>
@@ -367,6 +556,110 @@ function MobileNavContent({ currentCategory = '' }: MobileNavProps) {
                 </Link>
               </div>
 
+              {/* Navigation section - Grupper & Samfunn */}
+              <div className="mb-4 pb-4 border-b border-gray-100">
+                {/* Grupper - direct link */}
+                <Link
+                  href="/grupper"
+                  onClick={() => setIsOpen(false)}
+                  className={cn(
+                    'flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-colors',
+                    pathname === '/grupper'
+                      ? 'bg-blue-50 text-blue-700'
+                      : 'text-gray-600 hover:bg-blue-50/50 hover:text-gray-700'
+                  )}
+                >
+                  <span className="flex items-center gap-3">
+                    <Users className={cn(
+                      'w-4 h-4 transition-colors',
+                      pathname === '/grupper' ? 'text-blue-600' : 'text-purple-500'
+                    )} />
+                    Grupper
+                  </span>
+                  <ChevronRight className="w-4 h-4 text-gray-400" />
+                </Link>
+
+                {/* Samfunn - opens community panel */}
+                <button
+                  onClick={() => {
+                    setIsOpen(false)
+                    window.dispatchEvent(new CustomEvent('open-community-panel'))
+                  }}
+                  className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-colors mt-1 text-gray-600 hover:bg-blue-50/50 hover:text-gray-700"
+                >
+                  <span className="flex items-center gap-3">
+                    <Landmark className="w-4 h-4 text-orange-500" />
+                    Samfunn
+                  </span>
+                  <ChevronRight className="w-4 h-4 text-gray-400" />
+                </button>
+              </div>
+
+              {/* Mine steder - only for logged in users */}
+              {currentUserId && (
+                <div className="mb-4 pb-4 border-b border-gray-100">
+                  <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 px-3">
+                    {sidebarConfig.labels.myPlaces}
+                  </h2>
+                  <ul className="space-y-1">
+                    {visibleLocations.map((location) => (
+                      <li key={`${location.type}-${location.id}`}>
+                        <button
+                          onClick={() => {
+                            setIsOpen(false)
+                            window.dispatchEvent(new CustomEvent('open-location-panel', {
+                              detail: {
+                                type: location.type,
+                                id: location.id,
+                                name: location.name
+                              }
+                            }))
+                          }}
+                          className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors text-left text-gray-600 hover:bg-blue-50/50 hover:text-gray-700"
+                        >
+                          {location.type === 'language_area' ? (
+                            <Languages className="w-4 h-4 text-blue-500" />
+                          ) : location.type === 'municipality' ? (
+                            <Building2 className="w-4 h-4 text-orange-500" />
+                          ) : (
+                            <MapPin className="w-4 h-4 text-purple-500" />
+                          )}
+                          <span className="truncate">{location.name}</span>
+                        </button>
+                      </li>
+                    ))}
+
+                    {/* Se alle link if more locations */}
+                    {hasMoreLocations && (
+                      <li>
+                        <Link
+                          href="/innstillinger?tab=steder"
+                          onClick={() => setIsOpen(false)}
+                          className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-500 hover:bg-blue-50/50 hover:text-gray-700 transition-colors"
+                        >
+                          <Settings2 className="w-4 h-4" />
+                          <span>{sidebarConfig.labels.seeAll} ({starredLocations.length})</span>
+                        </Link>
+                      </li>
+                    )}
+
+                    {/* Legg til sted button */}
+                    <li>
+                      <button
+                        onClick={() => {
+                          setIsOpen(false)
+                          window.dispatchEvent(new CustomEvent('open-geography-panel'))
+                        }}
+                        className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors text-gray-500 hover:bg-blue-50/50 hover:text-gray-700"
+                      >
+                        <Plus className="w-4 h-4" />
+                        <span>{sidebarConfig.labels.addPlace}</span>
+                      </button>
+                    </li>
+                  </ul>
+                </div>
+              )}
+
               {/* Social section - only show when logged in */}
               {currentUserId && (
                 <div className="space-y-1">
@@ -376,7 +669,7 @@ function MobileNavContent({ currentCategory = '' }: MobileNavProps) {
                   <button
                     onClick={() => {
                       setIsOpen(false)
-                      setShowSocialPanel(true)
+                      window.dispatchEvent(new CustomEvent('open-friends-panel'))
                     }}
                     className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-blue-50/50 hover:text-gray-700 transition-colors"
                   >
@@ -396,7 +689,7 @@ function MobileNavContent({ currentCategory = '' }: MobileNavProps) {
                   <button
                     onClick={() => {
                       setIsOpen(false)
-                      setShowSocialPanel(true)
+                      window.dispatchEvent(new CustomEvent('open-messages-panel'))
                     }}
                     className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-blue-50/50 hover:text-gray-700 transition-colors"
                   >
@@ -413,14 +706,27 @@ function MobileNavContent({ currentCategory = '' }: MobileNavProps) {
                       <ChevronRight className="w-4 h-4 text-gray-400" />
                     </span>
                   </button>
+                  <button
+                    onClick={() => {
+                      setIsOpen(false)
+                      window.dispatchEvent(new CustomEvent('open-bookmarks-panel'))
+                    }}
+                    className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-blue-50/50 hover:text-gray-700 transition-colors"
+                  >
+                    <span className="flex items-center gap-3">
+                      <Bookmark className="w-4 h-4 text-amber-500" />
+                      Bokmerker
+                    </span>
+                    <ChevronRight className="w-4 h-4 text-gray-400" />
+                  </button>
                 </div>
               )}
             </nav>
 
             {/* Footer */}
-            <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-100">
-              <p className="text-xs text-gray-400 text-center">
-                Det samiske miljøet i Trondheim
+            <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-100 bg-white">
+              <p className="text-[10px] text-gray-400 text-center">
+                Kommunikasjonsplattform for det samiske miljøet
               </p>
             </div>
           </div>

@@ -32,6 +32,7 @@ interface FeedProps {
   hideCreateButton?: boolean  // Hide the create post button
   starredLocations?: StarredLocations  // Filter by starred locations
   friendsOnly?: boolean  // Filter to show only friends' posts
+  onlyFromCommunities?: boolean  // Filter to show only posts from communities
 }
 
 interface Post {
@@ -63,7 +64,7 @@ interface Post {
   posted_from_type?: 'place' | 'municipality' | 'sapmi'
 }
 
-export function Feed({ categorySlug, geography, geographyName, showFilters = false, groupId, groupIds, communityIds, userId: filterUserId, hideCreateButton = false, starredLocations, friendsOnly = false }: FeedProps) {
+export function Feed({ categorySlug, geography, geographyName, showFilters = false, groupId, groupIds, communityIds, userId: filterUserId, hideCreateButton = false, starredLocations, friendsOnly = false, onlyFromCommunities = false }: FeedProps) {
   const [posts, setPosts] = useState<Post[]>([])
   const [loading, setLoading] = useState(true)
   const [currentUserId, setCurrentUserId] = useState<string | undefined>()
@@ -212,6 +213,7 @@ export function Feed({ categorySlug, geography, geographyName, showFilters = fal
           const idsToQuery = groupIds && groupIds.length > 0 ? groupIds : [groupId!]
           query = query.in('created_for_group_id', idsToQuery)
         } else {
+          // SIKKERHET: ALLTID ekskluder innlegg fra lukkede/skjulte grupper
           // When NOT viewing a specific group:
           // 1. ALWAYS EXCLUDE posts from ALL groups (open/closed/hidden) unless:
           //    - Group is associated with current geography (for geographic feeds)
@@ -306,6 +308,7 @@ export function Feed({ categorySlug, geography, geographyName, showFilters = fal
 
         // Filter by community IDs if provided
         if (communityIds && communityIds.length > 0) {
+          // SIKKERHET: ALDRI vis innlegg fra grupper på samfunnssider
           // Get posts that belong to these communities via community_posts junction table
           const { data: communityPosts } = await supabase
             .from('community_posts')
@@ -313,10 +316,31 @@ export function Feed({ categorySlug, geography, geographyName, showFilters = fal
             .in('community_id', communityIds)
 
           const communityPostIds = (communityPosts || []).map(cp => cp.post_id)
+
           if (communityPostIds.length > 0) {
-            query = query.in('id', communityPostIds)
+            // KRITISK SIKKERHET: Ekskluder ALLTID innlegg som har created_for_group_id
+            // Dette sikrer at innlegg fra lukkede/skjulte grupper ALDRI vises på samfunnssider
+            query = query.in('id', communityPostIds).is('created_for_group_id', null)
           } else {
             // No posts from followed communities
+            postsData = []
+          }
+        }
+
+        // Filter to show only posts from communities (any community)
+        if (onlyFromCommunities) {
+          // SIKKERHET: ALDRI vis innlegg fra grupper på samfunnssider
+          // Get all posts that belong to any community via community_posts junction table
+          const { data: allCommunityPosts } = await supabase
+            .from('community_posts')
+            .select('post_id')
+
+          const allCommunityPostIds = (allCommunityPosts || []).map(cp => cp.post_id)
+          if (allCommunityPostIds.length > 0) {
+            // KRITISK SIKKERHET: Ekskluder ALLTID innlegg som har created_for_group_id
+            query = query.in('id', allCommunityPostIds).is('created_for_group_id', null)
+          } else {
+            // No community posts exist
             postsData = []
           }
         }
@@ -544,8 +568,8 @@ export function Feed({ categorySlug, geography, geographyName, showFilters = fal
 
   return (
     <div className="relative">
-      {/* Create post button - only for logged in users */}
-      {currentUserId && !hideCreateButton && (
+      {/* Create post button - only on geographic pages */}
+      {currentUserId && geography && geography.type !== 'sapmi' && (
         <div className="flex justify-center mb-6">
           <button
             onClick={() => setShowCreatePost(true)}

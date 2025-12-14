@@ -2,13 +2,14 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useParams, notFound } from 'next/navigation'
-import { Users, Settings, Clock } from 'lucide-react'
+import { Users, Settings, Clock, PenSquare } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { JoinGroupButton, GroupSettingsDialog } from '@/components/groups'
 import { Feed } from '@/components/feed/Feed'
+import { CreatePostSheet } from '@/components/posts/CreatePostSheet'
 import { getGroupBySlug, getGroupMembers, isGroupMember, approveMember, rejectMember } from '@/lib/groups'
 import { createClient } from '@/lib/supabase/client'
 import type { Group, GroupMember, MemberStatus } from '@/lib/types/groups'
@@ -29,6 +30,7 @@ export default function GroupPage() {
     status: MemberStatus | null
   }>({ isMember: false, role: null, status: null })
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [showCreatePost, setShowCreatePost] = useState(false)
 
   const supabase = useMemo(() => createClient(), [])
 
@@ -185,6 +187,23 @@ export default function GroupPage() {
         </div>
       </div>
 
+      {/* Create post button - only show for members who can view content */}
+      {canViewContent && currentUserId && (
+        <div className="flex justify-center mb-6">
+          <button
+            onClick={() => setShowCreatePost(true)}
+            className="group flex items-center gap-2.5 px-5 py-2.5 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white rounded-full shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/30 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
+          >
+            <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center group-hover:bg-white/30 transition-colors">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
+              </svg>
+            </div>
+            <span className="font-medium text-sm">Nytt innlegg</span>
+          </button>
+        </div>
+      )}
+
       {/* Content */}
       {canViewContent ? (
         <Tabs defaultValue="posts" className="space-y-4">
@@ -302,6 +321,21 @@ export default function GroupPage() {
           group={group}
           pendingMembers={pendingMembers}
           onMembershipChange={fetchData}
+        />
+      )}
+
+      {/* Create Post Sheet */}
+      {canViewContent && currentUserId && group && (
+        <CreatePostSheet
+          open={showCreatePost}
+          onClose={() => setShowCreatePost(false)}
+          userId={currentUserId}
+          groupId={group.id}
+          onSuccess={() => {
+            setShowCreatePost(false)
+            // Refresh posts in the feed
+            window.dispatchEvent(new CustomEvent('post-created'))
+          }}
         />
       )}
     </div>

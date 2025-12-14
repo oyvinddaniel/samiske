@@ -112,6 +112,7 @@ export function FriendsList({ onStartConversation }: FriendsListProps) {
   }, [currentUserId, supabase])
 
   useEffect(() => {
+     
     fetchFriendships()
   }, [fetchFriendships])
 

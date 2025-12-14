@@ -9,7 +9,6 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Calendar, MapPin, UserPlus, MessageCircle, ChevronLeft, BarChart3, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { ProfileOverlay } from '@/components/profile/ProfileOverlay'
 
 interface NewMember {
   id: string
@@ -59,7 +58,6 @@ export function RightSidebar() {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
   const [leftMenuOpen, setLeftMenuOpen] = useState(false)
-  const [profileOverlayUserId, setProfileOverlayUserId] = useState<string | null>(null)
   const touchStartX = useRef<number | null>(null)
   const touchStartY = useRef<number | null>(null)
   const supabase = useMemo(() => createClient(), [])
@@ -360,8 +358,8 @@ export function RightSidebar() {
     return `${Math.floor(diffInDays / 30)} måneder siden`
   }
 
-  // Sidebar content component to avoid duplication
-  const SidebarContent = ({ isMobile = false }: { isMobile?: boolean }) => (
+  // Sidebar content function to avoid component-during-render
+  const renderSidebarContent = (isMobile = false) => (
     <div className={cn("space-y-4", isMobile && "p-4")}>
       {/* Stats */}
       <Card>
@@ -446,7 +444,14 @@ export function RightSidebar() {
             {newMembers.map((member) => (
               <button
                 key={member.id}
-                onClick={() => { setProfileOverlayUserId(member.id); if (isMobile) setMobileOpen(false); }}
+                onClick={() => {
+                  window.dispatchEvent(
+                    new CustomEvent('open-user-profile-panel', {
+                      detail: { userId: member.id }
+                    })
+                  );
+                  if (isMobile) setMobileOpen(false);
+                }}
                 className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-gray-50 transition-colors w-full text-left"
               >
                 <Avatar className="w-8 h-8">
@@ -581,7 +586,7 @@ export function RightSidebar() {
     <>
       {/* Desktop sidebar */}
       <aside className="hidden lg:block w-72">
-        <SidebarContent />
+        {renderSidebarContent()}
       </aside>
 
       {/* Mobile teaser tab */}
@@ -640,19 +645,12 @@ export function RightSidebar() {
             </div>
 
             {/* Content */}
-            <SidebarContent isMobile />
+            {renderSidebarContent(true)}
           </div>
         </>,
         document.body
       )}
 
-      {/* Profile Overlay */}
-      {profileOverlayUserId && (
-        <ProfileOverlay
-          userId={profileOverlayUserId}
-          onClose={() => setProfileOverlayUserId(null)}
-        />
-      )}
     </>
   )
 }

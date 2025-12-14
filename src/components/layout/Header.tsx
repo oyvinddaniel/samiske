@@ -20,7 +20,7 @@ import { MobileNav } from './MobileNav'
 import { NotificationBell } from '@/components/notifications/NotificationBell'
 import { SocialPanel } from '@/components/social/SocialPanel'
 import { Users, X, Search } from 'lucide-react'
-import { SearchModal } from '@/components/search/SearchModal'
+import { UnifiedSearchBar } from '@/components/search/UnifiedSearchBar'
 import { cn } from '@/lib/utils'
 
 interface Profile {
@@ -38,11 +38,8 @@ export function Header({ currentCategory }: HeaderProps) {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
   const [showSocialPanel, setShowSocialPanel] = useState(false)
-  const [showSearch, setShowSearch] = useState(false)
   const [mounted, setMounted] = useState(false)
   const [socialNotifications, setSocialNotifications] = useState(0)
-  const searchButtonRef = useRef<HTMLButtonElement>(null)
-  const router = useRouter()
 
   // Create stable supabase client reference
   const supabase = useMemo(() => createClient(), [])
@@ -151,18 +148,6 @@ export function Header({ currentCategory }: HeaderProps) {
     }
   }, [showSocialPanel])
 
-  // Keyboard shortcut for search (Cmd+K or Ctrl+K)
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-        e.preventDefault()
-        setShowSearch(true)
-      }
-    }
-
-    document.addEventListener('keydown', handleKeyDown)
-    return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [])
 
   const handleLogout = async () => {
     await supabase.auth.signOut()
@@ -221,16 +206,6 @@ export function Header({ currentCategory }: HeaderProps) {
 
         {/* Right side */}
         <div className="flex items-center gap-3">
-          {/* Search button */}
-          <button
-            ref={searchButtonRef}
-            onClick={() => setShowSearch(true)}
-            className="p-2 text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
-            title="Søk (⌘K)"
-          >
-            <Search className="w-5 h-5" />
-          </button>
-
           {loading ? (
             <div className="w-9 h-9 rounded-full bg-white/20 animate-pulse" />
           ) : user ? (
@@ -238,12 +213,13 @@ export function Header({ currentCategory }: HeaderProps) {
               {/* Social button - hidden on mobile as it's in BottomNav */}
               <button
                 onClick={() => setShowSocialPanel(true)}
-                className="hidden lg:flex relative p-2 text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+                className="hidden lg:flex relative p-2 text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition-colors focus-visible:ring-2 focus-visible:ring-white"
                 title="Venner og meldinger"
+                aria-label={`Venner og meldinger${socialNotifications > 0 ? ` (${socialNotifications} uleste)` : ''}`}
               >
                 <Users className="w-5 h-5" />
                 {socialNotifications > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 bg-red-500 text-white text-[9px] w-4 h-4 rounded-full flex items-center justify-center">
+                  <span className="absolute -top-0.5 -right-0.5 bg-red-500 text-white text-[9px] w-4 h-4 rounded-full flex items-center justify-center" aria-hidden="true">
                     {socialNotifications > 9 ? '9+' : socialNotifications}
                   </span>
                 )}
@@ -251,7 +227,10 @@ export function Header({ currentCategory }: HeaderProps) {
               <NotificationBell userId={user.id} />
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <button className="flex items-center gap-2 focus:outline-none group">
+                  <button
+                    className="flex items-center gap-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-white rounded-full group"
+                    aria-label="Brukermeny"
+                  >
                     <Avatar className="w-9 h-9 ring-2 ring-white/30 group-hover:ring-white/50 transition-all">
                       <AvatarImage src={profile?.avatar_url || undefined} />
                       <AvatarFallback className="bg-white text-[#0143F5] text-sm font-medium">
@@ -266,13 +245,14 @@ export function Header({ currentCategory }: HeaderProps) {
                     <p className="text-xs text-gray-500 truncate">{user.email}</p>
                   </div>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem asChild>
-                    <Link href="/profil" className="cursor-pointer">
-                      <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                      </svg>
-                      Min profil
-                    </Link>
+                  <DropdownMenuItem
+                    onClick={() => window.dispatchEvent(new CustomEvent('open-profile-panel'))}
+                    className="cursor-pointer"
+                  >
+                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                    Min profil
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
                     <Link href="/innstillinger" className="cursor-pointer">
@@ -372,8 +352,12 @@ export function Header({ currentCategory }: HeaderProps) {
         document.body
       )}
 
-      {/* Search Modal */}
-      <SearchModal open={showSearch} onClose={() => setShowSearch(false)} anchorRef={searchButtonRef} />
+      {/* Large Search Bar */}
+      <div className="px-4 md:px-6 pb-3">
+        <div className="max-w-2xl mx-auto">
+          <UnifiedSearchBar />
+        </div>
+      </div>
     </header>
   )
 }

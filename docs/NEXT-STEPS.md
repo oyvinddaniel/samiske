@@ -1,6 +1,6 @@
 # Neste steg: samiske.no
 
-## Sist oppdatert: 2025-12-12
+## Sist oppdatert: 2025-12-14
 
 ---
 
@@ -36,7 +36,36 @@ Automatisk deploy via Vercel ved push til main.
 ### ✅ FASE 4: FUNKSJONALITET (FULLFØRT 2025-12-12)
 - [x] SMS fjernet fra innstillinger
 - [x] Søkefunksjon fungerer (Cmd+K)
-- [ ] Tilgjengelighet (a11y) - aria-labels, keyboard nav
+- [x] Tilgjengelighet (a11y) - aria-labels, keyboard nav (FULLFØRT 2025-12-13)
+
+### ✅ NYE VERKTØY: Code Analyzer Agent (FULLFØRT 2025-12-14)
+- [x] Custom Claude Code agent for systematisk kodeanalyse
+- [x] Analysekategorier: code, security, UX, content
+- [x] Detaljerte analyseregler basert på 2025 beste praksis
+- [x] `/analyze` slash-kommando implementert
+- [x] Dokumentasjon oppdatert
+
+**Bruk:**
+```bash
+/analyze          # Full analyse (alle kategorier)
+/analyze code     # Kun kodekvalitet
+/analyze security # Kun sikkerhet
+/analyze ux       # Kun UX/tilgjengelighet
+/analyze content  # Kun innleggsstruktur
+```
+
+**Output:** Detaljert rapport med:
+- 🔴 Kritiske problemer
+- 🟡 Advarsler
+- 🟢 Forslag
+- File:line referanser
+- Konkrete fix-forslag
+
+**Regler basert på:**
+- ESLint, SonarQube (kodekvalitet)
+- OWASP, CodeMender (sikkerhet)
+- WCAG 2.1 AA (tilgjengelighet)
+- Social Media Best Practices 2025 (innhold)
 
 ---
 
@@ -47,10 +76,16 @@ Automatisk deploy via Vercel ved push til main.
 - [x] Memory leaks - alle subscriptions har korrekt cleanup
 - [x] Extract utility functions til src/components/posts/utils.ts
 
-### Tilgjengelighet (a11y)
-- [ ] Legg til aria-labels på icon-buttons
-- [ ] Keyboard navigation for floating bubbles
-- [ ] Escape for å lukke modaler
+### ✅ Tilgjengelighet (a11y) (FULLFØRT 2025-12-13)
+- [x] Legg til aria-labels på icon-buttons (PostCard, Header, SearchModal, NotificationBell, InstallPrompt)
+- [x] Keyboard navigation for floating bubbles (focus-visible styling)
+- [x] Escape for å lukke modaler (BottomSheet, FloatingSocialBubbles, ProfileOverlay)
+
+### ✅ Rate Limiting (FULLFØRT 2025-12-13)
+- [x] In-memory rate limiter (src/lib/rate-limit.ts)
+- [x] /api/delete-account: 3 forespørsler per time (sensitiv operasjon)
+- [x] /api/export-data: 5 forespørsler per time
+- [x] Standard rate limit headers (X-RateLimit-*, Retry-After)
 
 ### FASE 5: FREMTIDIG (Planlagt)
 
@@ -66,16 +101,35 @@ Automatisk deploy via Vercel ved push til main.
 - [ ] La brukere velge varslingsfrekvens i innstillinger
 
 #### 5.3 PWA (Progressive Web App)
-- [ ] Forbedre manifest.json
-- [ ] Konfigurer service worker for offline
-- [ ] Legg til installeringsknapp
-- [ ] Push-varsling til enheter
+- [x] Forbedre manifest.json (FULLFØRT)
+- [x] Konfigurer service worker for offline (FULLFØRT)
+- [x] Legg til installeringsknapp (FULLFØRT 2025-12-13)
+- [x] PWA-ikoner (FULLFØRT 2025-12-13)
+- [x] Push-varsling til enheter (FULLFØRT 2025-12-13)
+
+### Push-varsling oppsett (FULLFØRT 2025-12-13)
+
+**Kode implementert:**
+- Database triggers: `on_new_post_push`, `on_new_comment_push`
+- Cron-jobb: `send-pending-push` (kjører hvert 2. minutt)
+- Edge function: `supabase/functions/send-push/index.ts`
+- Client-side: `src/lib/push-notifications.ts`
+- Service worker: `public/sw.js`
+
+**Supabase secrets som MÅ konfigureres:**
+```
+VAPID_PUBLIC_KEY=<din public key fra .env.local>
+VAPID_PRIVATE_KEY=<generer med: npx web-push generate-vapid-keys>
+VAPID_SUBJECT=mailto:noreply@samiske.no
+```
+
+Sett secrets via: Supabase Dashboard → Edge Functions → send-push → Secrets
 
 #### 5.4 Ekstra brukerinteraksjon
-- [ ] Slette egne innlegg
-- [ ] Bokmerke innlegg
-- [ ] Dele innlegg (kopier lenke)
-- [ ] Melde fra om upassende innhold
+- [x] Slette egne innlegg (FULLFØRT 2025-12-13)
+- [x] Bokmerke innlegg (FULLFØRT 2025-12-13)
+- [x] Dele innlegg (kopier lenke) (FULLFØRT 2025-12-13)
+- [x] Melde fra om upassende innhold (FULLFØRT 2025-12-13)
 
 ---
 

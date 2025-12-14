@@ -1,12 +1,12 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 
 // Password validation function
@@ -33,17 +33,14 @@ export default function RegisterPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [fullName, setFullName] = useState('')
+  const [privacyConsent, setPrivacyConsent] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [passwordErrors, setPasswordErrors] = useState<string[]>([])
   const [success, setSuccess] = useState(false)
   const [loading, setLoading] = useState(false)
-  const router = useRouter()
   const supabase = createClient()
 
   const handlePasswordChange = (value: string) => {
     setPassword(value)
-    const validation = validatePassword(value)
-    setPasswordErrors(validation.errors)
   }
 
   const handleRegister = async (e: React.FormEvent) => {
@@ -51,11 +48,17 @@ export default function RegisterPage() {
     setLoading(true)
     setError(null)
 
+    // Validate privacy consent
+    if (!privacyConsent) {
+      setError('Du må godta personvernerklæringen for å registrere deg')
+      setLoading(false)
+      return
+    }
+
     // Validate password
     const validation = validatePassword(password)
     if (!validation.valid) {
-      setError('Passordet oppfyller ikke kravene')
-      setPasswordErrors(validation.errors)
+      setError(`Passordet oppfyller ikke kravene: ${validation.errors.join(', ')}`)
       setLoading(false)
       return
     }
@@ -66,6 +69,7 @@ export default function RegisterPage() {
       options: {
         data: {
           full_name: fullName,
+          privacy_consent_at: new Date().toISOString(),
         },
       },
     })
@@ -171,6 +175,26 @@ export default function RegisterPage() {
                   </p>
                 </div>
               )}
+            </div>
+            <div className="flex items-start space-x-3 pt-2">
+              <Checkbox
+                id="privacy-consent"
+                checked={privacyConsent}
+                onCheckedChange={(checked) => setPrivacyConsent(checked === true)}
+              />
+              <label
+                htmlFor="privacy-consent"
+                className="text-sm text-gray-600 leading-tight cursor-pointer"
+              >
+                Jeg har lest og godtar{' '}
+                <Link
+                  href="/personvern"
+                  target="_blank"
+                  className="text-blue-600 hover:underline"
+                >
+                  personvernerklæringen
+                </Link>
+              </label>
             </div>
           </CardContent>
           <CardFooter className="flex flex-col gap-4">

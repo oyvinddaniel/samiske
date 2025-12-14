@@ -1,6 +1,6 @@
 # Beslutningslogg: samiske.no
 
-## Sist oppdatert: 2025-12-12
+## Sist oppdatert: 2025-12-13
 
 ---
 
@@ -168,6 +168,57 @@
 - Ingen backend-støtte implementert
 - Forvirrer brukere med innstilling som ikke fungerer
 - Kan gjeninnføres senere om det er behov
+
+---
+
+## NYE BESLUTNINGER (2025-12-13)
+
+### 23. Brukerlokasjoner
+**Beslutning:** Brukere kan registrere "hvor jeg bor" og "hvor jeg kommer fra"
+**Begrunnelse:**
+- Gir sosial kontekst og tilknytning
+- Stedene legges automatisk til i "Mine steder" i sidebar
+- Eksisterende koloner i profiles-tabellen tas i bruk
+- Tilgjengelig i innstillinger for alle brukere
+
+### 24. Onboarding for nye brukere
+**Beslutning:** 3-stegs onboarding-wizard etter registrering
+**Begrunnelse:**
+- Samler inn nyttig informasjon (bosted, hjemsted)
+- Gir brukere en veiledning ved oppstart
+- "Hopp over alt"-knapp i hjørnet for de som vil hoppe over
+- Eksisterende brukere markert som fullført (onboarding_completed=TRUE)
+
+### 25. Dele innlegg
+**Beslutning:** Web Share API med fallback til kopiering
+**Begrunnelse:**
+- Native share-dialog på støttede enheter (mobil)
+- Fallback til "kopier lenke" på desktop
+- Toast-bekreftelse ved kopiering
+- Deleknapp synlig for alle brukere
+
+### 26. Slette egne innlegg
+**Beslutning:** Brukere kan slette egne innlegg med bekreftelse
+**Begrunnelse:**
+- AlertDialog for å forhindre utilsiktet sletting
+- CASCADE-delete fjerner kommentarer og likes automatisk
+- Kun synlig for innleggets eier
+
+### 27. Bokmerke innlegg
+**Beslutning:** Brukere kan lagre innlegg som bokmerker
+**Begrunnelse:**
+- Egen database-tabell med RLS
+- Bokmerke-ikon i PostCard (kun for innloggede)
+- Dedikert /bokmerker side for å se lagrede innlegg
+- Lenke i sidemenyen under "Sosial"
+
+### 28. Rapportere innhold
+**Beslutning:** Brukere kan rapportere upassende innlegg
+**Begrunnelse:**
+- Database-tabell `reports` med RLS policies
+- Dialog med forhåndsdefinerte grunner (spam, trakassering, hat, etc.)
+- Admin kan se og behandle rapporter i admin-panel
+- Statusflyt: venter → under behandling → løst/avvist
 
 ---
 

@@ -14,14 +14,20 @@ samiske.no er en nettbasert plattform som erstatter Facebook for intern kommunik
 - Offentlige og medlems-only innlegg
 - Kommentarer og likes
 - E-postvarsling
+- **Avansert søkesystem med 8 kategorier** (brukere, innlegg, arrangementer, kommentarer, geografi, samfunn, tjenester, produkter)
+- Geografi-stjernemerking
+- Samfunnsfunksjonalitet
+- Tjenester og produkter fra samfunn
 
 ## Tech Stack
 
-- **Frontend:** Next.js 14 (App Router) + TypeScript
+- **Frontend:** Next.js 15 (App Router) + TypeScript
 - **Styling:** Tailwind CSS + Shadcn/ui
 - **Database:** Supabase (PostgreSQL)
 - **Auth:** Supabase Auth
 - **Hosting:** Vercel
+- **Search:** Custom search system with in-memory caching
+- **Icons:** Lucide React
 
 ## Kom i gang
 
@@ -60,7 +66,11 @@ npm run lint     # Kjør linting
 
 ## Dokumentasjon
 
-Se `/docs` mappen for full dokumentasjon:
+Se `/agent_docs` mappen for full dokumentasjon:
+- `search.md` - Komplett søkesystem-dokumentasjon
+- `CLAUDE.md` - Rask start-guide og regler
+
+For tidligere dokumentasjon, se `/docs` mappen:
 - `PRD.md` - Produktkrav
 - `PROGRESS.md` - Prosjektstatus
 - `DECISIONS.md` - Beslutningslogg

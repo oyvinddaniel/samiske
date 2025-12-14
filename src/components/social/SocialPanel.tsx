@@ -93,9 +93,12 @@ export function SocialPanel({ initialTab = 'friends', initialConversationUserId 
 
   // Switch tab when initial props change
   useEffect(() => {
+     
     if (initialTab) setActiveTab(initialTab)
     if (initialConversationUserId) {
+       
       setConversationUserId(initialConversationUserId)
+       
       setActiveTab('messages')
     }
   }, [initialTab, initialConversationUserId])

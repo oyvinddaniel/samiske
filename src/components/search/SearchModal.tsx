@@ -394,7 +394,8 @@ export function SearchModal({ open, onClose, anchorRef }: SearchModalProps) {
         {query && (
           <button
             onClick={() => setQuery('')}
-            className="p-1 text-gray-400 hover:text-gray-600 rounded flex-shrink-0"
+            className="p-1 text-gray-400 hover:text-gray-600 rounded flex-shrink-0 focus-visible:ring-2 focus-visible:ring-blue-500"
+            aria-label="Tøm søkefelt"
           >
             <X className="w-4 h-4" />
           </button>
@@ -455,8 +456,9 @@ export function SearchModal({ open, onClose, anchorRef }: SearchModalProps) {
                           return (
                             <button
                               onClick={(e) => cancelFriendRequest(result.id, e)}
-                              className="p-1.5 text-orange-500 hover:text-orange-600 hover:bg-orange-50 rounded transition-colors"
+                              className="p-1.5 text-orange-500 hover:text-orange-600 hover:bg-orange-50 rounded transition-colors focus-visible:ring-2 focus-visible:ring-orange-500"
                               title="Angre venneforespørsel"
+                              aria-label="Angre venneforespørsel"
                             >
                               <Undo2 className="w-4 h-4" />
                             </button>
@@ -473,8 +475,9 @@ export function SearchModal({ open, onClose, anchorRef }: SearchModalProps) {
                         return (
                           <button
                             onClick={(e) => sendFriendRequest(result.id, e)}
-                            className="p-1.5 text-gray-400 hover:text-blue-500 hover:bg-blue-50 rounded transition-colors"
+                            className="p-1.5 text-gray-400 hover:text-blue-500 hover:bg-blue-50 rounded transition-colors focus-visible:ring-2 focus-visible:ring-blue-500"
                             title="Legg til som venn"
+                            aria-label={`Legg til ${result.title} som venn`}
                           >
                             <UserPlus className="w-4 h-4" />
                           </button>

@@ -5,23 +5,32 @@ import Link from 'next/link'
 import { usePathname, useSearchParams } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
-import { Users, MessageCircle, ChevronRight, Calendar, Newspaper, Globe, Building2, MapPin, Plus, Settings2 } from 'lucide-react'
+import { Users, MessageCircle, ChevronRight, Calendar, Home, Building2, MapPin, Plus, Settings2, Landmark, Bookmark, User, Languages, Briefcase } from 'lucide-react'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { AddStarredLocationModal } from '@/components/geography'
-import { sidebarConfig, buildLocationUrl, locationIcons } from '@/lib/config/sidebar'
+import { sidebarConfig, buildLocationUrl } from '@/lib/config/sidebar'
+import { getAdminCommunities } from '@/lib/communities'
+import type { Community } from '@/lib/types/communities'
 
 interface StarredLocationItem {
-  type: 'municipality' | 'place'
+  type: 'language_area' | 'municipality' | 'place'
   id: string
   name: string
   href: string
 }
 
-interface SidebarProps {
-  currentCategory?: string
-  activePanel?: 'feed' | 'friends' | 'messages' | 'chat'
+interface UserProfile {
+  full_name: string | null
+  avatar_url: string | null
 }
 
-export function Sidebar({ currentCategory = '', activePanel = 'feed' }: SidebarProps) {
+interface SidebarProps {
+  currentCategory?: string
+  activePanel?: 'feed' | 'friends' | 'messages' | 'chat' | 'group' | 'community' | 'profile' | 'geography' | 'bookmarks' | 'location'
+  selectedLocationId?: string
+}
+
+export function Sidebar({ currentCategory = '', activePanel = 'feed', selectedLocationId }: SidebarProps) {
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const currentVisning = searchParams.get('visning') || ''
@@ -31,6 +40,8 @@ export function Sidebar({ currentCategory = '', activePanel = 'feed' }: SidebarP
   const [starredLocations, setStarredLocations] = useState<StarredLocationItem[]>([])
   const [showAddLocation, setShowAddLocation] = useState(false)
   const [maxVisibleLocations, setMaxVisibleLocations] = useState(sidebarConfig.defaultMaxVisibleLocations)
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
+  const [adminCommunities, setAdminCommunities] = useState<Community[]>([])
 
   // Create stable supabase client reference
   const supabase = useMemo(() => createClient(), [])
@@ -61,6 +72,60 @@ export function Sidebar({ currentCategory = '', activePanel = 'feed' }: SidebarP
 
     return () => subscription.unsubscribe()
   }, [supabase])
+
+  // Fetch user profile
+  useEffect(() => {
+    const fetchProfile = async () => {
+      if (!currentUserId) {
+        setUserProfile(null)
+        return
+      }
+
+      try {
+        const { data } = await supabase
+          .from('profiles')
+          .select('full_name, avatar_url')
+          .eq('id', currentUserId)
+          .single()
+
+        setUserProfile(data)
+      } catch {
+        setUserProfile(null)
+      }
+    }
+    fetchProfile()
+  }, [currentUserId, supabase])
+
+  // Fetch admin communities
+  const fetchAdminCommunities = useCallback(async () => {
+    if (!currentUserId) {
+      setAdminCommunities([])
+      return
+    }
+
+    try {
+      const communities = await getAdminCommunities()
+      console.log('Admin communities:', communities)
+      setAdminCommunities(communities)
+    } catch (error) {
+      console.error('Error fetching admin communities:', error)
+      setAdminCommunities([])
+    }
+  }, [currentUserId])
+
+  useEffect(() => {
+    fetchAdminCommunities()
+  }, [fetchAdminCommunities])
+
+  // Listen for community creation to refresh list
+  useEffect(() => {
+    const handleCommunityCreated = () => {
+      fetchAdminCommunities()
+    }
+
+    window.addEventListener('community-created', handleCommunityCreated)
+    return () => window.removeEventListener('community-created', handleCommunityCreated)
+  }, [fetchAdminCommunities])
 
   // Fetch notification counts
   const fetchCounts = useCallback(async () => {
@@ -115,6 +180,18 @@ export function Sidebar({ currentCategory = '', activePanel = 'feed' }: SidebarP
     }
 
     try {
+      // Fetch starred language areas
+      const { data: starredLanguageAreas } = await supabase
+        .from('user_starred_language_areas')
+        .select(`
+          language_area:language_areas(
+            id,
+            name,
+            code
+          )
+        `)
+        .eq('user_id', currentUserId)
+
       // Fetch starred municipalities
       const { data: starredMunicipalities } = await supabase
         .from('user_starred_municipalities')
@@ -145,6 +222,21 @@ export function Sidebar({ currentCategory = '', activePanel = 'feed' }: SidebarP
         .eq('user_id', currentUserId)
 
       const locations: StarredLocationItem[] = []
+
+      // Process language areas
+      if (starredLanguageAreas) {
+        for (const item of starredLanguageAreas) {
+          const la = item.language_area as unknown as { id: string; name: string; code: string } | null
+          if (la) {
+            locations.push({
+              type: 'language_area',
+              id: la.id,
+              name: la.name,
+              href: `/sapmi/sprak/${la.code}`
+            })
+          }
+        }
+      }
 
       // Process municipalities
       if (starredMunicipalities) {
@@ -204,9 +296,78 @@ export function Sidebar({ currentCategory = '', activePanel = 'feed' }: SidebarP
     <aside className="hidden md:flex md:flex-col md:w-64 bg-white border-r border-gray-200 min-h-[calc(100vh-4rem)]">
       {/* Navigation */}
       <nav className="flex-1 p-4 pt-6">
+        {/* User profile link at top */}
+        {currentUserId && userProfile && (
+          <div className="mb-4 pb-4 border-b border-gray-100">
+            <button
+              onClick={() => window.dispatchEvent(new CustomEvent('open-profile-panel'))}
+              className={cn(
+                'w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors text-left',
+                activePanel === 'profile'
+                  ? 'bg-blue-50'
+                  : 'hover:bg-gray-50'
+              )}
+            >
+              <Avatar className="w-10 h-10 border-2 border-white shadow-sm">
+                <AvatarImage src={userProfile.avatar_url || undefined} alt={userProfile.full_name || 'Profil'} />
+                <AvatarFallback className="bg-blue-100 text-blue-600 text-sm">
+                  {userProfile.full_name
+                    ? userProfile.full_name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
+                    : <User className="w-4 h-4" />}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex-1 min-w-0">
+                <p className={cn(
+                  'font-semibold text-sm truncate',
+                  activePanel === 'profile' ? 'text-blue-700' : 'text-gray-900'
+                )}>
+                  {userProfile.full_name || 'Min profil'}
+                </p>
+                <p className="text-xs text-gray-500">Se dine innlegg</p>
+              </div>
+              <ChevronRight className="w-4 h-4 text-gray-400 flex-shrink-0" />
+            </button>
+          </div>
+        )}
+
+        {/* Mine sider - communities user administers */}
+        {currentUserId && adminCommunities.length > 0 && (
+          <div className="mb-4 pb-4 border-b border-gray-100">
+            <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 px-3">
+              Mine sider
+            </h2>
+            <ul className="space-y-1">
+              {adminCommunities.map((community) => (
+                <li key={community.id}>
+                  <button
+                    onClick={() => {
+                      window.dispatchEvent(new CustomEvent('open-community-page', {
+                        detail: { slug: community.slug }
+                      }))
+                    }}
+                    className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-blue-50/50 hover:text-gray-700 transition-colors"
+                  >
+                    {community.logo_url ? (
+                      <Avatar className="w-5 h-5">
+                        <AvatarImage src={community.logo_url} alt={community.name} />
+                        <AvatarFallback className="bg-orange-100 text-orange-600 text-[10px]">
+                          {community.name.charAt(0)}
+                        </AvatarFallback>
+                      </Avatar>
+                    ) : (
+                      <Briefcase className="w-4 h-4 text-orange-500" />
+                    )}
+                    <span className="truncate">{community.name}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
         {/* Navigation links */}
         <div className="mb-4 pb-4 border-b border-gray-100 space-y-1">
-          {/* Aktivitet - primary/dominant link */}
+          {/* Start - primary/dominant link */}
           <Link
             href="/"
             className={cn(
@@ -223,14 +384,14 @@ export function Sidebar({ currentCategory = '', activePanel = 'feed' }: SidebarP
                   ? 'bg-blue-100'
                   : 'bg-gray-100'
               )}>
-                <Newspaper className={cn(
+                <Home className={cn(
                   'w-5 h-5 transition-colors',
                   pathname === '/' && !currentVisning && activePanel === 'feed'
                     ? 'text-blue-600'
                     : 'text-gray-600'
                 )} />
               </div>
-              Aktivitet
+              Start
             </span>
             <ChevronRight className="w-4 h-4 text-gray-400" />
           </Link>
@@ -256,26 +417,49 @@ export function Sidebar({ currentCategory = '', activePanel = 'feed' }: SidebarP
           </Link>
         </div>
 
-        {/* Geography section - Utforsk Sapmi always visible */}
+        {/* Navigation section */}
         <div className="mb-4 pb-4 border-b border-gray-100">
+          {/* Grupper - direct link */}
           <Link
-            href="/sapmi"
+            href="/grupper"
             className={cn(
               'flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-colors',
-              pathname.startsWith('/sapmi')
+              pathname === '/grupper'
                 ? 'bg-blue-50 text-blue-700'
                 : 'text-gray-600 hover:bg-blue-50/50 hover:text-gray-700'
             )}
           >
             <span className="flex items-center gap-3">
-              <Globe className={cn(
+              <Users className={cn(
                 'w-4 h-4 transition-colors',
-                pathname.startsWith('/sapmi') ? 'text-blue-600' : 'text-emerald-500'
+                pathname === '/grupper' ? 'text-blue-600' : 'text-purple-500'
               )} />
-              {sidebarConfig.labels.exploreRegion}
+              Grupper
             </span>
             <ChevronRight className="w-4 h-4 text-gray-400" />
           </Link>
+
+          {/* Samfunn - opens community panel */}
+          <button
+            onClick={() => {
+              window.dispatchEvent(new CustomEvent('open-community-panel'))
+            }}
+            className={cn(
+              'w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-colors mt-1',
+              activePanel === 'community'
+                ? 'bg-blue-50 text-blue-700'
+                : 'text-gray-600 hover:bg-blue-50/50 hover:text-gray-700'
+            )}
+          >
+            <span className="flex items-center gap-3">
+              <Landmark className={cn(
+                'w-4 h-4 transition-colors',
+                activePanel === 'community' ? 'text-blue-600' : 'text-orange-500'
+              )} />
+              Samfunn
+            </span>
+            <ChevronRight className="w-4 h-4 text-gray-400" />
+          </button>
         </div>
 
         {/* Mine steder - only for logged in users */}
@@ -287,22 +471,32 @@ export function Sidebar({ currentCategory = '', activePanel = 'feed' }: SidebarP
             <ul className="space-y-1">
               {visibleLocations.map((location) => (
                 <li key={`${location.type}-${location.id}`}>
-                  <Link
-                    href={location.href}
+                  <button
+                    onClick={() => {
+                      window.dispatchEvent(new CustomEvent('open-location-panel', {
+                        detail: {
+                          type: location.type,
+                          id: location.id,
+                          name: location.name
+                        }
+                      }))
+                    }}
                     className={cn(
-                      'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
-                      pathname === location.href
+                      'w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors text-left',
+                      activePanel === 'location' && selectedLocationId === location.id
                         ? 'bg-blue-50 text-blue-700'
                         : 'text-gray-600 hover:bg-blue-50/50 hover:text-gray-700'
                     )}
                   >
-                    {location.type === 'municipality' ? (
-                      <Building2 className="w-4 h-4 text-gray-400" />
+                    {location.type === 'language_area' ? (
+                      <Languages className="w-4 h-4 text-blue-500" />
+                    ) : location.type === 'municipality' ? (
+                      <Building2 className="w-4 h-4 text-orange-500" />
                     ) : (
-                      <MapPin className="w-4 h-4 text-gray-400" />
+                      <MapPin className="w-4 h-4 text-purple-500" />
                     )}
                     <span className="truncate">{location.name}</span>
-                  </Link>
+                  </button>
                 </li>
               ))}
 
@@ -322,8 +516,13 @@ export function Sidebar({ currentCategory = '', activePanel = 'feed' }: SidebarP
               {/* Legg til sted button */}
               <li>
                 <button
-                  onClick={() => setShowAddLocation(true)}
-                  className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-500 hover:bg-blue-50/50 hover:text-gray-700 transition-colors"
+                  onClick={() => window.dispatchEvent(new CustomEvent('open-geography-panel'))}
+                  className={cn(
+                    'w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
+                    activePanel === 'geography'
+                      ? 'bg-blue-50 text-blue-700'
+                      : 'text-gray-500 hover:bg-blue-50/50 hover:text-gray-700'
+                  )}
                 >
                   <Plus className="w-4 h-4" />
                   <span>{sidebarConfig.labels.addPlace}</span>
@@ -392,6 +591,26 @@ export function Sidebar({ currentCategory = '', activePanel = 'feed' }: SidebarP
                     )}
                     <ChevronRight className="w-4 h-4 text-gray-400" />
                   </span>
+                </button>
+              </li>
+              <li>
+                <button
+                  onClick={() => window.dispatchEvent(new CustomEvent('open-bookmarks-panel'))}
+                  className={cn(
+                    'w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-colors',
+                    activePanel === 'bookmarks'
+                      ? 'bg-blue-50 text-blue-700'
+                      : 'text-gray-600 hover:bg-blue-50/50 hover:text-gray-700'
+                  )}
+                >
+                  <span className="flex items-center gap-3">
+                    <Bookmark className={cn(
+                      'w-4 h-4 transition-colors',
+                      activePanel === 'bookmarks' ? 'text-blue-600' : 'text-amber-500'
+                    )} />
+                    Bokmerker
+                  </span>
+                  <ChevronRight className="w-4 h-4 text-gray-400" />
                 </button>
               </li>
             </ul>

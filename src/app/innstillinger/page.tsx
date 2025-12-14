@@ -9,7 +9,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
-import { Input } from '@/components/ui/input'
 import {
   Select,
   SelectContent,
@@ -17,15 +16,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Mail, Bell, ArrowLeft } from 'lucide-react'
+import { Mail, Bell, ArrowLeft, Users, MapPin, Home } from 'lucide-react'
 import {
   isPushSupported,
-  getPushPermission,
   requestPushPermission,
   subscribeToPush,
   unsubscribeFromPush,
   sendTestNotification,
 } from '@/lib/push-notifications'
+import { CircleManager } from '@/components/circles'
+import { GeographySelector } from '@/components/geography/GeographySelector'
+import { getUserLocations, setUserLocation } from '@/lib/geography'
+import { toast } from 'sonner'
 
 interface NotificationPreferences {
   email_new_posts: 'none' | 'instant' | 'daily' | 'weekly'
@@ -44,6 +46,15 @@ export default function SettingsPage() {
   })
   const [pushSupported, setPushSupported] = useState(false)
   const [pushPermission, setPushPermission] = useState<NotificationPermission>('default')
+  const [currentLocation, setCurrentLocation] = useState<{
+    municipalityId: string | null
+    placeId: string | null
+  }>({ municipalityId: null, placeId: null })
+  const [homeLocation, setHomeLocation] = useState<{
+    municipalityId: string | null
+    placeId: string | null
+  }>({ municipalityId: null, placeId: null })
+  const [savingLocations, setSavingLocations] = useState(false)
   const router = useRouter()
   const supabase = useMemo(() => createClient(), [])
 
@@ -66,17 +77,35 @@ export default function SettingsPage() {
       }
 
       // Fetch preferences
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('notification_preferences')
         .select('*')
         .eq('user_id', user.id)
         .single()
+
+      // PGRST116 = no rows found, which is expected for new users
+      if (error && error.code !== 'PGRST116') {
+        console.error('Error fetching notification preferences:', error)
+      }
 
       if (data) {
         setPreferences({
           email_new_posts: data.email_new_posts || 'none',
           email_comments: data.email_comments || 'daily',
           push_enabled: data.push_enabled || false,
+        })
+      }
+
+      // Fetch user locations
+      const locations = await getUserLocations(user.id)
+      if (locations) {
+        setCurrentLocation({
+          municipalityId: locations.currentMunicipalityId,
+          placeId: locations.currentPlaceId
+        })
+        setHomeLocation({
+          municipalityId: locations.homeMunicipalityId,
+          placeId: locations.homePlaceId
         })
       }
 
@@ -138,6 +167,38 @@ export default function SettingsPage() {
     if (success) {
       setPreferences(prev => ({ ...prev, push_enabled: false }))
     }
+  }
+
+  const handleSaveLocations = async () => {
+    if (!userId) return
+    setSavingLocations(true)
+
+    try {
+      // Save current location
+      await setUserLocation(
+        userId,
+        'current',
+        currentLocation.municipalityId,
+        currentLocation.placeId,
+        true // auto-star
+      )
+
+      // Save home location
+      await setUserLocation(
+        userId,
+        'home',
+        homeLocation.municipalityId,
+        homeLocation.placeId,
+        true // auto-star
+      )
+
+      toast.success('Steder lagret! De er lagt til i Mine steder.')
+    } catch (error) {
+      console.error('Error saving locations:', error)
+      toast.error('Kunne ikke lagre steder')
+    }
+
+    setSavingLocations(false)
   }
 
   if (loading) {
@@ -273,6 +334,76 @@ export default function SettingsPage() {
                 Push-varsler støttes ikke i din nettleser.
               </p>
             )}
+          </CardContent>
+        </Card>
+
+        {/* Mine steder */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <MapPin className="w-5 h-5 text-emerald-600" />
+              Mine steder
+            </CardTitle>
+            <CardDescription>
+              Fortell oss hvor du bor og hvor du kommer fra. Stedene legges automatisk til i Mine steder i sidemenyen.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2">
+                <MapPin className="w-4 h-4 text-blue-500" />
+                Hvor bor du na?
+              </Label>
+              <GeographySelector
+                value={currentLocation}
+                onChange={setCurrentLocation}
+                placeholder="Velg kommune eller sted"
+                className="w-full"
+              />
+              <p className="text-xs text-gray-500">
+                Velg kommunen eller stedet du bor na
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2">
+                <Home className="w-4 h-4 text-green-500" />
+                Hvor kommer du fra?
+              </Label>
+              <GeographySelector
+                value={homeLocation}
+                onChange={setHomeLocation}
+                placeholder="Velg kommune eller sted"
+                className="w-full"
+              />
+              <p className="text-xs text-gray-500">
+                Velg hjemstedet ditt eller der du vokste opp
+              </p>
+            </div>
+
+            <Button
+              onClick={handleSaveLocations}
+              disabled={savingLocations}
+              className="w-full"
+            >
+              {savingLocations ? 'Lagrer...' : 'Lagre steder'}
+            </Button>
+          </CardContent>
+        </Card>
+
+        {/* Vennesirkler */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Users className="w-5 h-5 text-purple-600" />
+              Vennesirkler
+            </CardTitle>
+            <CardDescription>
+              Organiser vennene dine i sirkler for enklere deling av innlegg
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <CircleManager />
           </CardContent>
         </Card>
 

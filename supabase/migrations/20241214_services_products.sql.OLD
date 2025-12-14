@@ -1,0 +1,278 @@
+-- Services and Products Tables
+-- Tjenester og produkter knyttet til communities/samfunn
+
+-- ============================================
+-- SERVICES TABLE (Tjenester)
+-- ============================================
+
+CREATE TABLE IF NOT EXISTS services (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+
+  -- Community relationship
+  community_id UUID NOT NULL REFERENCES communities(id) ON DELETE CASCADE,
+
+  -- Basic info
+  name TEXT NOT NULL,
+  slug TEXT NOT NULL,
+  description TEXT,
+
+  -- Categories/types
+  category TEXT DEFAULT 'other' CHECK (category IN (
+    'consulting',     -- Konsulentbistand
+    'education',      -- Utdanning
+    'healthcare',     -- Helse
+    'legal',          -- Juridisk
+    'translation',    -- Oversettelse
+    'cultural',       -- Kulturelle tjenester
+    'technology',     -- Teknologi
+    'other'           -- Annet
+  )),
+
+  -- Media
+  images JSONB DEFAULT '[]'::jsonb,  -- Array of image URLs
+
+  -- Contact
+  contact_email TEXT,
+  contact_phone TEXT,
+  website_url TEXT,
+
+  -- Geography (optional - service can be location-specific or online)
+  municipality_id UUID REFERENCES municipalities(id) ON DELETE SET NULL,
+  place_id UUID REFERENCES places(id) ON DELETE SET NULL,
+  is_online BOOLEAN DEFAULT FALSE,  -- Available online/remotely
+
+  -- Metadata
+  created_by UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+
+  -- Settings
+  is_active BOOLEAN DEFAULT TRUE,
+  is_featured BOOLEAN DEFAULT FALSE,
+
+  -- Unique constraint
+  UNIQUE(community_id, slug)
+);
+
+-- Indexes for performance
+CREATE INDEX IF NOT EXISTS idx_services_community ON services(community_id);
+CREATE INDEX IF NOT EXISTS idx_services_category ON services(category);
+CREATE INDEX IF NOT EXISTS idx_services_municipality ON services(municipality_id);
+CREATE INDEX IF NOT EXISTS idx_services_place ON services(place_id);
+CREATE INDEX IF NOT EXISTS idx_services_created_at ON services(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_services_is_active ON services(is_active);
+CREATE INDEX IF NOT EXISTS idx_services_is_featured ON services(is_featured);
+
+-- Full-text search indexes
+CREATE INDEX IF NOT EXISTS idx_services_name_search
+  ON services USING gin(to_tsvector('norwegian', name));
+CREATE INDEX IF NOT EXISTS idx_services_description_search
+  ON services USING gin(to_tsvector('norwegian', description));
+
+-- Enable RLS
+ALTER TABLE services ENABLE ROW LEVEL SECURITY;
+
+-- RLS Policies for services
+DROP POLICY IF EXISTS "Active services are viewable by everyone" ON services;
+CREATE POLICY "Active services are viewable by everyone" ON services
+  FOR SELECT USING (is_active = TRUE);
+
+DROP POLICY IF EXISTS "Community admins can create services" ON services;
+CREATE POLICY "Community admins can create services" ON services
+  FOR INSERT WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM community_admins
+      WHERE community_admins.community_id = services.community_id
+      AND community_admins.user_id = auth.uid()
+    )
+  );
+
+DROP POLICY IF EXISTS "Community admins can update their services" ON services;
+CREATE POLICY "Community admins can update their services" ON services
+  FOR UPDATE USING (
+    EXISTS (
+      SELECT 1 FROM community_admins
+      WHERE community_admins.community_id = services.community_id
+      AND community_admins.user_id = auth.uid()
+    )
+  );
+
+DROP POLICY IF EXISTS "Community admins can delete their services" ON services;
+CREATE POLICY "Community admins can delete their services" ON services
+  FOR DELETE USING (
+    EXISTS (
+      SELECT 1 FROM community_admins
+      WHERE community_admins.community_id = services.community_id
+      AND community_admins.user_id = auth.uid()
+    )
+  );
+
+-- ============================================
+-- PRODUCTS TABLE (Produkter)
+-- ============================================
+
+CREATE TABLE IF NOT EXISTS products (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+
+  -- Community relationship
+  community_id UUID NOT NULL REFERENCES communities(id) ON DELETE CASCADE,
+
+  -- Basic info
+  name TEXT NOT NULL,
+  slug TEXT NOT NULL,
+  description TEXT,
+
+  -- Categories/types
+  category TEXT DEFAULT 'other' CHECK (category IN (
+    'handicraft',     -- Duodji/Håndverk
+    'art',            -- Kunst
+    'clothing',       -- Klær
+    'jewelry',        -- Smykker
+    'food',           -- Mat og drikke
+    'books',          -- Bøker
+    'music',          -- Musikk
+    'home',           -- Hjem og interiør
+    'other'           -- Annet
+  )),
+
+  -- Media
+  images JSONB DEFAULT '[]'::jsonb,  -- Array of image URLs
+  primary_image TEXT,  -- Featured image
+
+  -- Pricing (optional - can be empty for "contact for price")
+  price DECIMAL(10,2),
+  currency TEXT DEFAULT 'NOK',
+  price_type TEXT DEFAULT 'fixed' CHECK (price_type IN ('fixed', 'from', 'contact')),
+
+  -- Stock/availability
+  in_stock BOOLEAN DEFAULT TRUE,
+  stock_quantity INT,
+
+  -- Links
+  purchase_url TEXT,  -- External webshop link
+  contact_email TEXT,
+  contact_phone TEXT,
+
+  -- Geography (where product is sold/available)
+  municipality_id UUID REFERENCES municipalities(id) ON DELETE SET NULL,
+  place_id UUID REFERENCES places(id) ON DELETE SET NULL,
+  ships_nationally BOOLEAN DEFAULT FALSE,
+  ships_internationally BOOLEAN DEFAULT FALSE,
+
+  -- Metadata
+  created_by UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+
+  -- Settings
+  is_active BOOLEAN DEFAULT TRUE,
+  is_featured BOOLEAN DEFAULT FALSE,
+
+  -- Unique constraint
+  UNIQUE(community_id, slug)
+);
+
+-- Indexes for performance
+CREATE INDEX IF NOT EXISTS idx_products_community ON products(community_id);
+CREATE INDEX IF NOT EXISTS idx_products_category ON products(category);
+CREATE INDEX IF NOT EXISTS idx_products_municipality ON products(municipality_id);
+CREATE INDEX IF NOT EXISTS idx_products_place ON products(place_id);
+CREATE INDEX IF NOT EXISTS idx_products_created_at ON products(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_products_in_stock ON products(in_stock);
+CREATE INDEX IF NOT EXISTS idx_products_is_active ON products(is_active);
+CREATE INDEX IF NOT EXISTS idx_products_is_featured ON products(is_featured);
+CREATE INDEX IF NOT EXISTS idx_products_price ON products(price) WHERE price IS NOT NULL;
+
+-- Full-text search indexes
+CREATE INDEX IF NOT EXISTS idx_products_name_search
+  ON products USING gin(to_tsvector('norwegian', name));
+CREATE INDEX IF NOT EXISTS idx_products_description_search
+  ON products USING gin(to_tsvector('norwegian', description));
+
+-- Enable RLS
+ALTER TABLE products ENABLE ROW LEVEL SECURITY;
+
+-- RLS Policies for products
+DROP POLICY IF EXISTS "Active products are viewable by everyone" ON products;
+CREATE POLICY "Active products are viewable by everyone" ON products
+  FOR SELECT USING (is_active = TRUE);
+
+DROP POLICY IF EXISTS "Community admins can create products" ON products;
+CREATE POLICY "Community admins can create products" ON products
+  FOR INSERT WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM community_admins
+      WHERE community_admins.community_id = products.community_id
+      AND community_admins.user_id = auth.uid()
+    )
+  );
+
+DROP POLICY IF EXISTS "Community admins can update their products" ON products;
+CREATE POLICY "Community admins can update their products" ON products
+  FOR UPDATE USING (
+    EXISTS (
+      SELECT 1 FROM community_admins
+      WHERE community_admins.community_id = products.community_id
+      AND community_admins.user_id = auth.uid()
+    )
+  );
+
+DROP POLICY IF EXISTS "Community admins can delete their products" ON products;
+CREATE POLICY "Community admins can delete their products" ON products
+  FOR DELETE USING (
+    EXISTS (
+      SELECT 1 FROM community_admins
+      WHERE community_admins.community_id = products.community_id
+      AND community_admins.user_id = auth.uid()
+    )
+  );
+
+-- ============================================
+-- TRIGGERS FOR updated_at
+-- ============================================
+
+-- Ensure update_updated_at_column function exists (from communities migration)
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Trigger for services
+DROP TRIGGER IF EXISTS trigger_update_services_updated_at ON services;
+CREATE TRIGGER trigger_update_services_updated_at
+  BEFORE UPDATE ON services
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- Trigger for products
+DROP TRIGGER IF EXISTS trigger_update_products_updated_at ON products;
+CREATE TRIGGER trigger_update_products_updated_at
+  BEFORE UPDATE ON products
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- ============================================
+-- CATEGORY LABELS (for reference)
+-- ============================================
+
+-- Services:
+-- consulting = Konsulentbistand
+-- education = Utdanning
+-- healthcare = Helse
+-- legal = Juridisk
+-- translation = Oversettelse
+-- cultural = Kulturelle tjenester
+-- technology = Teknologi
+-- other = Annet
+
+-- Products:
+-- handicraft = Duodji/Håndverk
+-- art = Kunst
+-- clothing = Klær
+-- jewelry = Smykker
+-- food = Mat og drikke
+-- books = Bøker
+-- music = Musikk
+-- home = Hjem og interiør
+-- other = Annet

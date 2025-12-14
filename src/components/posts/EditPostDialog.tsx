@@ -4,6 +4,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { GeographySearchInput, type GeographySelection } from '@/components/geography'
+import { MapPin } from 'lucide-react'
 import { PostData } from './types'
 
 interface EditPostDialogProps {
@@ -13,12 +15,14 @@ interface EditPostDialogProps {
   editEventDate: string
   editEventTime: string
   editEventLocation: string
+  editGeography: GeographySelection | null
   saving: boolean
   onEditTitleChange: (value: string) => void
   onEditContentChange: (value: string) => void
   onEditEventDateChange: (value: string) => void
   onEditEventTimeChange: (value: string) => void
   onEditEventLocationChange: (value: string) => void
+  onEditGeographyChange: (value: GeographySelection | null) => void
   onSave: () => void
   onCancel: () => void
 }
@@ -30,12 +34,14 @@ export function EditPostDialog({
   editEventDate,
   editEventTime,
   editEventLocation,
+  editGeography,
   saving,
   onEditTitleChange,
   onEditContentChange,
   onEditEventDateChange,
   onEditEventTimeChange,
   onEditEventLocationChange,
+  onEditGeographyChange,
   onSave,
   onCancel,
 }: EditPostDialogProps) {
@@ -79,15 +85,28 @@ export function EditPostDialog({
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="editEventLocationMobile">Sted</Label>
+            <Label htmlFor="editEventLocationMobile">Arrangementssted</Label>
             <Input
               id="editEventLocationMobile"
               value={editEventLocation}
               onChange={(e) => onEditEventLocationChange(e.target.value)}
+              placeholder="F.eks. Studentersamfundet"
             />
           </div>
         </>
       )}
+      {/* Geography */}
+      <div className="space-y-2">
+        <Label className="flex items-center gap-1">
+          <MapPin className="w-3 h-3" />
+          Geografisk tilknytning
+        </Label>
+        <GeographySearchInput
+          value={editGeography}
+          onChange={onEditGeographyChange}
+          placeholder="Søk etter sted, kommune eller språkområde..."
+        />
+      </div>
       <div className="flex gap-2 pt-2">
         <Button onClick={onSave} disabled={saving} className="flex-1">
           {saving ? 'Lagrer...' : 'Lagre endringer'}

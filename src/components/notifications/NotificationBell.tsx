@@ -29,7 +29,7 @@ interface NotificationItem {
   actorName?: string
   actorAvatar?: string
   createdAt: string
-  isNew: boolean // true if notification is newer than last_seen_at
+  isNew: boolean
 }
 
 interface NotificationBellProps {
@@ -48,233 +48,122 @@ export function NotificationBell({ userId }: NotificationBellProps) {
   const [isOpen, setIsOpen] = useState(false)
   const supabase = createClient()
 
-  const totalCount = counts.newPosts + counts.commentsOnMyPosts + counts.commentsOnFollowedPosts + counts.likesOnMyPosts
+  const totalCount =
+    counts.newPosts +
+    counts.commentsOnMyPosts +
+    counts.commentsOnFollowedPosts +
+    counts.likesOnMyPosts
 
+  // Fetch notifications using optimized RPC function
   const fetchNotifications = useCallback(async () => {
-    // Get user's last_seen_at
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('last_seen_at')
-      .eq('id', userId)
-      .single()
-
-    const lastSeenAt = profile?.last_seen_at || new Date(0).toISOString()
-    const lastSeenDate = new Date(lastSeenAt)
-
-    // Fetch notifications from last 7 days (to show history)
-    const sevenDaysAgo = new Date()
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
-    const historyDate = sevenDaysAgo.toISOString()
-
-    // 1. Count new posts since last seen
-    const { count: newPostsCount } = await supabase
-      .from('posts')
-      .select('*', { count: 'exact', head: true })
-      .gt('created_at', lastSeenAt)
-      .neq('user_id', userId)
-
-    // 2. Count comments on my posts since last seen
-    const { data: myPosts } = await supabase
-      .from('posts')
-      .select('id')
-      .eq('user_id', userId)
-
-    const myPostIds = myPosts?.map(p => p.id) || []
-
-    let commentsOnMyPostsCount = 0
-    if (myPostIds.length > 0) {
-      const { count } = await supabase
-        .from('comments')
-        .select('*', { count: 'exact', head: true })
-        .in('post_id', myPostIds)
-        .gt('created_at', lastSeenAt)
-        .neq('user_id', userId)
-      commentsOnMyPostsCount = count || 0
-    }
-
-    // 3. Count comments on posts I've commented on (but not my own posts)
-    const { data: myComments } = await supabase
-      .from('comments')
-      .select('post_id')
-      .eq('user_id', userId)
-
-    const followedPostIds = [...new Set(myComments?.map(c => c.post_id) || [])]
-      .filter(id => !myPostIds.includes(id))
-
-    let commentsOnFollowedCount = 0
-    if (followedPostIds.length > 0) {
-      const { count } = await supabase
-        .from('comments')
-        .select('*', { count: 'exact', head: true })
-        .in('post_id', followedPostIds)
-        .gt('created_at', lastSeenAt)
-        .neq('user_id', userId)
-      commentsOnFollowedCount = count || 0
-    }
-
-    // 4. Count likes on my posts since last seen
-    let likesOnMyPostsCount = 0
-    if (myPostIds.length > 0) {
-      const { count } = await supabase
-        .from('likes')
-        .select('*', { count: 'exact', head: true })
-        .in('post_id', myPostIds)
-        .gt('created_at', lastSeenAt)
-        .neq('user_id', userId)
-      likesOnMyPostsCount = count || 0
-    }
-
-    setCounts({
-      newPosts: newPostsCount || 0,
-      commentsOnMyPosts: commentsOnMyPostsCount,
-      commentsOnFollowedPosts: commentsOnFollowedCount,
-      likesOnMyPosts: likesOnMyPostsCount,
-    })
-
-    // Fetch actual notification items for the dropdown (last 7 days)
-    const items: NotificationItem[] = []
-
-    // Get recent comments on my posts (last 7 days)
-    if (myPostIds.length > 0) {
-      const { data: recentComments } = await supabase
-        .from('comments')
-        .select(`
-          id,
-          content,
-          created_at,
-          post_id,
-          user:profiles!comments_user_id_fkey (
-            full_name,
-            avatar_url
-          ),
-          post:posts!comments_post_id_fkey (
-            id,
-            title
-          )
-        `)
-        .in('post_id', myPostIds)
-        .gt('created_at', historyDate)
-        .neq('user_id', userId)
-        .order('created_at', { ascending: false })
-        .limit(10)
-
-      recentComments?.forEach(comment => {
-        const userData = Array.isArray(comment.user) ? comment.user[0] : comment.user
-        const postData = Array.isArray(comment.post) ? comment.post[0] : comment.post
-        const commentDate = new Date(comment.created_at)
-        items.push({
-          id: `comment-${comment.id}`,
-          type: 'comment_on_my_post',
-          message: `kommenterte på innlegget ditt`,
-          postId: postData?.id,
-          postTitle: postData?.title,
-          actorName: userData?.full_name || 'Ukjent',
-          actorAvatar: userData?.avatar_url || undefined,
-          createdAt: comment.created_at,
-          isNew: commentDate > lastSeenDate,
-        })
+    try {
+      const { data, error } = await supabase.rpc('get_notification_summary', {
+        p_user_id: userId,
       })
-    }
 
-    // Get recent likes on my posts (last 7 days)
-    if (myPostIds.length > 0) {
-      const { data: recentLikes } = await supabase
-        .from('likes')
-        .select(`
-          id,
-          created_at,
-          post_id,
-          user:profiles!likes_user_id_fkey (
-            full_name,
-            avatar_url
-          ),
-          post:posts!likes_post_id_fkey (
-            id,
-            title
-          )
-        `)
-        .in('post_id', myPostIds)
-        .gt('created_at', historyDate)
-        .neq('user_id', userId)
-        .order('created_at', { ascending: false })
-        .limit(10)
+      if (error) {
+        console.error('Error fetching notifications:', error)
+        setLoading(false)
+        return
+      }
 
-      recentLikes?.forEach(like => {
-        const userData = Array.isArray(like.user) ? like.user[0] : like.user
-        const postData = Array.isArray(like.post) ? like.post[0] : like.post
-        const likeDate = new Date(like.created_at)
-        items.push({
-          id: `like-${like.id}`,
-          type: 'like_on_my_post',
-          message: `likte innlegget ditt`,
-          postId: postData?.id,
-          postTitle: postData?.title,
-          actorName: userData?.full_name || 'Ukjent',
-          actorAvatar: userData?.avatar_url || undefined,
-          createdAt: like.created_at,
-          isNew: likeDate > lastSeenDate,
-        })
+      if (!data || data.length === 0) {
+        setLoading(false)
+        return
+      }
+
+      const summary = data[0]
+
+      setCounts({
+        newPosts: summary.new_posts_count || 0,
+        commentsOnMyPosts: summary.comments_on_my_posts_count || 0,
+        commentsOnFollowedPosts: summary.comments_on_followed_count || 0,
+        likesOnMyPosts: summary.likes_count || 0,
       })
+
+      // Parse recent notifications from JSONB
+      const recentNotifications = summary.recent_notifications || []
+      setNotifications(recentNotifications)
+      setLoading(false)
+    } catch (error) {
+      console.error('Error fetching notifications:', error)
+      setLoading(false)
     }
-
-    // Get recent new posts (last 7 days)
-    const { data: recentPosts } = await supabase
-      .from('posts')
-      .select(`
-        id,
-        title,
-        created_at,
-        user:profiles!posts_user_id_fkey (
-          full_name,
-          avatar_url
-        )
-      `)
-      .gt('created_at', historyDate)
-      .neq('user_id', userId)
-      .order('created_at', { ascending: false })
-      .limit(5)
-
-    recentPosts?.forEach(post => {
-      const userData = Array.isArray(post.user) ? post.user[0] : post.user
-      const postDate = new Date(post.created_at)
-      items.push({
-        id: `post-${post.id}`,
-        type: 'new_post',
-        message: `opprettet et nytt innlegg`,
-        postId: post.id,
-        postTitle: post.title,
-        actorName: userData?.full_name || 'Ukjent',
-        actorAvatar: userData?.avatar_url || undefined,
-        createdAt: post.created_at,
-        isNew: postDate > lastSeenDate,
-      })
-    })
-
-    // Sort by date and limit
-    items.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-    setNotifications(items.slice(0, 15))
-    setLoading(false)
   }, [supabase, userId])
 
+  // Initial fetch
   useEffect(() => {
     fetchNotifications()
-
-    // Refresh every 30 seconds
-    const interval = setInterval(fetchNotifications, 30000)
-    return () => clearInterval(interval)
   }, [fetchNotifications])
+
+  // Realtime subscriptions for instant updates
+  useEffect(() => {
+    console.log('🔔 Setting up Realtime subscriptions for notifications')
+
+    const channel = supabase
+      .channel('notifications-' + userId)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'posts',
+        },
+        (payload) => {
+          console.log('📝 New post detected:', payload.new)
+          fetchNotifications()
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'comments',
+        },
+        (payload) => {
+          console.log('💬 New comment detected:', payload.new)
+          fetchNotifications()
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'likes',
+        },
+        (payload) => {
+          console.log('❤️ New like detected:', payload.new)
+          fetchNotifications()
+        }
+      )
+      .subscribe((status) => {
+        console.log('📡 Notification subscription status:', status)
+      })
+
+    return () => {
+      console.log('🔌 Cleaning up notification subscriptions')
+      supabase.removeChannel(channel)
+    }
+  }, [supabase, userId, fetchNotifications])
 
   const handleOpenChange = async (open: boolean) => {
     setIsOpen(open)
   }
 
-  // Mark all as read - updates last_seen_at but keeps showing notifications
+  // Mark all as read - updates last_seen_at
   const markAllAsRead = async () => {
     if (totalCount > 0) {
-      await supabase
+      const { error } = await supabase
         .from('profiles')
         .update({ last_seen_at: new Date().toISOString() })
         .eq('id', userId)
+
+      if (error) {
+        console.error('Error marking notifications as read:', error)
+        return
+      }
 
       // Reset counts and mark all notifications as read locally
       setCounts({
@@ -285,7 +174,7 @@ export function NotificationBell({ userId }: NotificationBellProps) {
       })
 
       // Mark all notifications as read in UI
-      setNotifications(prev => prev.map(n => ({ ...n, isNew: false })))
+      setNotifications((prev) => prev.map((n) => ({ ...n, isNew: false })))
     }
   }
 
@@ -332,12 +221,18 @@ export function NotificationBell({ userId }: NotificationBellProps) {
   return (
     <DropdownMenu open={isOpen} onOpenChange={handleOpenChange}>
       <DropdownMenuTrigger asChild>
-        <button className="relative p-2 rounded-full hover:bg-white/10 transition-colors focus:outline-none">
+        <button
+          className="relative p-2 rounded-full hover:bg-white/10 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
+          aria-label={`Varsler${totalCount > 0 ? ` (${totalCount} uleste)` : ''}`}
+        >
           <Bell className="w-5 h-5 text-white/80 hover:text-white" />
 
           {/* Notification badge */}
           {totalCount > 0 && (
-            <span className="absolute -top-0.5 -right-0.5 flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-bold text-white bg-red-500 rounded-full">
+            <span
+              className="absolute -top-0.5 -right-0.5 flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-bold text-white bg-red-500 rounded-full"
+              aria-hidden="true"
+            >
               {totalCount > 99 ? '99+' : totalCount}
             </span>
           )}
@@ -347,29 +242,23 @@ export function NotificationBell({ userId }: NotificationBellProps) {
       <DropdownMenuContent align="end" className="w-80">
         <div className="px-3 py-2 border-b border-gray-100">
           <p className="font-semibold text-sm">Varsler</p>
-          {totalCount > 0 && (
-            <p className="text-xs text-gray-500">
-              {totalCount} nye siden sist
-            </p>
-          )}
+          {totalCount > 0 && <p className="text-xs text-gray-500">{totalCount} nye siden sist</p>}
         </div>
 
         {loading ? (
-          <div className="p-4 text-center text-sm text-gray-500">
-            Laster varsler...
-          </div>
+          <div className="p-4 text-center text-sm text-gray-500">Laster varsler...</div>
         ) : notifications.length === 0 ? (
           <div className="p-6 text-center">
             <Bell className="w-8 h-8 text-gray-300 mx-auto mb-2" />
             <p className="text-sm text-gray-500">Ingen varsler</p>
-            <p className="text-xs text-gray-400 mt-1">
-              Ingen aktivitet de siste 7 dagene
-            </p>
+            <p className="text-xs text-gray-400 mt-1">Ingen aktivitet de siste 7 dagene</p>
           </div>
         ) : (
           <div className="max-h-[400px] overflow-y-auto">
             {/* Summary section */}
-            {(counts.newPosts > 0 || counts.commentsOnMyPosts > 0 || counts.likesOnMyPosts > 0) && (
+            {(counts.newPosts > 0 ||
+              counts.commentsOnMyPosts > 0 ||
+              counts.likesOnMyPosts > 0) && (
               <>
                 <div className="px-3 py-2 bg-blue-50 border-b border-gray-100">
                   <div className="flex flex-wrap gap-2 text-xs">
@@ -409,23 +298,31 @@ export function NotificationBell({ userId }: NotificationBellProps) {
                   <div className="relative flex-shrink-0">
                     <Avatar className={`w-8 h-8 ${!notification.isNew ? 'opacity-60' : ''}`}>
                       <AvatarImage src={notification.actorAvatar} />
-                      <AvatarFallback className={`text-xs ${
-                        notification.isNew
-                          ? 'bg-blue-100 text-blue-600'
-                          : 'bg-gray-100 text-gray-500'
-                      }`}>
+                      <AvatarFallback
+                        className={`text-xs ${
+                          notification.isNew
+                            ? 'bg-blue-100 text-blue-600'
+                            : 'bg-gray-100 text-gray-500'
+                        }`}
+                      >
                         {getInitials(notification.actorName)}
                       </AvatarFallback>
                     </Avatar>
-                    <span className={`absolute -bottom-1 -right-1 bg-white rounded-full p-0.5 ${
-                      !notification.isNew ? 'opacity-60' : ''
-                    }`}>
+                    <span
+                      className={`absolute -bottom-1 -right-1 bg-white rounded-full p-0.5 ${
+                        !notification.isNew ? 'opacity-60' : ''
+                      }`}
+                    >
                       {getNotificationIcon(notification.type)}
                     </span>
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className={`text-sm ${!notification.isNew ? 'text-gray-500' : ''}`}>
-                      <span className={notification.isNew ? 'font-medium' : 'font-normal text-gray-500'}>
+                      <span
+                        className={
+                          notification.isNew ? 'font-medium' : 'font-normal text-gray-500'
+                        }
+                      >
                         {notification.actorName}
                       </span>{' '}
                       <span className={notification.isNew ? 'text-gray-600' : 'text-gray-400'}>
@@ -433,11 +330,19 @@ export function NotificationBell({ userId }: NotificationBellProps) {
                       </span>
                     </p>
                     {notification.postTitle && (
-                      <p className={`text-xs truncate ${notification.isNew ? 'text-gray-500' : 'text-gray-400'}`}>
+                      <p
+                        className={`text-xs truncate ${
+                          notification.isNew ? 'text-gray-500' : 'text-gray-400'
+                        }`}
+                      >
                         «{notification.postTitle}»
                       </p>
                     )}
-                    <p className={`text-[10px] mt-0.5 ${notification.isNew ? 'text-gray-400' : 'text-gray-300'}`}>
+                    <p
+                      className={`text-[10px] mt-0.5 ${
+                        notification.isNew ? 'text-gray-400' : 'text-gray-300'
+                      }`}
+                    >
                       {getTimeAgo(notification.createdAt)}
                     </p>
                   </div>

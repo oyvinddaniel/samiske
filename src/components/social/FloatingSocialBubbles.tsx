@@ -43,6 +43,18 @@ export function FloatingSocialBubbles() {
     }
   }
 
+  // Handle Escape key to close panel
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && showSocialPanel) {
+        setShowSocialPanel(false)
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [showSocialPanel])
+
   // Don't render anything if not logged in or not mounted
   if (!mounted || !isLoggedIn) return null
 

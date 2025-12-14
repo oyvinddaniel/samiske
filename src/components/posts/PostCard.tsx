@@ -1,6 +1,5 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo } from 'react'
 import Link from 'next/link'
 import { Card, CardContent } from '@/components/ui/card'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -13,9 +12,12 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
-import { Pencil, Trash2, MapPin } from 'lucide-react'
-import { createClient } from '@/lib/supabase/client'
+import { Pencil, Trash2, MapPin, Share2, Bookmark, BookmarkCheck, Flag, Package, Briefcase, ExternalLink } from 'lucide-react'
 import { ProfileOverlay } from '@/components/profile/ProfileOverlay'
+import { RSVPButton } from '@/components/events/RSVPButton'
+import { ReportDialog } from '@/components/reports'
+import { usePostCard } from '@/hooks/usePostCard'
+import { useProfileHover } from '@/hooks/useProfileHover'
 
 // Import child components
 import { PostActions } from './PostActions'
@@ -24,415 +26,71 @@ import { EditPostDialog } from './EditPostDialog'
 import { PostDialogContent } from './PostDialogContent'
 
 // Import types and utils
-import {
-  PostCardProps,
-  Comment,
-  LikeUser,
-  CommentLikeUser,
-  categoryColors,
-} from './types'
+import { PostCardProps, categoryColors } from './types'
 import { getInitials, formatDate, formatEventDate } from './utils'
 
 export function PostCard({ post, currentUserId, onClick }: PostCardProps) {
-  const [liked, setLiked] = useState(post.user_has_liked || false)
-  const [likeCount, setLikeCount] = useState(post.like_count)
-  const [isLiking, setIsLiking] = useState(false)
-  const [showComments, setShowComments] = useState(false)
-  const [comments, setComments] = useState<Comment[]>([])
-  const [commentCount, setCommentCount] = useState(post.comment_count)
-  const [loadingComments, setLoadingComments] = useState(false)
-  const [newComment, setNewComment] = useState('')
-  const [replyingTo, setReplyingTo] = useState<string | null>(null)
-  const [replyContent, setReplyContent] = useState('')
-  const [submitting, setSubmitting] = useState(false)
-  const [likeUsers, setLikeUsers] = useState<LikeUser[]>([])
-  const [commentLikes, setCommentLikes] = useState<Record<string, { count: number; liked: boolean; users: CommentLikeUser[] }>>({})
-  const [previewComments, setPreviewComments] = useState<Comment[]>([])
-  const [profileOverlayUserId, setProfileOverlayUserId] = useState<string | null>(null)
-  const [showDialog, setShowDialog] = useState(false)
-  const [isEditing, setIsEditing] = useState(false)
-  const [editTitle, setEditTitle] = useState(post.title)
-  const [editContent, setEditContent] = useState(post.content)
-  const [editEventDate, setEditEventDate] = useState(post.event_date || '')
-  const [editEventTime, setEditEventTime] = useState(post.event_time || '')
-  const [editEventLocation, setEditEventLocation] = useState(post.event_location || '')
-  const [saving, setSaving] = useState(false)
-  const [postData, setPostData] = useState(post)
-  const [isDeleted, setIsDeleted] = useState(false)
-  const [deleting, setDeleting] = useState(false)
+  const {
+    // State
+    liked,
+    likeCount,
+    likeUsers,
+    showComments,
+    comments,
+    commentCount,
+    loadingComments,
+    newComment,
+    replyingTo,
+    replyContent,
+    submitting,
+    commentLikes,
+    previewComments,
+    showDialog,
+    isEditing,
+    showReportDialog,
+    editTitle,
+    editContent,
+    editEventDate,
+    editEventTime,
+    editEventLocation,
+    editGeography,
+    saving,
+    postData,
+    isDeleted,
+    deleting,
+    bookmarked,
+    bookmarking,
+    isOwner,
+    isBlurred,
+    // Setters
+    setNewComment,
+    setReplyingTo,
+    setReplyContent,
+    setShowDialog,
+    setShowReportDialog,
+    setEditTitle,
+    setEditContent,
+    setEditEventDate,
+    setEditEventTime,
+    setEditEventLocation,
+    setEditGeography,
+    // Handlers
+    handleLike,
+    handleCommentLike,
+    handleToggleComments,
+    handleSubmitComment,
+    handleDeleteComment,
+    handleStartEdit,
+    handleSaveEdit,
+    handleCancelEdit,
+    handleDeletePost,
+    handleShare,
+    handleBookmark,
+    fetchComments,
+  } = usePostCard({ post, currentUserId })
 
-  // Use useMemo for stable supabase client reference
-  const supabase = useMemo(() => createClient(), [])
-
-  // Check if content should be blurred (members-only and not logged in)
-  const isBlurred = postData.visibility === 'members' && !currentUserId
-  const isOwner = currentUserId === postData.user.id
+  const profileHover = useProfileHover(postData.user.id)
   const categoryColor = postData.category?.color || categoryColors[postData.category?.slug || ''] || '#6B7280'
-
-  // Like handlers
-  const handleLike = async () => {
-    if (!currentUserId || isLiking) return
-    setIsLiking(true)
-
-    if (liked) {
-      await supabase
-        .from('likes')
-        .delete()
-        .eq('post_id', post.id)
-        .eq('user_id', currentUserId)
-
-      setLiked(false)
-      setLikeCount((prev) => prev - 1)
-      setLikeUsers((prev) => prev.filter((u) => u.id !== currentUserId))
-    } else {
-      await supabase.from('likes').insert({
-        post_id: post.id,
-        user_id: currentUserId,
-      })
-
-      setLiked(true)
-      setLikeCount((prev) => prev + 1)
-      fetchLikeUsers()
-    }
-
-    setIsLiking(false)
-  }
-
-  const handleCommentLike = async (commentId: string) => {
-    if (!currentUserId) return
-
-    const current = commentLikes[commentId] || { count: 0, liked: false, users: [] }
-
-    if (current.liked) {
-      await supabase
-        .from('comment_likes')
-        .delete()
-        .eq('comment_id', commentId)
-        .eq('user_id', currentUserId)
-
-      setCommentLikes((prev) => ({
-        ...prev,
-        [commentId]: {
-          count: Math.max(0, current.count - 1),
-          liked: false,
-          users: current.users.filter((u) => u.id !== currentUserId),
-        },
-      }))
-    } else {
-      await supabase.from('comment_likes').insert({
-        comment_id: commentId,
-        user_id: currentUserId,
-      })
-
-      setCommentLikes((prev) => ({
-        ...prev,
-        [commentId]: {
-          count: current.count + 1,
-          liked: true,
-          users: current.users,
-        },
-      }))
-    }
-  }
-
-  // Fetch functions
-  const fetchComments = useCallback(async () => {
-    setLoadingComments(true)
-    const { data, error } = await supabase
-      .from('comments')
-      .select(`
-        id,
-        content,
-        created_at,
-        parent_id,
-        user:profiles!comments_user_id_fkey (
-          id,
-          full_name,
-          avatar_url
-        )
-      `)
-      .eq('post_id', post.id)
-      .order('created_at', { ascending: true })
-
-    if (!error && data) {
-      // Build hierarchical structure
-      const commentMap = new Map<string, Comment>()
-      const rootComments: Comment[] = []
-
-      data.forEach((comment) => {
-        const userData = Array.isArray(comment.user) ? comment.user[0] : comment.user
-        const formattedComment: Comment = {
-          ...comment,
-          user: userData as Comment['user'],
-          like_count: 0,
-          replies: [],
-        }
-        commentMap.set(comment.id, formattedComment)
-      })
-
-      data.forEach((comment) => {
-        const formattedComment = commentMap.get(comment.id)!
-        if (comment.parent_id && commentMap.has(comment.parent_id)) {
-          commentMap.get(comment.parent_id)!.replies!.push(formattedComment)
-        } else {
-          rootComments.push(formattedComment)
-        }
-      })
-
-      setComments(rootComments)
-
-      const commentIds = data.map((c) => c.id)
-      if (commentIds.length > 0) {
-        fetchCommentLikes(commentIds)
-      }
-    }
-    setLoadingComments(false)
-  }, [supabase, post.id])
-
-  const fetchCommentLikes = async (commentIds: string[]) => {
-    const { data: likesData } = await supabase
-      .from('comment_likes')
-      .select(`
-        comment_id,
-        user:profiles!comment_likes_user_id_fkey (
-          id,
-          full_name
-        )
-      `)
-      .in('comment_id', commentIds)
-
-    if (likesData) {
-      const likesMap: Record<string, { count: number; liked: boolean; users: CommentLikeUser[] }> = {}
-
-      likesData.forEach((like) => {
-        const userData = Array.isArray(like.user) ? like.user[0] : like.user
-        if (!likesMap[like.comment_id]) {
-          likesMap[like.comment_id] = { count: 0, liked: false, users: [] }
-        }
-        likesMap[like.comment_id].count++
-        if (userData) {
-          likesMap[like.comment_id].users.push(userData as CommentLikeUser)
-          if ((userData as CommentLikeUser).id === currentUserId) {
-            likesMap[like.comment_id].liked = true
-          }
-        }
-      })
-
-      setCommentLikes(likesMap)
-    }
-  }
-
-  const fetchLikeUsers = useCallback(async () => {
-    const { data, error } = await supabase
-      .from('likes')
-      .select(`
-        user:profiles!likes_user_id_fkey (
-          id,
-          full_name,
-          avatar_url
-        )
-      `)
-      .eq('post_id', post.id)
-      .limit(10)
-
-    if (!error && data) {
-      const users = data.map((like) => {
-        const userData = Array.isArray(like.user) ? like.user[0] : like.user
-        return userData as LikeUser
-      }).filter(Boolean)
-      setLikeUsers(users)
-    }
-  }, [supabase, post.id])
-
-  const fetchPreviewComments = useCallback(async () => {
-    const { data, error } = await supabase
-      .from('comments')
-      .select(`
-        id,
-        content,
-        created_at,
-        parent_id,
-        user:profiles!comments_user_id_fkey (
-          id,
-          full_name,
-          avatar_url
-        )
-      `)
-      .eq('post_id', post.id)
-      .is('parent_id', null)
-      .order('created_at', { ascending: false })
-      .limit(2)
-
-    if (!error && data) {
-      const formatted = data.map((comment) => {
-        const userData = Array.isArray(comment.user) ? comment.user[0] : comment.user
-        return {
-          ...comment,
-          user: userData as Comment['user'],
-          like_count: 0,
-          replies: [],
-        }
-      }).reverse()
-      setPreviewComments(formatted)
-    }
-
-    const { count } = await supabase
-      .from('comments')
-      .select('*', { count: 'exact', head: true })
-      .eq('post_id', post.id)
-
-    if (count !== null) {
-      setCommentCount(count)
-    }
-  }, [supabase, post.id])
-
-  // Effects
-  useEffect(() => {
-    if (post.like_count > 0) {
-      fetchLikeUsers()
-    }
-  }, [post.id, post.like_count, fetchLikeUsers])
-
-  useEffect(() => {
-    fetchPreviewComments()
-  }, [fetchPreviewComments])
-
-  // Real-time subscription for comments - with proper cleanup
-  useEffect(() => {
-    const channel = supabase
-      .channel(`post-comments-${post.id}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'comments',
-          filter: `post_id=eq.${post.id}`
-        },
-        () => {
-          fetchPreviewComments()
-          if (showComments) {
-            fetchComments()
-          }
-        }
-      )
-      .subscribe()
-
-    return () => {
-      supabase.removeChannel(channel)
-    }
-  }, [supabase, post.id, showComments, fetchPreviewComments, fetchComments])
-
-  // Comment handlers
-  const handleToggleComments = () => {
-    if (!showComments && comments.length === 0) {
-      fetchComments()
-    }
-    setShowComments(!showComments)
-  }
-
-  const handleSubmitComment = async (e: React.FormEvent, parentId: string | null = null) => {
-    e.preventDefault()
-    if (!currentUserId) return
-
-    const content = parentId ? replyContent : newComment
-    if (!content.trim()) return
-
-    setSubmitting(true)
-
-    const { error } = await supabase.from('comments').insert({
-      post_id: post.id,
-      user_id: currentUserId,
-      content: content.trim(),
-      parent_id: parentId,
-    })
-
-    if (!error) {
-      if (parentId) {
-        setReplyContent('')
-        setReplyingTo(null)
-      } else {
-        setNewComment('')
-      }
-      setCommentCount((prev) => prev + 1)
-      fetchComments()
-    }
-
-    setSubmitting(false)
-  }
-
-  const handleDeleteComment = async (commentId: string) => {
-    if (!confirm('Slett kommentar?')) return
-
-    await supabase.from('comments').delete().eq('id', commentId)
-    setCommentCount((prev) => prev - 1)
-    fetchComments()
-  }
-
-  // Edit handlers
-  const handleSaveEdit = async () => {
-    if (!isOwner) return
-    setSaving(true)
-
-    const updateData: Record<string, string | null> = {
-      title: editTitle,
-      content: editContent,
-    }
-
-    if (postData.type === 'event') {
-      updateData.event_date = editEventDate || null
-      updateData.event_time = editEventTime || null
-      updateData.event_location = editEventLocation || null
-    }
-
-    const { error } = await supabase
-      .from('posts')
-      .update(updateData)
-      .eq('id', postData.id)
-
-    if (!error) {
-      setPostData({
-        ...postData,
-        title: editTitle,
-        content: editContent,
-        event_date: editEventDate || null,
-        event_time: editEventTime || null,
-        event_location: editEventLocation || null,
-      })
-      setIsEditing(false)
-    }
-    setSaving(false)
-  }
-
-  const handleCancelEdit = () => {
-    setEditTitle(postData.title)
-    setEditContent(postData.content)
-    setEditEventDate(postData.event_date || '')
-    setEditEventTime(postData.event_time || '')
-    setEditEventLocation(postData.event_location || '')
-    setIsEditing(false)
-  }
-
-  const handleDeletePost = async () => {
-    if (!isOwner) return
-    if (!confirm('Er du sikker på at du vil slette dette innlegget? Dette kan ikke angres.')) return
-
-    setDeleting(true)
-
-    const { error } = await supabase
-      .from('posts')
-      .delete()
-      .eq('id', postData.id)
-
-    if (!error) {
-      setIsDeleted(true)
-      setShowDialog(false)
-    } else {
-      alert('Kunne ikke slette innlegget. Prøv igjen.')
-    }
-
-    setDeleting(false)
-  }
 
   const openDialog = () => {
     if (onClick) {
@@ -442,7 +100,6 @@ export function PostCard({ post, currentUserId, onClick }: PostCardProps) {
     }
   }
 
-  // If post is deleted, show nothing
   if (isDeleted) {
     return null
   }
@@ -468,17 +125,29 @@ export function PostCard({ post, currentUserId, onClick }: PostCardProps) {
 
           {/* Top row: avatar, name, time, category */}
           <div className="flex items-center gap-1.5 mb-1.5">
-            <button onClick={() => setProfileOverlayUserId(postData.user.id)} className="focus:outline-none">
-              <Avatar className="w-5 h-5 cursor-pointer hover:ring-2 hover:ring-blue-200 transition-all">
-                <AvatarImage src={postData.user.avatar_url || undefined} />
-                <AvatarFallback className="bg-blue-100 text-blue-600 text-[9px]">
-                  {getInitials(postData.user.full_name)}
-                </AvatarFallback>
-              </Avatar>
-            </button>
+            <div
+              onMouseEnter={profileHover.handleMouseEnter}
+              onMouseLeave={profileHover.handleMouseLeave}
+            >
+              <button
+                onClick={profileHover.handleClick}
+                className="focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded-full"
+                aria-label={`Vis profil for ${postData.user.full_name || 'Ukjent'}`}
+              >
+                <Avatar className="w-5 h-5 cursor-pointer hover:ring-2 hover:ring-blue-200 transition-all">
+                  <AvatarImage src={postData.user.avatar_url || undefined} />
+                  <AvatarFallback className="bg-blue-100 text-blue-600 text-[9px]">
+                    {getInitials(postData.user.full_name)}
+                  </AvatarFallback>
+                </Avatar>
+              </button>
+            </div>
             <button
-              onClick={() => setProfileOverlayUserId(postData.user.id)}
-              className="text-sm font-medium text-gray-900 hover:text-blue-600 transition-colors focus:outline-none"
+              onClick={profileHover.handleClick}
+              onMouseEnter={profileHover.handleMouseEnter}
+              onMouseLeave={profileHover.handleMouseLeave}
+              className="text-sm font-medium text-gray-900 hover:text-blue-600 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded"
+              aria-label={`Vis profil for ${postData.user.full_name || 'Ukjent'}`}
             >
               {postData.user.full_name || 'Ukjent'}
             </button>
@@ -495,26 +164,19 @@ export function PostCard({ post, currentUserId, onClick }: PostCardProps) {
             )}
             <div className="flex-1" />
 
-            {/* Edit and delete buttons for owner */}
-            {isOwner && (
-              <div className="flex items-center gap-0.5">
-                <button
-                  onClick={() => { setShowDialog(true); setIsEditing(true); }}
-                  className="p-1 rounded hover:bg-gray-100 transition-colors"
-                  title="Rediger innlegg"
-                >
-                  <Pencil className="w-3.5 h-3.5 text-gray-400 hover:text-gray-600" />
-                </button>
-                <button
-                  onClick={handleDeletePost}
-                  disabled={deleting}
-                  className="p-1 rounded hover:bg-red-50 transition-colors"
-                  title="Slett innlegg"
-                >
-                  <Trash2 className="w-3.5 h-3.5 text-gray-400 hover:text-red-500" />
-                </button>
-              </div>
-            )}
+            {/* Action buttons */}
+            <PostCardActions
+              currentUserId={currentUserId}
+              isOwner={isOwner}
+              bookmarked={bookmarked}
+              bookmarking={bookmarking}
+              deleting={deleting}
+              onBookmark={handleBookmark}
+              onReport={() => setShowReportDialog(true)}
+              onShare={handleShare}
+              onEdit={() => { setShowDialog(true); handleStartEdit(); }}
+              onDelete={handleDeletePost}
+            />
 
             {/* Visibility icon */}
             <TooltipProvider>
@@ -559,12 +221,124 @@ export function PostCard({ post, currentUserId, onClick }: PostCardProps) {
             </div>
           )}
 
+          {/* RSVP buttons for events */}
+          {postData.type === 'event' && (
+            <div className="mb-2">
+              <RSVPButton
+                postId={postData.id}
+                isLoggedIn={!!currentUserId}
+                compact={true}
+              />
+            </div>
+          )}
+
           {/* Content preview */}
           <p className="text-gray-600 text-sm line-clamp-2 mb-1.5">{postData.content}</p>
 
+          {/* Promoted Product */}
+          {postData.product && postData.product_id && (
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-3 mb-2 border border-blue-200">
+              <div className="flex gap-3">
+                {/* Product image */}
+                <div className="w-20 h-20 rounded overflow-hidden flex-shrink-0 bg-white">
+                  {(postData.product.primary_image || (postData.product.images && postData.product.images[0])) ? (
+                    <img
+                      src={postData.product.primary_image || postData.product.images[0]}
+                      alt={postData.product.name}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <Package className="w-8 h-8 text-gray-300" />
+                    </div>
+                  )}
+                </div>
+
+                {/* Product info */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-start justify-between gap-2 mb-1">
+                    <div className="flex-1 min-w-0">
+                      <Badge variant="secondary" className="text-xs mb-1">
+                        <Package className="w-3 h-3 mr-1" />
+                        Produkt
+                      </Badge>
+                      <p className="font-semibold text-sm text-gray-900 truncate">{postData.product.name}</p>
+                    </div>
+                  </div>
+
+                  {postData.product.price && (
+                    <p className="text-sm font-bold text-blue-600">
+                      {postData.product.price.toLocaleString('nb-NO')} {postData.product.currency || 'NOK'}
+                    </p>
+                  )}
+
+                  <Button asChild size="sm" className="mt-2 h-7 text-xs">
+                    <Link href={`/produkter/${postData.product.id}`}>
+                      Se produkt
+                      <ExternalLink className="w-3 h-3 ml-1" />
+                    </Link>
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Promoted Service */}
+          {postData.service && postData.service_id && (
+            <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg p-3 mb-2 border border-purple-200">
+              <div className="flex gap-3">
+                {/* Service image */}
+                <div className="w-20 h-20 rounded overflow-hidden flex-shrink-0 bg-white">
+                  {(postData.service.images && postData.service.images[0]) ? (
+                    <img
+                      src={postData.service.images[0]}
+                      alt={postData.service.name}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <Briefcase className="w-8 h-8 text-gray-300" />
+                    </div>
+                  )}
+                </div>
+
+                {/* Service info */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-start justify-between gap-2 mb-1">
+                    <div className="flex-1 min-w-0">
+                      <Badge variant="secondary" className="text-xs mb-1">
+                        <Briefcase className="w-3 h-3 mr-1" />
+                        Tjeneste
+                      </Badge>
+                      <p className="font-semibold text-sm text-gray-900 truncate">{postData.service.name}</p>
+                    </div>
+                  </div>
+
+                  {postData.service.price && (
+                    <p className="text-sm font-bold text-purple-600">
+                      {postData.service.price.toLocaleString('nb-NO')} {postData.service.currency || 'NOK'}
+                      {postData.service.price_type === 'hourly' && '/time'}
+                    </p>
+                  )}
+
+                  <Button asChild size="sm" className="mt-2 h-7 text-xs">
+                    <Link href={`/tjenester/${postData.service.id}`}>
+                      Se tjeneste
+                      <ExternalLink className="w-3 h-3 ml-1" />
+                    </Link>
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Image */}
           {postData.image_url && (
-            <button onClick={openDialog} className="w-full overflow-hidden rounded-md bg-gray-100 mb-1.5">
+            <button
+              onClick={openDialog}
+              className="w-full overflow-hidden rounded-md bg-gray-100 mb-1.5 focus-visible:ring-2 focus-visible:ring-blue-500"
+              aria-label={`Åpne innlegg: ${postData.title}`}
+            >
               <img
                 src={postData.image_url}
                 alt={postData.title}
@@ -605,15 +379,32 @@ export function PostCard({ post, currentUserId, onClick }: PostCardProps) {
             onSubmitComment={handleSubmitComment}
             onDeleteComment={handleDeleteComment}
             onCommentLike={handleCommentLike}
-            onProfileClick={setProfileOverlayUserId}
+            onProfileClick={(userId) => {
+              window.dispatchEvent(
+                new CustomEvent('open-user-profile-panel', {
+                  detail: { userId }
+                })
+              )
+            }}
           />
         </CardContent>
 
         {/* Profile overlay */}
-        {profileOverlayUserId && (
+        {profileHover.showOverlay && (
           <ProfileOverlay
-            userId={profileOverlayUserId}
-            onClose={() => setProfileOverlayUserId(null)}
+            userId={postData.user.id}
+            onClose={profileHover.handleForceClose}
+            onMouseEnter={profileHover.handleMouseEnter}
+          />
+        )}
+
+        {/* Report dialog */}
+        {currentUserId && (
+          <ReportDialog
+            open={showReportDialog}
+            onOpenChange={setShowReportDialog}
+            postId={postData.id}
+            currentUserId={currentUserId}
           />
         )}
       </Card>
@@ -637,12 +428,14 @@ export function PostCard({ post, currentUserId, onClick }: PostCardProps) {
                 editEventDate={editEventDate}
                 editEventTime={editEventTime}
                 editEventLocation={editEventLocation}
+                editGeography={editGeography}
                 saving={saving}
                 onEditTitleChange={setEditTitle}
                 onEditContentChange={setEditContent}
                 onEditEventDateChange={setEditEventDate}
                 onEditEventTimeChange={setEditEventTime}
                 onEditEventLocationChange={setEditEventLocation}
+                onEditGeographyChange={setEditGeography}
                 onSave={handleSaveEdit}
                 onCancel={handleCancelEdit}
               />
@@ -668,12 +461,105 @@ export function PostCard({ post, currentUserId, onClick }: PostCardProps) {
                 onSubmitComment={handleSubmitComment}
                 onDeleteComment={handleDeleteComment}
                 onCommentLike={handleCommentLike}
-                onEdit={() => setIsEditing(true)}
+                onEdit={handleStartEdit}
               />
             )}
           </div>
         </BottomSheet>
       )}
     </>
+  )
+}
+
+// Extracted action buttons component
+interface PostCardActionsProps {
+  currentUserId?: string | null
+  isOwner: boolean
+  bookmarked: boolean
+  bookmarking: boolean
+  deleting: boolean
+  onBookmark: () => void
+  onReport: () => void
+  onShare: () => void
+  onEdit: () => void
+  onDelete: () => void
+}
+
+function PostCardActions({
+  currentUserId,
+  isOwner,
+  bookmarked,
+  bookmarking,
+  deleting,
+  onBookmark,
+  onReport,
+  onShare,
+  onEdit,
+  onDelete,
+}: PostCardActionsProps) {
+  return (
+    <div className="flex items-center gap-0.5">
+      {/* Bookmark button - for logged in users */}
+      {currentUserId && (
+        <button
+          onClick={onBookmark}
+          disabled={bookmarking}
+          className="p-1 rounded hover:bg-gray-100 transition-colors"
+          title={bookmarked ? 'Fjern bokmerke' : 'Bokmerke innlegg'}
+          aria-label={bookmarked ? 'Fjern bokmerke' : 'Bokmerke innlegg'}
+        >
+          {bookmarked ? (
+            <BookmarkCheck className="w-3.5 h-3.5 text-blue-500" />
+          ) : (
+            <Bookmark className="w-3.5 h-3.5 text-gray-400 hover:text-blue-500" />
+          )}
+        </button>
+      )}
+
+      {/* Report button - for logged in users (not owner) */}
+      {currentUserId && !isOwner && (
+        <button
+          onClick={onReport}
+          className="p-1 rounded hover:bg-gray-100 transition-colors"
+          title="Rapporter innlegg"
+          aria-label="Rapporter innlegg"
+        >
+          <Flag className="w-3.5 h-3.5 text-gray-400 hover:text-orange-500" />
+        </button>
+      )}
+
+      {/* Share button - available to everyone */}
+      <button
+        onClick={onShare}
+        className="p-1 rounded hover:bg-gray-100 transition-colors"
+        title="Del innlegg"
+        aria-label="Del innlegg"
+      >
+        <Share2 className="w-3.5 h-3.5 text-gray-400 hover:text-blue-500" />
+      </button>
+
+      {/* Edit and delete buttons for owner */}
+      {isOwner && (
+        <>
+          <button
+            onClick={onEdit}
+            className="p-1 rounded hover:bg-gray-100 transition-colors"
+            title="Rediger innlegg"
+            aria-label="Rediger innlegg"
+          >
+            <Pencil className="w-3.5 h-3.5 text-gray-400 hover:text-gray-600" />
+          </button>
+          <button
+            onClick={onDelete}
+            disabled={deleting}
+            className="p-1 rounded hover:bg-red-50 transition-colors"
+            title="Slett innlegg"
+            aria-label="Slett innlegg"
+          >
+            <Trash2 className="w-3.5 h-3.5 text-gray-400 hover:text-red-500" />
+          </button>
+        </>
+      )}
+    </div>
   )
 }

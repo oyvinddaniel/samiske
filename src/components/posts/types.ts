@@ -1,6 +1,8 @@
 // Shared types for post components
 
 import type { GeographyScope } from '@/lib/types/geography'
+import type { Product } from '@/lib/types/products'
+import type { Service } from '@/lib/types/services'
 
 export interface CommentLikeUser {
   id: string
@@ -70,11 +72,16 @@ export interface PostData {
   // Display fields from RPC
   posted_from_name?: string
   posted_from_type?: 'place' | 'municipality' | 'sapmi'
+  // Product/Service promotion
+  product_id?: string | null
+  service_id?: string | null
+  product?: Product | null
+  service?: Service | null
 }
 
 export interface PostCardProps {
   post: PostData
-  currentUserId?: string
+  currentUserId?: string | null
   onClick?: () => void
 }
 

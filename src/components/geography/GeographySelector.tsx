@@ -187,15 +187,6 @@ export function GeographySelector({
     return placeholder
   }
 
-  // Get display icon
-  const getDisplayIcon = () => {
-    if (selectedPlace) return MapPin
-    if (selectedMunicipality) return Building2
-    return Globe
-  }
-
-  const DisplayIcon = getDisplayIcon()
-
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -207,7 +198,13 @@ export function GeographySelector({
           disabled={disabled}
         >
           <span className="flex items-center gap-2 truncate">
-            <DisplayIcon className="h-4 w-4 shrink-0" />
+            {selectedPlace ? (
+              <MapPin className="h-4 w-4 shrink-0" />
+            ) : selectedMunicipality ? (
+              <Building2 className="h-4 w-4 shrink-0" />
+            ) : (
+              <Globe className="h-4 w-4 shrink-0" />
+            )}
             <span className="truncate">{getDisplayText()}</span>
           </span>
           <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />

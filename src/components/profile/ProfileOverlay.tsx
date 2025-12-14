@@ -3,7 +3,7 @@
 import { useEffect, useState, useMemo, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { createClient } from '@/lib/supabase/client'
-import { UserPlus, UserCheck, Clock, MessageCircle, UserX, X } from 'lucide-react'
+import { UserPlus, UserCheck, Clock, MessageCircle, UserX, X, ArrowRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface Profile {
@@ -23,9 +23,10 @@ interface ProfileOverlayProps {
   userId: string
   onClose: () => void
   onStartConversation?: (userId: string) => void
+  onMouseEnter?: () => void
 }
 
-export function ProfileOverlay({ userId, onClose, onStartConversation }: ProfileOverlayProps) {
+export function ProfileOverlay({ userId, onClose, onStartConversation, onMouseEnter }: ProfileOverlayProps) {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
@@ -270,6 +271,7 @@ export function ProfileOverlay({ userId, onClose, onStartConversation }: Profile
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
+        onMouseEnter={onMouseEnter}
         className={cn(
           'fixed z-[9999] bg-white rounded-2xl shadow-2xl transition-all duration-300 ease-out overflow-hidden',
           'w-[calc(100%-2rem)] max-w-lg',
@@ -287,7 +289,20 @@ export function ProfileOverlay({ userId, onClose, onStartConversation }: Profile
 
         {/* Header */}
         <div className="flex items-center justify-between px-4 pb-3 border-b border-gray-100">
-          <h2 className="text-lg font-semibold text-gray-900">Profil</h2>
+          <button
+            onClick={() => {
+              handleClose()
+              window.dispatchEvent(
+                new CustomEvent('open-user-profile-panel', {
+                  detail: { userId }
+                })
+              )
+            }}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-full transition-colors shadow-sm"
+          >
+            <ArrowRight className="w-4 h-4" />
+            Gå til profil
+          </button>
           <button
             onClick={handleClose}
             className="p-2 -mr-2 text-gray-500 hover:text-gray-700 rounded-lg hover:bg-gray-100"

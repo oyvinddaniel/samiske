@@ -17,7 +17,7 @@ interface PostActionsProps {
   likeCount: number
   commentCount: number
   likeUsers: LikeUser[]
-  currentUserId?: string
+  currentUserId?: string | null
   onLike: () => void
   onToggleComments: () => void
   onOpenDialog: () => void

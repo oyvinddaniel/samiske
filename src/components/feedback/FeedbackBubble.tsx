@@ -17,6 +17,7 @@ export function FeedbackBubble() {
   const supabase = useMemo(() => createClient(), [])
 
   useEffect(() => {
+     
     setMounted(true)
   }, [])
 

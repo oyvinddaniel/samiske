@@ -324,14 +324,46 @@ export async function unstarPlace(userId: string, placeId: string): Promise<bool
   return true
 }
 
+export async function starLanguageArea(userId: string, languageAreaId: string): Promise<boolean> {
+  const supabase = getSupabase()
+  const { error } = await supabase
+    .from('user_starred_language_areas')
+    .insert({ user_id: userId, language_area_id: languageAreaId })
+
+  if (error) {
+    console.error('Error starring language area:', error)
+    return false
+  }
+  return true
+}
+
+export async function unstarLanguageArea(userId: string, languageAreaId: string): Promise<boolean> {
+  const supabase = getSupabase()
+  const { error } = await supabase
+    .from('user_starred_language_areas')
+    .delete()
+    .eq('user_id', userId)
+    .eq('language_area_id', languageAreaId)
+
+  if (error) {
+    console.error('Error unstarring language area:', error)
+    return false
+  }
+  return true
+}
+
 export async function isLocationStarred(
   userId: string,
   locationId: string,
-  locationType: 'municipality' | 'place'
+  locationType: 'language_area' | 'municipality' | 'place'
 ): Promise<boolean> {
   const supabase = getSupabase()
-  const table = locationType === 'municipality' ? 'user_starred_municipalities' : 'user_starred_places'
-  const idColumn = locationType === 'municipality' ? 'municipality_id' : 'place_id'
+  const table =
+    locationType === 'language_area' ? 'user_starred_language_areas' :
+    locationType === 'municipality' ? 'user_starred_municipalities' : 'user_starred_places'
+  const idColumn =
+    locationType === 'language_area' ? 'language_area_id' :
+    locationType === 'municipality' ? 'municipality_id' : 'place_id'
 
   const { count, error } = await supabase
     .from(table)
@@ -450,4 +482,95 @@ export function getGeographyScopeLabel(scope: GeographyScope): string {
 
 export function getDefaultGeographyScope(): GeographyScope {
   return 'sapmi'
+}
+
+// =====================================================
+// USER LOCATION FUNCTIONS
+// =====================================================
+
+export interface UserLocations {
+  currentMunicipalityId: string | null
+  currentPlaceId: string | null
+  homeMunicipalityId: string | null
+  homePlaceId: string | null
+}
+
+export async function getUserLocations(userId: string): Promise<UserLocations | null> {
+  const supabase = getSupabase()
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('current_municipality_id, current_place_id, home_municipality_id, home_place_id')
+    .eq('id', userId)
+    .single()
+
+  if (error) {
+    console.error('Error fetching user locations:', error)
+    return null
+  }
+
+  return {
+    currentMunicipalityId: data.current_municipality_id,
+    currentPlaceId: data.current_place_id,
+    homeMunicipalityId: data.home_municipality_id,
+    homePlaceId: data.home_place_id
+  }
+}
+
+export async function setUserLocation(
+  userId: string,
+  locationType: 'current' | 'home',
+  municipalityId: string | null,
+  placeId: string | null,
+  autoStar: boolean = true
+): Promise<boolean> {
+  const supabase = getSupabase()
+
+  // Build the update object based on location type
+  const updateData = locationType === 'current'
+    ? { current_municipality_id: municipalityId, current_place_id: placeId }
+    : { home_municipality_id: municipalityId, home_place_id: placeId }
+
+  // Update the profile
+  const { error } = await supabase
+    .from('profiles')
+    .update(updateData)
+    .eq('id', userId)
+
+  if (error) {
+    console.error('Error setting user location:', error)
+    return false
+  }
+
+  // Auto-star the location if requested
+  if (autoStar) {
+    if (placeId) {
+      // Check if already starred
+      const isStarred = await isLocationStarred(userId, placeId, 'place')
+      if (!isStarred) {
+        await starPlace(userId, placeId)
+      }
+    } else if (municipalityId) {
+      // Check if already starred
+      const isStarred = await isLocationStarred(userId, municipalityId, 'municipality')
+      if (!isStarred) {
+        await starMunicipality(userId, municipalityId)
+      }
+    }
+  }
+
+  return true
+}
+
+export async function completeOnboarding(userId: string): Promise<boolean> {
+  const supabase = getSupabase()
+  const { error } = await supabase
+    .from('profiles')
+    .update({ onboarding_completed: true })
+    .eq('id', userId)
+
+  if (error) {
+    console.error('Error completing onboarding:', error)
+    return false
+  }
+  return true
 }

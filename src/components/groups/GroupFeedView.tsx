@@ -2,11 +2,13 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Loader2, FileText, Calendar, Info } from 'lucide-react'
+import { Loader2, FileText, Calendar, Info, PenSquare } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/client'
 import { GroupHeader } from './GroupHeader'
 import { Feed } from '@/components/feed/Feed'
 import { CalendarView } from '@/components/calendar/CalendarView'
+import { CreatePostSheet } from '@/components/posts/CreatePostSheet'
 import type { Group, MemberStatus } from '@/lib/types/groups'
 
 interface GroupFeedViewProps {
@@ -20,6 +22,8 @@ export function GroupFeedView({ groupId, onClose }: GroupFeedViewProps) {
   const [activeTab, setActiveTab] = useState<string>('posts')
   const [userRole, setUserRole] = useState<string | null>(null)
   const [memberStatus, setMemberStatus] = useState<MemberStatus | null>(null)
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
+  const [showCreatePost, setShowCreatePost] = useState(false)
 
   const supabase = useMemo(() => createClient(), [])
 
@@ -45,6 +49,7 @@ export function GroupFeedView({ groupId, onClose }: GroupFeedViewProps) {
 
       // Check membership status
       const { data: { user } } = await supabase.auth.getUser()
+      setCurrentUserId(user?.id || null)
       if (user) {
         const { data: memberData } = await supabase
           .from('group_members')
@@ -81,6 +86,8 @@ export function GroupFeedView({ groupId, onClose }: GroupFeedViewProps) {
     )
   }
 
+  const canViewContent = memberStatus === 'approved' || group.group_type === 'open'
+
   return (
     <div>
       {/* Group header */}
@@ -90,6 +97,23 @@ export function GroupFeedView({ groupId, onClose }: GroupFeedViewProps) {
         memberStatus={memberStatus}
         onClose={onClose}
       />
+
+      {/* Create post button - only show for members who can view content */}
+      {canViewContent && currentUserId && (
+        <div className="flex justify-center mb-6">
+          <button
+            onClick={() => setShowCreatePost(true)}
+            className="group flex items-center gap-2.5 px-5 py-2.5 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white rounded-full shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/30 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
+          >
+            <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center group-hover:bg-white/30 transition-colors">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
+              </svg>
+            </div>
+            <span className="font-medium text-sm">Nytt innlegg</span>
+          </button>
+        </div>
+      )}
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -147,6 +171,20 @@ export function GroupFeedView({ groupId, onClose }: GroupFeedViewProps) {
           </div>
         </TabsContent>
       </Tabs>
+
+      {/* Create Post Sheet */}
+      {canViewContent && currentUserId && group && (
+        <CreatePostSheet
+          open={showCreatePost}
+          onClose={() => setShowCreatePost(false)}
+          userId={currentUserId}
+          groupId={group.id}
+          onSuccess={() => {
+            setShowCreatePost(false)
+            window.dispatchEvent(new CustomEvent('post-created'))
+          }}
+        />
+      )}
     </div>
   )
 }

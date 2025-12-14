@@ -1,6 +1,6 @@
 # Prosjektstatus: samiske.no
 
-## Sist oppdatert: 2025-12-12
+## Sist oppdatert: 2025-12-13
 
 ---
 
@@ -116,6 +116,54 @@ Se NEXT-STEPS.md for gjenstående oppgaver.
 - [x] Opprettet types.ts og utils.ts for delt kode
 - [x] Fikset memory leaks: useMemo for supabase-klient i RightSidebar.tsx
 - [x] Verifisert cleanup i alle 9 filer med subscriptions
+
+### Fase 13: Unified Feed UX Redesign (2025-12-13)
+- [x] HomeLayout utvidet med group/community panels
+- [x] Grupper i sidebar: expand/collapse med brukerens grupper
+- [x] Samfunn vises i feed-området med 5 faner (Feed, Kalender, Dine, Alle aktorer, Alle arrangementer)
+- [x] GroupFeedView komponent med header og 3 faner (Innlegg, Kalender, Om)
+- [x] CommunityFeedView komponent med 5 faner
+- [x] Feed og CalendarView stotter filtering via groupId/communityIds
+- [x] CommunityCard med FollowButton integrert
+
+### Fase 14: Brukerlokasjoner og Onboarding (2025-12-13)
+- [x] Database: onboarding_completed kolonne i profiles
+- [x] Backend: setUserLocation og getUserLocations funksjoner
+- [x] OnboardingWizard komponent med 3-stegs flyt
+- [x] /onboarding side for nye brukere
+- [x] Auth callback redirect til onboarding for nye brukere
+- [x] Innstillinger: "Mine steder" seksjon med GeographySelector
+- [x] Auto-stjerne lokasjoner ved lagring
+- [x] "Hopp over alt" knapp i onboarding
+
+### Fase 15: Brukerinteraksjon (2025-12-13)
+- [x] Slette egne innlegg (med bekreftelsesdialog)
+- [x] Dele innlegg (kopier lenke / Web Share API)
+- [x] Bokmerke innlegg (database, PostCard, /bokmerker side)
+- [x] PWA-ikoner generert (icon-192x192.png, icon-512x512.png)
+- [x] Rapportere innlegg (ReportDialog, admin-panel visning)
+- [x] PWA: Installer-app prompt (InstallPrompt komponent)
+
+### Fase 16: Tilgjengelighet (a11y) (2025-12-13)
+- [x] Aria-labels på alle icon-buttons (PostCard, Header, SearchModal, NotificationBell, InstallPrompt)
+- [x] Focus-visible styling for keyboard navigation
+- [x] Escape-tast for å lukke modaler (BottomSheet, FloatingSocialBubbles)
+- [x] aria-hidden på dekorative elementer (notification badges)
+
+### Fase 17: Rate Limiting (2025-12-13)
+- [x] In-memory rate limiter utility (src/lib/rate-limit.ts)
+- [x] /api/delete-account: Streng limit (3 per time)
+- [x] /api/export-data: Moderat limit (5 per time)
+- [x] Standard HTTP rate limit headers
+
+### Fase 18: Push-varsler til enheter (2025-12-13)
+- [x] Database triggers for nye innlegg og kommentarer
+- [x] Cron-jobb: send-pending-push (hvert 2. minutt)
+- [x] Edge function for sending av push
+- [x] Client-side subscription-håndtering
+- [x] Service worker med push event handler
+- [x] UI for aktivering/deaktivering i innstillinger
+- [ ] VAPID secrets må konfigureres i Supabase Dashboard
 
 ---
 

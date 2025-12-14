@@ -31,6 +31,7 @@ export function BottomSheet({
   const currentTranslateY = useRef(0)
 
   useEffect(() => {
+     
     setMounted(true)
   }, [])
 
@@ -41,19 +42,7 @@ export function BottomSheet({
     }
   }, [open, onOpen])
 
-  // Prevent body scroll when open
-  useEffect(() => {
-    if (open) {
-      document.body.style.overflow = 'hidden'
-      setIsClosing(false)
-    } else {
-      document.body.style.overflow = ''
-    }
-    return () => {
-      document.body.style.overflow = ''
-    }
-  }, [open])
-
+  // Handle close with optional confirmation
   const handleClose = useCallback(() => {
     if (confirmClose) {
       if (window.confirm(confirmMessage)) {
@@ -65,6 +54,38 @@ export function BottomSheet({
       setTimeout(onClose, 300)
     }
   }, [confirmClose, confirmMessage, onClose])
+
+  // Prevent body scroll and reset closing state when open changes
+  useEffect(() => {
+    if (open) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = ''
+    }
+    return () => {
+      document.body.style.overflow = ''
+    }
+  }, [open])
+
+  // Reset closing state when sheet opens
+  useEffect(() => {
+    if (open) {
+       
+      setIsClosing(false)
+    }
+  }, [open])
+
+  // Handle Escape key to close
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && open) {
+        handleClose()
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [open, handleClose])
 
   // Handle overlay click
   const handleOverlayClick = (e: React.MouseEvent) => {

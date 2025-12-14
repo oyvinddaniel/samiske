@@ -33,11 +33,11 @@ Transformere samiske.no fra en enkel community-tavle til en fullverdig sosial pl
 | 1 | Geografi-grunnmur (Database) | FULLFORT | Ingen |
 | 2 | Geografi i UI | FULLFORT | Fase 1 |
 | 3 | Innleggsbobling | FULLFORT | Fase 1, 2 |
-| 4 | Grupper | PENDING | Fase 1, 3 |
-| 5 | Samfunn/Organisasjoner | PENDING | Fase 1 |
-| 6 | Vennesirkler og synlighet | PENDING | Fase 4, 5 |
-| 7 | Feed-redesign | PENDING | Fase 3, 4, 5, 6 |
-| 8 | Arrangementer med RSVP | PENDING | Fase 1, 3 |
+| 4 | Grupper | FULLFORT | Fase 1, 3 |
+| 5 | Samfunn/Organisasjoner | FULLFORT | Fase 1 |
+| 6 | Vennesirkler og synlighet | FULLFORT | Fase 4, 5 |
+| 7 | Feed-redesign | FULLFORT | Fase 3, 4, 5, 6 |
+| 8 | Arrangementer med RSVP | FULLFORT | Fase 1, 3 |
 | 9 | Universelt søk | PENDING | Alle |
 
 ---

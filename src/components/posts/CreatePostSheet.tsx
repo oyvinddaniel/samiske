@@ -8,7 +8,11 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { BottomSheet } from '@/components/ui/bottom-sheet'
-import { X, ImagePlus } from 'lucide-react'
+import { VisibilityPicker } from '@/components/circles'
+import { setPostCircleVisibility } from '@/lib/circles'
+import type { PostVisibility } from '@/lib/types/circles'
+import { X, ImagePlus, MapPin } from 'lucide-react'
+import { GeographySearchInput, type GeographySelection } from '@/components/geography'
 
 interface Category {
   id: string
@@ -17,14 +21,24 @@ interface Category {
   color: string
 }
 
+export interface DefaultGeography {
+  type: 'language_area' | 'municipality' | 'place'
+  id: string
+  name: string
+  nameSami?: string | null
+}
+
 interface CreatePostSheetProps {
   open: boolean
   onClose: () => void
   onSuccess?: () => void
   userId: string
+  defaultGeography?: DefaultGeography | null
+  groupId?: string | null
+  communityId?: string | null
 }
 
-export function CreatePostSheet({ open, onClose, onSuccess, userId }: CreatePostSheetProps) {
+export function CreatePostSheet({ open, onClose, onSuccess, userId, defaultGeography, groupId, communityId }: CreatePostSheetProps) {
   const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -34,11 +48,13 @@ export function CreatePostSheet({ open, onClose, onSuccess, userId }: CreatePost
   const [content, setContent] = useState('')
   const [categoryId, setCategoryId] = useState('')
   const [type, setType] = useState<'standard' | 'event'>('standard')
-  const [visibility, setVisibility] = useState<'public' | 'members'>('public')
+  const [visibility, setVisibility] = useState<PostVisibility>('public')
+  const [selectedCircles, setSelectedCircles] = useState<string[]>([])
   const [eventDate, setEventDate] = useState('')
   const [eventTime, setEventTime] = useState('')
   const [eventEndTime, setEventEndTime] = useState('')
   const [eventLocation, setEventLocation] = useState('')
+  const [selectedGeography, setSelectedGeography] = useState<GeographySelection | null>(null)
 
   // Image state
   const [imageFile, setImageFile] = useState<File | null>(null)
@@ -54,6 +70,7 @@ export function CreatePostSheet({ open, onClose, onSuccess, userId }: CreatePost
     setContent('')
     setType('standard')
     setVisibility('public')
+    setSelectedCircles([])
     setEventDate('')
     setEventTime('')
     setEventEndTime('')
@@ -61,7 +78,30 @@ export function CreatePostSheet({ open, onClose, onSuccess, userId }: CreatePost
     setImageFile(null)
     setImagePreview(null)
     setError(null)
+    // Set geography from default if provided
+    if (defaultGeography) {
+      setSelectedGeography({
+        type: defaultGeography.type,
+        id: defaultGeography.id,
+        name: defaultGeography.name,
+        nameSami: defaultGeography.nameSami
+      })
+    } else {
+      setSelectedGeography(null)
+    }
   }
+
+  // Set default geography when opening or when it changes
+  useEffect(() => {
+    if (open && defaultGeography) {
+      setSelectedGeography({
+        type: defaultGeography.type,
+        id: defaultGeography.id,
+        name: defaultGeography.name,
+        nameSami: defaultGeography.nameSami
+      })
+    }
+  }, [open, defaultGeography])
 
   // Fetch categories when opened
   useEffect(() => {
@@ -189,14 +229,30 @@ export function CreatePostSheet({ open, onClose, onSuccess, userId }: CreatePost
       event_time: type === 'event' ? eventTime : null,
       event_end_time: type === 'event' && eventEndTime ? eventEndTime : null,
       event_location: type === 'event' ? eventLocation : null,
+      // Geography
+      language_area_id: selectedGeography?.type === 'language_area' ? selectedGeography.id : null,
+      municipality_id: selectedGeography?.type === 'municipality' ? selectedGeography.id : null,
+      place_id: selectedGeography?.type === 'place' ? selectedGeography.id : null,
+      // Group and Community
+      created_for_group_id: groupId || null,
+      created_for_community_id: communityId || null,
     }
 
-    const { error } = await supabase.from('posts').insert(postData)
+    const { data: newPost, error } = await supabase
+      .from('posts')
+      .insert(postData)
+      .select('id')
+      .single()
 
     if (error) {
       setError(error.message)
       setLoading(false)
     } else {
+      // If visibility is 'circles', set the circle visibility
+      if (visibility === 'circles' && selectedCircles.length > 0 && newPost) {
+        await setPostCircleVisibility(newPost.id, selectedCircles)
+      }
+
       resetForm()
       onSuccess?.()
       onClose()
@@ -340,15 +396,45 @@ export function CreatePostSheet({ open, onClose, onSuccess, userId }: CreatePost
             ))}
           </select>
 
-          <select
-            value={visibility}
-            onChange={(e) => setVisibility(e.target.value as 'public' | 'members')}
-            className="h-9 px-3 rounded-lg border border-gray-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="public">Offentlig</option>
-            <option value="members">Kun medlemmer</option>
-          </select>
+          {/* Only show visibility picker if not posting to a specific geography */}
+          {!defaultGeography && (
+            <VisibilityPicker
+              value={visibility}
+              selectedCircles={selectedCircles}
+              onChange={(newVisibility, circleIds) => {
+                setVisibility(newVisibility)
+                setSelectedCircles(circleIds)
+              }}
+              compact
+            />
+          )}
         </div>
+
+        {/* Geography - location */}
+        {defaultGeography ? (
+          <div className="space-y-1">
+            <Label className="text-xs text-gray-500 flex items-center gap-1">
+              <MapPin className="w-3 h-3" />
+              Publiserer til
+            </Label>
+            <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg">
+              <MapPin className="w-4 h-4 text-blue-600" />
+              <span className="text-sm font-medium text-blue-900">{defaultGeography.name}</span>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-1">
+            <Label className="text-xs text-gray-500 flex items-center gap-1">
+              <MapPin className="w-3 h-3" />
+              Knytt til sted (valgfritt)
+            </Label>
+            <GeographySearchInput
+              value={selectedGeography}
+              onChange={setSelectedGeography}
+              placeholder="Søk etter sted, kommune eller språkområde..."
+            />
+          </div>
+        )}
 
         {/* Image */}
         {imagePreview ? (

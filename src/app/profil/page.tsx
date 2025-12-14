@@ -23,6 +23,8 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
+import { Download, Shield } from 'lucide-react'
+import { toast } from 'sonner'
 
 interface Profile {
   id: string
@@ -61,6 +63,7 @@ export default function ProfilePage() {
   const [deleteError, setDeleteError] = useState<string | null>(null)
   const [deletePassword, setDeletePassword] = useState('')
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [exporting, setExporting] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
   const supabase = createClient()
@@ -247,6 +250,40 @@ export default function ProfilePage() {
     setDeletePassword('')
     setDeleteError(null)
     setShowDeleteDialog(false)
+  }
+
+  const handleExportData = async () => {
+    setExporting(true)
+    try {
+      const response = await fetch('/api/export-data')
+
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || 'Kunne ikke eksportere data')
+      }
+
+      // Hent filnavnet fra Content-Disposition header
+      const contentDisposition = response.headers.get('Content-Disposition')
+      const filenameMatch = contentDisposition?.match(/filename="(.+)"/)
+      const filename = filenameMatch ? filenameMatch[1] : 'samiske-data-export.json'
+
+      // Last ned filen
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = filename
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+
+      toast.success('Data eksportert! Filen lastes ned.')
+    } catch (error) {
+      console.error('Export error:', error)
+      toast.error(error instanceof Error ? error.message : 'Kunne ikke eksportere data')
+    }
+    setExporting(false)
   }
 
   const getInitials = (name: string | null) => {
@@ -487,6 +524,41 @@ export default function ProfilePage() {
                 </Button>
               </div>
             </form>
+          </CardContent>
+        </Card>
+
+        {/* Data export (GDPR) */}
+        <Card className="mt-6 border-blue-200">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-blue-700">
+              <Shield className="w-5 h-5" />
+              Dine personopplysninger
+            </CardTitle>
+            <CardDescription>
+              I henhold til GDPR har du rett til innsyn i og portabilitet av dine data.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-gray-600 mb-4">
+              Last ned en komplett kopi av alle dine personopplysninger lagret på samiske.no,
+              inkludert profil, innlegg, kommentarer, meldinger og innstillinger.
+            </p>
+            <div className="flex flex-wrap gap-3">
+              <Button
+                variant="outline"
+                onClick={handleExportData}
+                disabled={exporting}
+                className="flex items-center gap-2"
+              >
+                <Download className="w-4 h-4" />
+                {exporting ? 'Eksporterer...' : 'Last ned mine data'}
+              </Button>
+              <Link href="/personvern">
+                <Button variant="ghost" className="text-blue-600">
+                  Les personvernerklæringen
+                </Button>
+              </Link>
+            </div>
           </CardContent>
         </Card>
 

@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Offline - samiske.no</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      background: linear-gradient(135deg, #0143F5 0%, #1472E6 100%);
+      color: white;
+      text-align: center;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 400px;
+      animation: fadeIn 0.5s ease-in;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .icon {
+      width: 80px;
+      height: 80px;
+      margin: 0 auto 2rem;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 40px;
+    }
+
+    h1 {
+      font-size: 2rem;
+      margin-bottom: 1rem;
+      font-weight: 700;
+    }
+
+    p {
+      font-size: 1.1rem;
+      opacity: 0.9;
+      margin-bottom: 2rem;
+      line-height: 1.6;
+    }
+
+    button {
+      margin-top: 2rem;
+      padding: 14px 32px;
+      background: white;
+      color: #0143F5;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      transition: all 0.2s ease;
+    }
+
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+    }
+
+    button:active {
+      transform: translateY(0);
+    }
+
+    .status {
+      margin-top: 2rem;
+      padding: 12px 20px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 6px;
+      font-size: 0.9rem;
+      opacity: 0.8;
+    }
+
+    @media (max-width: 480px) {
+      h1 {
+        font-size: 1.5rem;
+      }
+
+      p {
+        font-size: 1rem;
+      }
+
+      .icon {
+        width: 60px;
+        height: 60px;
+        font-size: 30px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="icon">
+      📡
+    </div>
+    <h1>Du er offline</h1>
+    <p>
+      Sjekk internettforbindelsen din og prøv igjen. Innholdet vil lastes automatisk når du er tilbake online.
+    </p>
+    <button onclick="window.location.reload()">Prøv igjen</button>
+    <div class="status" id="status">
+      Venter på nettverkstilkobling...
+    </div>
+  </div>
+
+  <script>
+    // Check connection status periodically
+    function updateConnectionStatus() {
+      const status = document.getElementById('status')
+      if (navigator.onLine) {
+        status.textContent = '✓ Tilkoblet! Laster inn...'
+        status.style.background = 'rgba(46, 213, 115, 0.2)'
+        setTimeout(() => {
+          window.location.reload()
+        }, 500)
+      } else {
+        status.textContent = '⚠ Venter på nettverkstilkobling...'
+        status.style.background = 'rgba(255, 255, 255, 0.1)'
+      }
+    }
+
+    // Listen for online event
+    window.addEventListener('online', () => {
+      console.log('Connection restored!')
+      updateConnectionStatus()
+    })
+
+    window.addEventListener('offline', () => {
+      console.log('Connection lost')
+      updateConnectionStatus()
+    })
+
+    // Check status every 3 seconds
+    setInterval(updateConnectionStatus, 3000)
+
+    // Initial check
+    updateConnectionStatus()
+  </script>
+</body>
+</html>

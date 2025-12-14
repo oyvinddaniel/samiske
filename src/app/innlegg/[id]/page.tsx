@@ -10,8 +10,10 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Separator } from '@/components/ui/separator'
 import { CommentSection } from '@/components/posts/CommentSection'
+import { RSVPButton } from '@/components/events/RSVPButton'
+import { RSVPList } from '@/components/events/RSVPList'
+import { Video, Globe, MapPin, Clock, Calendar } from 'lucide-react'
 
 interface Post {
   id: string
@@ -22,7 +24,12 @@ interface Post {
   visibility: 'public' | 'members'
   event_date: string | null
   event_time: string | null
+  event_end_time: string | null
   event_location: string | null
+  is_digital: boolean
+  meeting_url: string | null
+  meeting_platform: string | null
+  max_participants: number | null
   created_at: string
   user_id: string
   user: {
@@ -68,7 +75,12 @@ export default function PostDetailPage() {
           visibility,
           event_date,
           event_time,
+          event_end_time,
           event_location,
+          is_digital,
+          meeting_url,
+          meeting_platform,
+          max_participants,
           created_at,
           user_id,
           user:profiles!posts_user_id_fkey (
@@ -279,19 +291,82 @@ export default function PostDetailPage() {
 
             {/* Event details */}
             {post.type === 'event' && post.event_date && (
-              <div className="p-4 bg-blue-50 rounded-lg space-y-2">
-                <div className="flex items-center gap-2">
-                  <span className="text-xl">📅</span>
-                  <span className="font-medium text-gray-900">
-                    {formatEventDate(post.event_date, post.event_time)}
-                  </span>
-                </div>
-                {post.event_location && (
+              <div className="space-y-4">
+                {/* Event info card */}
+                <div className={`p-4 rounded-lg space-y-3 ${post.is_digital ? 'bg-purple-50' : 'bg-blue-50'}`}>
+                  {/* Digital badge */}
+                  {post.is_digital && (
+                    <div className="flex items-center gap-2">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-sm bg-purple-100 text-purple-700 font-medium">
+                        <Video className="w-4 h-4" />
+                        Digitalt arrangement
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Date and time */}
                   <div className="flex items-center gap-2">
-                    <span className="text-xl">📍</span>
-                    <span className="text-gray-700">{post.event_location}</span>
+                    <Calendar className="w-5 h-5 text-blue-600" />
+                    <span className="font-medium text-gray-900">
+                      {formatEventDate(post.event_date, post.event_time)}
+                    </span>
                   </div>
-                )}
+
+                  {/* End time */}
+                  {post.event_end_time && (
+                    <div className="flex items-center gap-2 text-gray-600">
+                      <Clock className="w-5 h-5" />
+                      <span>Slutter kl. {post.event_end_time.slice(0, 5)}</span>
+                    </div>
+                  )}
+
+                  {/* Location or digital meeting info */}
+                  {post.is_digital ? (
+                    <>
+                      {post.meeting_platform && (
+                        <div className="flex items-center gap-2 text-purple-700">
+                          <Video className="w-5 h-5" />
+                          <span>{post.meeting_platform}</span>
+                        </div>
+                      )}
+                      {post.meeting_url && (
+                        <a
+                          href={post.meeting_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+                        >
+                          <Globe className="w-4 h-4" />
+                          Bli med på møtet
+                        </a>
+                      )}
+                    </>
+                  ) : post.event_location && (
+                    <div className="flex items-center gap-2 text-gray-700">
+                      <MapPin className="w-5 h-5 text-green-600" />
+                      <span>{post.event_location}</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* RSVP Section */}
+                <div className="p-4 border border-gray-200 rounded-lg space-y-4">
+                  <h3 className="font-semibold text-gray-900">Påmelding</h3>
+                  <RSVPButton
+                    postId={post.id}
+                    isLoggedIn={!!currentUserId}
+                    maxParticipants={post.max_participants}
+                  />
+                </div>
+
+                {/* RSVP List */}
+                <div className="p-4 border border-gray-200 rounded-lg">
+                  <h3 className="font-semibold text-gray-900 mb-3">Deltakere</h3>
+                  <RSVPList
+                    postId={post.id}
+                    maxParticipants={post.max_participants}
+                  />
+                </div>
               </div>
             )}
 

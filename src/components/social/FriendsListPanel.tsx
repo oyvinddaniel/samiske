@@ -6,7 +6,6 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { Users, UserPlus, Check, X, MessageCircle, Phone, UserMinus } from 'lucide-react'
-import { ProfileOverlay } from '@/components/profile/ProfileOverlay'
 
 interface Friend {
   id: string
@@ -33,7 +32,6 @@ export function FriendsListPanel({ onClose, onStartConversation }: FriendsListPa
   const [pendingRequests, setPendingRequests] = useState<PendingRequest[]>([])
   const [loading, setLoading] = useState(true)
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
-  const [selectedUserId, setSelectedUserId] = useState<string | null>(null)
   const [confirmRemove, setConfirmRemove] = useState<Friend | null>(null)
   const supabase = useMemo(() => createClient(), [])
 
@@ -171,7 +169,15 @@ export function FriendsListPanel({ onClose, onStartConversation }: FriendsListPa
                   key={request.id}
                   className="flex items-center gap-3 p-3 bg-white rounded-lg border border-orange-100"
                 >
-                  <button onClick={() => setSelectedUserId(request.requester.id)}>
+                  <button
+                    onClick={() => {
+                      window.dispatchEvent(
+                        new CustomEvent('open-user-profile-panel', {
+                          detail: { userId: request.requester.id }
+                        })
+                      );
+                    }}
+                  >
                     <Avatar className="w-12 h-12">
                       <AvatarImage src={request.requester.avatar_url || undefined} />
                       <AvatarFallback className="bg-blue-100 text-blue-600">
@@ -181,7 +187,13 @@ export function FriendsListPanel({ onClose, onStartConversation }: FriendsListPa
                   </button>
                   <div className="flex-1 min-w-0">
                     <button
-                      onClick={() => setSelectedUserId(request.requester.id)}
+                      onClick={() => {
+                        window.dispatchEvent(
+                          new CustomEvent('open-user-profile-panel', {
+                            detail: { userId: request.requester.id }
+                          })
+                        );
+                      }}
                       className="font-medium text-gray-900 hover:text-blue-600 text-left"
                     >
                       {request.requester.full_name || 'Ukjent'}
@@ -235,7 +247,16 @@ export function FriendsListPanel({ onClose, onStartConversation }: FriendsListPa
               key={friend.id}
               className="flex items-center gap-2 py-2 pl-4 pr-2 bg-white rounded-lg border border-gray-100 hover:border-gray-200 hover:bg-gray-50/50 transition-all group"
             >
-              <button onClick={() => setSelectedUserId(friend.id)} className="flex-shrink-0">
+              <button
+                onClick={() => {
+                  window.dispatchEvent(
+                    new CustomEvent('open-user-profile-panel', {
+                      detail: { userId: friend.id }
+                    })
+                  );
+                }}
+                className="flex-shrink-0"
+              >
                 <Avatar className="w-9 h-9">
                   <AvatarImage src={friend.avatar_url || undefined} />
                   <AvatarFallback className="bg-blue-100 text-blue-600 text-xs">
@@ -246,7 +267,13 @@ export function FriendsListPanel({ onClose, onStartConversation }: FriendsListPa
 
               <div className="flex-1 min-w-0">
                 <button
-                  onClick={() => setSelectedUserId(friend.id)}
+                  onClick={() => {
+                    window.dispatchEvent(
+                      new CustomEvent('open-user-profile-panel', {
+                        detail: { userId: friend.id }
+                      })
+                    );
+                  }}
                   className="font-medium text-gray-900 hover:text-blue-600 text-sm text-left block truncate"
                 >
                   {friend.full_name || 'Ukjent'}
@@ -326,14 +353,6 @@ export function FriendsListPanel({ onClose, onStartConversation }: FriendsListPa
             </div>
           </div>
         </div>
-      )}
-
-      {/* Profile Overlay */}
-      {selectedUserId && (
-        <ProfileOverlay
-          userId={selectedUserId}
-          onClose={() => setSelectedUserId(null)}
-        />
       )}
     </div>
   )

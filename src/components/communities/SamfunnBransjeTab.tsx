@@ -1,0 +1,132 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import { Loader2, Briefcase } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
+import { CommunityCard } from '@/components/communities'
+import { getIndustries } from '@/lib/industries'
+import { createClient } from '@/lib/supabase/client'
+import type { Industry } from '@/lib/types/industries'
+import type { Community } from '@/lib/types/communities'
+import { getIndustryDisplayName } from '@/lib/types/industries'
+
+export function SamfunnBransjeTab() {
+  const [industries, setIndustries] = useState<Industry[]>([])
+  const [selectedIndustry, setSelectedIndustry] = useState<Industry | null>(null)
+  const [communities, setCommunities] = useState<Community[]>([])
+  const [loading, setLoading] = useState(true)
+  const [loadingCommunities, setLoadingCommunities] = useState(false)
+
+  const supabase = createClient()
+
+  useEffect(() => {
+    async function loadIndustries() {
+      setLoading(true)
+      const data = await getIndustries()
+      setIndustries(data)
+      setLoading(false)
+    }
+    loadIndustries()
+  }, [])
+
+  useEffect(() => {
+    async function loadCommunitiesByIndustry() {
+      if (!selectedIndustry) {
+        setCommunities([])
+        return
+      }
+
+      setLoadingCommunities(true)
+
+      const { data, error } = await supabase
+        .from('community_industries')
+        .select(`
+          community:communities(*)
+        `)
+        .eq('industry_id', selectedIndustry.id)
+
+      if (error) {
+        console.error('Error fetching communities by industry:', error)
+        setLoadingCommunities(false)
+        return
+      }
+
+      const communityData = data
+        ?.map((item: any) => item.community)
+        .filter(Boolean) as Community[]
+
+      setCommunities(communityData || [])
+      setLoadingCommunities(false)
+    }
+
+    loadCommunitiesByIndustry()
+  }, [selectedIndustry, supabase])
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Industries */}
+      <div>
+        <h3 className="font-semibold mb-3">Velg bransje</h3>
+        <div className="flex flex-wrap gap-2">
+          {industries.map((industry) => (
+            <Badge
+              key={industry.id}
+              variant={selectedIndustry?.id === industry.id ? 'default' : 'outline'}
+              className="cursor-pointer hover:bg-gray-100"
+              onClick={() => setSelectedIndustry(
+                selectedIndustry?.id === industry.id ? null : industry
+              )}
+            >
+              {getIndustryDisplayName(industry)}
+            </Badge>
+          ))}
+        </div>
+      </div>
+
+      {/* Communities */}
+      {selectedIndustry && (
+        <div>
+          <h3 className="font-semibold mb-3">
+            Sider i {getIndustryDisplayName(selectedIndustry)}
+          </h3>
+
+          {loadingCommunities ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-6 h-6 animate-spin text-blue-500" />
+            </div>
+          ) : communities.length === 0 ? (
+            <div className="text-center py-12 bg-white rounded-lg">
+              <Briefcase className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+              <p className="text-gray-500">
+                Ingen sider i denne bransjen ennå
+              </p>
+            </div>
+          ) : (
+            <div className="grid gap-4">
+              {communities.map((community) => (
+                <CommunityCard key={community.id} community={community} />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {!selectedIndustry && (
+        <div className="text-center py-12 bg-gray-50 rounded-lg">
+          <Briefcase className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+          <p className="text-gray-500">
+            Velg en bransje for å se sider
+          </p>
+        </div>
+      )}
+    </div>
+  )
+}

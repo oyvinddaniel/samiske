@@ -5,7 +5,6 @@ import { createClient } from '@/lib/supabase/client'
 import { Card, CardContent } from '@/components/ui/card'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { MessageCircle } from 'lucide-react'
-import { ProfileOverlay } from '@/components/profile/ProfileOverlay'
 
 interface Conversation {
   id: string
@@ -30,7 +29,6 @@ export function MessagesListPanel({ onClose }: MessagesListPanelProps) {
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [loading, setLoading] = useState(true)
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
-  const [selectedUserId, setSelectedUserId] = useState<string | null>(null)
   const supabase = useMemo(() => createClient(), [])
 
   // Get current user
@@ -190,7 +188,13 @@ export function MessagesListPanel({ onClose }: MessagesListPanelProps) {
               className={`flex items-center gap-2 py-2 pl-4 pr-3 bg-white rounded-lg border border-gray-100 hover:border-gray-200 hover:bg-gray-50/50 transition-all cursor-pointer ${
                 conv.unreadCount > 0 ? 'border-blue-200 bg-blue-50/30' : ''
               }`}
-              onClick={() => setSelectedUserId(conv.otherUser.id)}
+              onClick={() => {
+                window.dispatchEvent(
+                  new CustomEvent('open-user-profile-panel', {
+                    detail: { userId: conv.otherUser.id }
+                  })
+                );
+              }}
             >
               <div className="relative flex-shrink-0">
                 <Avatar className="w-9 h-9">
@@ -232,14 +236,6 @@ export function MessagesListPanel({ onClose }: MessagesListPanelProps) {
             </div>
           ))}
         </div>
-      )}
-
-      {/* Profile Overlay - for now, clicking opens profile. In future, could open chat */}
-      {selectedUserId && (
-        <ProfileOverlay
-          userId={selectedUserId}
-          onClose={() => setSelectedUserId(null)}
-        />
       )}
     </div>
   )

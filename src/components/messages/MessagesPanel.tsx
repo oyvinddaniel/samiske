@@ -149,6 +149,7 @@ export function MessagesPanel({ initialConversationUserId, onConversationSelect 
   }, [currentUserId, supabase])
 
   useEffect(() => {
+     
     fetchConversations()
   }, [fetchConversations])
 

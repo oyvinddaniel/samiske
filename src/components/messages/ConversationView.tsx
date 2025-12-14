@@ -40,6 +40,7 @@ export function ConversationView({ conversationId, currentUserId }: Conversation
   }, [conversationId, supabase])
 
   useEffect(() => {
+     
     fetchMessages()
   }, [fetchMessages])
 

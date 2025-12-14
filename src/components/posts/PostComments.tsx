@@ -27,7 +27,7 @@ interface PostCommentsProps {
   replyingTo: string | null
   replyContent: string
   submitting: boolean
-  currentUserId?: string
+  currentUserId?: string | null
   commentLikes: Record<string, CommentLikeData>
   onToggleComments: () => void
   onNewCommentChange: (value: string) => void
