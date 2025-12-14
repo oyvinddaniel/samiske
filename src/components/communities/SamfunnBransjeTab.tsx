@@ -51,11 +51,17 @@ export function SamfunnBransjeTab() {
         return
       }
 
-      const communityData = data
-        ?.map((item: any) => item.community)
-        .filter(Boolean) as Community[]
+      const communityData = (data
+        ?.map((item: { community: Community | Community[] | null }) => {
+          // Handle both single object and array responses from Supabase
+          if (Array.isArray(item.community)) {
+            return item.community[0] ?? null
+          }
+          return item.community
+        })
+        .filter((community): community is Community => community !== null)) ?? []
 
-      setCommunities(communityData || [])
+      setCommunities(communityData)
       setLoadingCommunities(false)
     }
 

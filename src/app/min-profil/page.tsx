@@ -10,6 +10,13 @@ import { ArrowLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
 
+interface ProfileUpdate {
+  full_name?: string | null
+  avatar_url?: string | null
+  bio?: string | null
+  location?: string | null
+}
+
 export default function MinProfilPage() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const [showCreatePost, setShowCreatePost] = useState(false)
@@ -36,7 +43,7 @@ export default function MinProfilPage() {
     setRefreshKey(prev => prev + 1)
   }, [])
 
-  const handleSaveProfile = useCallback(async (updates: any) => {
+  const handleSaveProfile = useCallback(async (updates: ProfileUpdate) => {
     if (!currentUserId) return
 
     const { error } = await supabase

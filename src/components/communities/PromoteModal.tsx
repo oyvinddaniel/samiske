@@ -53,7 +53,13 @@ export function PromoteModal({
       }
 
       // Create post with product or service reference
-      const postData: any = {
+      const postData: {
+        author_id: string
+        community_id: string
+        content: string | null
+        product_id?: string
+        service_id?: string
+      } = {
         author_id: user.id,
         community_id: communityId,
         content: additionalText.trim() || null,

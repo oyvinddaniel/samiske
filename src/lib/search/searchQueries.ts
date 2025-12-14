@@ -280,12 +280,12 @@ export async function searchGeography(
 
   // Process language areas
   if (langData.data) {
-    langData.data.forEach((item: any) => {
+    langData.data.forEach((item: Record<string, unknown>) => {
       results.push({
-        id: item.id,
+        id: item.id as string,
         type: 'geografi' as const,
-        name: item.name,
-        name_sami: item.name_sami,
+        name: item.name as string,
+        name_sami: item.name_sami as string | null,
         location_type: 'language_area',
         created_at: undefined,
       })
@@ -294,14 +294,14 @@ export async function searchGeography(
 
   // Process municipalities
   if (munData.data) {
-    munData.data.forEach((item: any) => {
+    munData.data.forEach((item: Record<string, unknown>) => {
       const country = Array.isArray(item.country) ? item.country[0] : item.country
       results.push({
-        id: item.id,
+        id: item.id as string,
         type: 'geografi' as const,
-        name: item.name,
-        name_sami: item.name_sami,
-        slug: item.slug,
+        name: item.name as string,
+        name_sami: item.name_sami as string | null,
+        slug: item.slug as string,
         location_type: 'municipality',
         parent: country?.name,
         country_code: country?.code,
@@ -312,16 +312,16 @@ export async function searchGeography(
 
   // Process places
   if (placeData.data) {
-    placeData.data.forEach((item: any) => {
+    placeData.data.forEach((item: Record<string, unknown>) => {
       const municipality = Array.isArray(item.municipality)
         ? item.municipality[0]
         : item.municipality
       results.push({
-        id: item.id,
+        id: item.id as string,
         type: 'geografi' as const,
-        name: item.name,
-        name_sami: item.name_sami,
-        slug: item.slug,
+        name: item.name as string,
+        name_sami: item.name_sami as string | null,
+        slug: item.slug as string,
         location_type: 'place',
         parent: municipality?.name,
         created_at: undefined,
