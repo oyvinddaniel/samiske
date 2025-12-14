@@ -22,6 +22,27 @@
 
 ## LØSTE PROBLEMER
 
+### ✅ KRITISK: Privacy leak - gruppeinnlegg og private innlegg synlige for alle (2025-12-14)
+**Status:** LØST
+**Alvorlighet:** 🔴 KRITISK
+**Beskrivelse:** Brukere kunne se ALLE innlegg fra andre brukere på samfunnssider, inkludert private innlegg (visibility: 'only_me') og innlegg fra lukkede/skjulte grupper
+**Årsak:** `src/app/samfunn/[slug]/page.tsx` rendret `<Feed />` uten `communityIds` prop, noe som viste alle innlegg i databasen istedenfor kun samfunnets innlegg
+**Løsning:** Implementerte 4-lags sikkerhet:
+1. **App-nivå (Feed.tsx):** Eksplisitt filter `.is('created_for_group_id', null)` på samfunnsfeed
+2. **App-nivå (UserProfileTabs.tsx):** Visibility-filtrering basert på vennskap og privacy-innstillinger
+3. **Database constraints:** CHECK constraint og trigger som forhindrer at posts har både `created_for_group_id` OG `created_for_community_id`
+4. **RLS policies:** Row Level Security på `posts`, `community_posts` og `group_posts` som håndhever at gruppeinnlegg bare er synlige for gruppemedlemmer
+**Migrations:**
+- `supabase/migrations/20241214_fix_group_community_conflict.sql` - Constraints og triggers
+- `supabase/migrations/20241214_fix_group_posts_rls.sql` - RLS policies
+**Filer modifisert:**
+- `src/app/samfunn/[slug]/page.tsx` - HOVEDFIKS: Lagt til `communityIds={[community.id]}` prop
+- `src/components/feed/Feed.tsx` - Gruppefilter
+- `src/components/profile/UserProfileTabs.tsx` - Visibility-filter
+**Testing:** Verifisert med to kontoer i produksjon - kun offentlige samfunnsinnlegg vises
+**Dokumentasjon:** `docs/SECURITY-INCIDENT-2025-12-14.md`
+**Git commit:** `95522a5`
+
 ### ✅ KRITISK: Infinite recursion i community_admins RLS (2025-12-14)
 **Status:** LØST
 **Alvorlighet:** 🔴 KRITISK

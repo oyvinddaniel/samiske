@@ -1,6 +1,28 @@
 # Prosjektstatus: samiske.no
 
-## Sist oppdatert: 2025-12-13
+## Sist oppdatert: 2025-12-14
+
+---
+
+## KRITISK SIKKERHETSINCIDENT LØST (2025-12-14)
+
+**Oppdaget:** 14. desember 2025, kl. ~19:00
+**Løst:** 14. desember 2025, kl. ~20:45
+**Alvorlighet:** 🔴 KRITISK
+
+**Problem:** Brukere kunne se ALLE innlegg fra andre brukere på samfunnssider, inkludert private innlegg og innlegg fra lukkede grupper.
+
+**Årsak:** `src/app/samfunn/[slug]/page.tsx` rendret `<Feed />` uten `communityIds` prop.
+
+**Løsning:** Implementerte 4-lags sikkerhet:
+1. App-nivå (Feed.tsx): Gruppefilter
+2. App-nivå (UserProfileTabs.tsx): Visibility-filter
+3. Database constraints: CHECK + trigger
+4. RLS policies: Database-level sikkerhet
+
+**Status:** ✅ Verifisert i produksjon
+**Dokumentasjon:** `docs/SECURITY-INCIDENT-2025-12-14.md`
+**Git commit:** `95522a5`
 
 ---
 
