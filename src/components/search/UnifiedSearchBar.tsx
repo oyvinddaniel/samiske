@@ -19,6 +19,7 @@ export function UnifiedSearchBar() {
 
   const searchRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
 
   const { results, search, loadMore, retry, clearResults } = useSearch()
 
@@ -145,18 +146,18 @@ export function UnifiedSearchBar() {
     <div ref={searchRef} className="relative w-full">
       {/* Search Input */}
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+        <Search className="absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
         <input
           ref={inputRef}
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onFocus={handleFocus}
-          placeholder="Søk etter innlegg, brukere, arrangementer..."
+          placeholder="Søk..."
           className={cn(
-            'w-full pl-10 pr-10 py-2.5 rounded-lg border border-gray-200',
+            'w-full pl-9 pr-9 py-2 sm:pl-10 sm:pr-10 sm:py-2.5 rounded-lg border border-gray-200',
             'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent',
-            'bg-white text-gray-900 placeholder-gray-400',
+            'bg-white text-gray-900 placeholder-gray-400 text-sm sm:text-base',
             'transition-shadow'
           )}
           role="search"
@@ -165,7 +166,7 @@ export function UnifiedSearchBar() {
         {query && (
           <button
             onClick={handleClear}
-            className="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-gray-100 rounded-full transition-colors"
+            className="absolute right-2.5 sm:right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-gray-100 rounded-full transition-colors"
             aria-label="Tøm søkefelt"
           >
             <X className="h-4 w-4 text-gray-400" />
@@ -182,10 +183,12 @@ export function UnifiedSearchBar() {
               selected={selectedCategory}
               onSelect={handleCategoryChange}
               results={results}
+              scrollContainerRef={scrollContainerRef}
             />
 
             {/* Results List */}
             <SearchResultsList
+              ref={scrollContainerRef}
               results={results}
               category={selectedCategory}
               query={debouncedQuery}

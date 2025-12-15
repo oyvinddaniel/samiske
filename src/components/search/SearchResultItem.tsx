@@ -58,7 +58,7 @@ export function SearchResultItem({
           );
         }}
         className={cn(
-          'w-full flex items-center gap-3 p-3 hover:bg-gray-50 transition-colors text-left',
+          'w-full flex items-center gap-2 sm:gap-3 p-2 sm:p-3 hover:bg-gray-50 transition-colors text-left',
           isHighlighted && 'bg-blue-50 ring-2 ring-blue-500'
         )}
       >
@@ -68,11 +68,11 @@ export function SearchResultItem({
             <img
               src={result.avatar_url}
               alt={result.full_name}
-              className="w-10 h-10 rounded-full object-cover"
+              className="w-8 h-8 sm:w-10 sm:h-10 rounded-full object-cover"
             />
           ) : (
-            <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
-              <span className="text-sm font-medium text-blue-600">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-blue-100 flex items-center justify-center">
+              <span className="text-xs sm:text-sm font-medium text-blue-600">
                 {getInitials(result.full_name)}
               </span>
             </div>
@@ -103,14 +103,14 @@ export function SearchResultItem({
     <button
       onClick={onClick}
       className={cn(
-        'w-full flex items-start gap-3 p-3 hover:bg-gray-50 transition-colors text-left',
+        'w-full flex items-start gap-2 sm:gap-3 p-2 sm:p-3 hover:bg-gray-50 transition-colors text-left',
         isHighlighted && 'bg-blue-50 ring-2 ring-blue-500'
       )}
     >
       {/* Icon Badge */}
       <div
         className={cn(
-          'flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center',
+          'flex-shrink-0 w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center',
           result.type === 'innlegg' && 'bg-blue-100',
           result.type === 'arrangementer' && 'bg-red-100',
           result.type === 'kommentarer' && 'bg-purple-100',
@@ -120,22 +120,22 @@ export function SearchResultItem({
         )}
       >
         {result.type === 'innlegg' && (
-          <FileText className="w-4 h-4 text-blue-600" />
+          <FileText className="w-3 h-3 sm:w-4 sm:h-4 text-blue-600" />
         )}
         {result.type === 'arrangementer' && (
-          <Calendar className="w-4 h-4 text-red-600" />
+          <Calendar className="w-3 h-3 sm:w-4 sm:h-4 text-red-600" />
         )}
         {result.type === 'kommentarer' && (
-          <MessageCircle className="w-4 h-4 text-purple-600" />
+          <MessageCircle className="w-3 h-3 sm:w-4 sm:h-4 text-purple-600" />
         )}
         {result.type === 'samfunn' && (
-          <Building2 className="w-4 h-4 text-green-600" />
+          <Building2 className="w-3 h-3 sm:w-4 sm:h-4 text-green-600" />
         )}
         {result.type === 'tjenester' && (
-          <Briefcase className="w-4 h-4 text-orange-600" />
+          <Briefcase className="w-3 h-3 sm:w-4 sm:h-4 text-orange-600" />
         )}
         {result.type === 'produkter' && (
-          <ShoppingBag className="w-4 h-4 text-pink-600" />
+          <ShoppingBag className="w-3 h-3 sm:w-4 sm:h-4 text-pink-600" />
         )}
       </div>
 
@@ -150,10 +150,10 @@ export function SearchResultItem({
             <p className="text-xs text-gray-600 line-clamp-2 mt-0.5">
               {truncate(result.content, 80)}
             </p>
-            <div className="flex items-center gap-2 mt-1">
+            <div className="flex items-center gap-1 sm:gap-2 mt-1 flex-wrap">
               {result.category && (
                 <span
-                  className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium"
+                  className="inline-flex items-center px-1.5 sm:px-2 py-0.5 rounded text-[10px] sm:text-xs font-medium"
                   style={{
                     backgroundColor: result.category.color + '20',
                     color: result.category.color,
@@ -163,7 +163,7 @@ export function SearchResultItem({
                 </span>
               )}
               {result.type === 'arrangementer' && result.event_date && (
-                <span className="text-xs text-gray-500">
+                <span className="text-[10px] sm:text-xs text-gray-500">
                   {new Date(result.event_date).toLocaleDateString('nb-NO')}
                 </span>
               )}

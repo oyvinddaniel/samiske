@@ -8,24 +8,27 @@ export const SEARCH_CONFIG = {
   DEBOUNCE_DELAY: 300,
 
   // Default result limits per category
-  DEFAULT_LIMIT: 6,
+  DEFAULT_LIMIT: 10,
 
-  // Load more batch size
-  LOAD_MORE_SIZE: 12,
+  // Load more batch size (infinite scroll)
+  LOAD_MORE_SIZE: 10,
+
+  // Infinite scroll threshold (load more when this many items from bottom)
+  INFINITE_SCROLL_THRESHOLD: 10,
 
   // Cache TTL in milliseconds (5 minutes)
   CACHE_TTL: 5 * 60 * 1000,
 } as const
 
 export const SEARCH_LIMITS = {
-  brukere: 6,
-  innlegg: 6,
-  arrangementer: 6,
-  kommentarer: 6,
-  geografi: 6,
-  samfunn: 6,
-  tjenester: 6,
-  produkter: 6,
+  brukere: 10,
+  innlegg: 10,
+  arrangementer: 10,
+  kommentarer: 10,
+  geografi: 10,
+  samfunn: 10,
+  tjenester: 10,
+  produkter: 10,
 } as const
 
 // Search category type
