@@ -83,7 +83,7 @@ export function PostActions({
                     </Avatar>
                   ))}
                 </div>
-                <span className="text-[10px] text-gray-500">
+                <span className="text-[10px] text-gray-500 truncate flex-1">
                   Likt av <span className="font-medium">{likeUsers[0]?.full_name || 'Ukjent'}</span>
                   {likeCount > 1 && ` og ${likeCount - 1} andre`}
                 </span>

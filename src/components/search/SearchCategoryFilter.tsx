@@ -1,7 +1,7 @@
 'use client'
 
 import {
-  Grid3x3,
+  Globe,
   User,
   FileText,
   Calendar,
@@ -18,7 +18,7 @@ import type { AllCategoryResults } from './searchTypes'
 
 // Category icons mapping
 const CATEGORY_ICONS: Record<SearchCategory, React.ElementType> = {
-  alle: Grid3x3,
+  alle: Globe,
   brukere: User,
   innlegg: FileText,
   arrangementer: Calendar,
@@ -92,45 +92,51 @@ export function SearchCategoryFilter({
         })}
       </div>
 
-      {/* Mobile: Wrapping icons at TOP */}
-      <div className="md:hidden flex flex-wrap gap-2 p-3 border-b border-gray-200">
-        {allCategories.map((category) => {
-          const Icon = CATEGORY_ICONS[category]
-          const count = getCategoryCount(category)
-          const isSelected = selected === category
+      {/* Mobile: Compact horizontal icons with title */}
+      <div className="md:hidden border-b border-gray-200">
+        {/* Selected category title */}
+        <div className="px-4 py-2 text-sm text-gray-600">
+          Søk i: <span className="font-semibold text-blue-600">{CATEGORY_NAMES[selected]}</span>
+        </div>
 
-          return (
-            <button
-              key={category}
-              onClick={() => onSelect(category)}
-              className={cn(
-                'flex flex-col items-center gap-1 px-4 py-2 rounded-lg flex-shrink-0 min-w-[80px] transition-colors',
-                isSelected
-                  ? 'bg-blue-500 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              )}
-              aria-label={`Søk i ${CATEGORY_NAMES[category]}`}
-              aria-pressed={isSelected}
-            >
-              <Icon className="w-5 h-5" />
-              <span className="text-xs font-medium whitespace-nowrap">
-                {CATEGORY_NAMES[category]}
-              </span>
-              {count > 0 && (
-                <span
-                  className={cn(
-                    'text-xs px-1.5 py-0.5 rounded font-bold',
-                    isSelected
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-200 text-gray-600'
-                  )}
-                >
-                  {count}
-                </span>
-              )}
-            </button>
-          )
-        })}
+        {/* Horizontal icon buttons */}
+        <div className="flex flex-wrap gap-1.5 px-3 pt-1 pb-2">
+          {allCategories.map((category) => {
+            const Icon = CATEGORY_ICONS[category]
+            const count = getCategoryCount(category)
+            const isSelected = selected === category
+
+            return (
+              <button
+                key={category}
+                onClick={() => onSelect(category)}
+                className={cn(
+                  'relative flex-shrink-0 p-2 rounded-lg transition-colors',
+                  isSelected
+                    ? 'bg-blue-500 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                )}
+                aria-label={`Søk i ${CATEGORY_NAMES[category]}`}
+                aria-pressed={isSelected}
+                title={CATEGORY_NAMES[category]}
+              >
+                <Icon className="w-4 h-4" />
+                {count > 0 && (
+                  <span
+                    className={cn(
+                      'absolute -top-1 -right-1 text-[10px] rounded-full w-4 h-4 flex items-center justify-center font-bold',
+                      isSelected
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-red-500 text-white'
+                    )}
+                  >
+                    {count > 9 ? '9+' : count}
+                  </span>
+                )}
+              </button>
+            )
+          })}
+        </div>
       </div>
     </>
   )

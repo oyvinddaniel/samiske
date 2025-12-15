@@ -137,7 +137,7 @@ export function PostCard({ post, currentUserId, onClick }: PostCardProps) {
           )}
 
           {/* Top row: avatar, name, time, category */}
-          <div className="flex items-center gap-1.5 mb-1.5">
+          <div className="flex items-center gap-1 mb-1.5">
             <div
               onMouseEnter={profileHover.handleMouseEnter}
               onMouseLeave={profileHover.handleMouseLeave}
@@ -159,17 +159,17 @@ export function PostCard({ post, currentUserId, onClick }: PostCardProps) {
               onClick={profileHover.handleClick}
               onMouseEnter={profileHover.handleMouseEnter}
               onMouseLeave={profileHover.handleMouseLeave}
-              className="text-sm font-medium text-gray-900 hover:text-blue-600 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded"
+              className="text-sm font-medium text-gray-900 hover:text-blue-600 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded truncate max-w-[100px] sm:max-w-[150px] md:max-w-none"
               aria-label={`Vis profil for ${postData.user.full_name || 'Ukjent'}`}
             >
               {postData.user.full_name || 'Ukjent'}
             </button>
             <span className="text-xs text-gray-400">·</span>
-            <span className="text-xs text-gray-500">{formatDate(postData.created_at)}</span>
+            <span className="text-xs text-gray-500 flex-shrink-0">{formatDate(postData.created_at)}</span>
             {postData.posted_from_name && postData.posted_from_type !== 'private' && (
               <>
-                <span className="text-xs text-gray-400">·</span>
-                <span className="flex items-center gap-0.5 text-xs text-gray-500">
+                <span className="text-xs text-gray-400 hidden sm:inline">·</span>
+                <span className="hidden sm:flex items-center gap-0.5 text-xs text-gray-500 truncate">
                   {postData.posted_from_type === 'group' && <Users className="w-3 h-3" />}
                   {postData.posted_from_type === 'community' && <Building2 className="w-3 h-3" />}
                   {(postData.posted_from_type === 'place' || postData.posted_from_type === 'municipality') && <MapPin className="w-3 h-3" />}
@@ -209,7 +209,7 @@ export function PostCard({ post, currentUserId, onClick }: PostCardProps) {
                   <MoreVertical className="w-4 h-4 text-gray-500" />
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuContent align="end" className="w-44 sm:w-48 max-w-[calc(100vw-32px)]">
                 {/* Share - available to everyone */}
                 <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleShare(); }}>
                   <Share2 className="w-4 h-4 mr-2" />
@@ -278,9 +278,9 @@ export function PostCard({ post, currentUserId, onClick }: PostCardProps) {
 
           {/* Event info (compact) */}
           {postData.type === 'event' && postData.event_date && (
-            <div className="flex items-center gap-2 text-sm text-gray-600 mb-1.5 bg-gray-50 rounded px-2 py-1.5">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 text-sm text-gray-600 mb-1.5 bg-gray-50 rounded px-2 py-1.5">
               <span>📅 {formatEventDate(postData.event_date, postData.event_time)}</span>
-              {postData.event_location && <span>📍 {postData.event_location}</span>}
+              {postData.event_location && <span className="truncate">📍 {postData.event_location}</span>}
             </div>
           )}
 
@@ -300,10 +300,10 @@ export function PostCard({ post, currentUserId, onClick }: PostCardProps) {
 
           {/* Promoted Product */}
           {postData.product && postData.product_id && (
-            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-3 mb-2 border border-blue-200">
-              <div className="flex gap-3">
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-2 sm:p-3 mb-2 border border-blue-200">
+              <div className="flex gap-2 sm:gap-3">
                 {/* Product image */}
-                <div className="w-20 h-20 rounded overflow-hidden flex-shrink-0 bg-white">
+                <div className="w-14 h-14 sm:w-20 sm:h-20 rounded overflow-hidden flex-shrink-0 bg-white">
                   {(postData.product.primary_image || (postData.product.images && postData.product.images[0])) ? (
                     <img
                       src={postData.product.primary_image || postData.product.images[0]}
@@ -348,10 +348,10 @@ export function PostCard({ post, currentUserId, onClick }: PostCardProps) {
 
           {/* Promoted Service */}
           {postData.service && postData.service_id && (
-            <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg p-3 mb-2 border border-purple-200">
-              <div className="flex gap-3">
+            <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg p-2 sm:p-3 mb-2 border border-purple-200">
+              <div className="flex gap-2 sm:gap-3">
                 {/* Service image */}
-                <div className="w-20 h-20 rounded overflow-hidden flex-shrink-0 bg-white">
+                <div className="w-14 h-14 sm:w-20 sm:h-20 rounded overflow-hidden flex-shrink-0 bg-white">
                   {(postData.service.images && postData.service.images[0]) ? (
                     <img
                       src={postData.service.images[0]}

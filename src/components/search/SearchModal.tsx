@@ -151,7 +151,7 @@ export function SearchModal({ open, onClose, anchorRef }: SearchModalProps) {
     }
   }, [open, fetchAllProfiles])
 
-  // Close on Escape or click outside
+  // Close on Escape or click outside + Lock body scroll
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -166,11 +166,20 @@ export function SearchModal({ open, onClose, anchorRef }: SearchModalProps) {
     }
 
     if (open) {
+      // Lock body scroll when modal is open
+      const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth
+      document.body.style.overflow = 'hidden'
+      document.body.style.paddingRight = `${scrollbarWidth}px`
+
       document.addEventListener('keydown', handleKeyDown)
       document.addEventListener('mousedown', handleClickOutside)
     }
 
     return () => {
+      // Restore body scroll when modal closes
+      document.body.style.overflow = ''
+      document.body.style.paddingRight = ''
+
       document.removeEventListener('keydown', handleKeyDown)
       document.removeEventListener('mousedown', handleClickOutside)
     }
@@ -382,13 +391,14 @@ export function SearchModal({ open, onClose, anchorRef }: SearchModalProps) {
       {/* Search Modal */}
       {open && createPortal(
     <>
-      {/* Backdrop for mobile */}
-      {isMobile && (
-        <div
-          className="fixed inset-0 bg-black/50 z-[9999]"
-          onClick={onClose}
-        />
-      )}
+      {/* Backdrop - different opacity for mobile vs desktop */}
+      <div
+        className={cn(
+          "fixed inset-0 z-[9999]",
+          isMobile ? "bg-black/50" : "bg-black/20"
+        )}
+        onClick={onClose}
+      />
       <div
         ref={panelRef}
         className={cn(
@@ -408,6 +418,14 @@ export function SearchModal({ open, onClose, anchorRef }: SearchModalProps) {
         } : {
           top: position.top,
           right: Math.max(16, position.right - 40)
+        }}
+        onWheel={(e) => {
+          // Prevent scroll from bubbling to parent when scrolling inside modal
+          e.stopPropagation()
+        }}
+        onTouchMove={(e) => {
+          // Prevent touch scroll from bubbling on mobile
+          e.stopPropagation()
         }}
       >
       {/* Search input */}
@@ -443,10 +461,22 @@ export function SearchModal({ open, onClose, anchorRef }: SearchModalProps) {
       </div>
 
       {/* Results */}
-      <div className={cn(
-        "overflow-y-auto",
-        isMobile ? "flex-1" : "max-h-[calc(70vh-60px)]"
-      )}>
+      <div
+        className={cn(
+          "overflow-y-auto overscroll-contain",
+          isMobile ? "flex-1" : "max-h-[calc(70vh-60px)]"
+        )}
+        onWheel={(e) => {
+          const target = e.currentTarget
+          const atTop = target.scrollTop === 0
+          const atBottom = target.scrollHeight - target.scrollTop === target.clientHeight
+
+          // Prevent background scroll when at scroll boundaries
+          if ((atTop && e.deltaY < 0) || (atBottom && e.deltaY > 0)) {
+            e.preventDefault()
+          }
+        }}
+      >
         {loading ? (
           <div className="p-4 text-center">
             <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600 mx-auto" />

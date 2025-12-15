@@ -163,7 +163,7 @@ export default function AdminPage() {
       `)
       .order('created_at', { ascending: false })
 
-    if (error) {
+    if (error && Object.keys(error).length > 0) {
       console.error('Error fetching bug reports:', error)
       return
     }

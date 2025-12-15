@@ -130,3 +130,12 @@
 [data-slot="dropdown-menu-content"] {
   z-index: 999999 !important;
 }
+
+/* Hide scrollbar for horizontal category filter on mobile */
+.scrollbar-hide {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;     /* Firefox */
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;             /* Chrome, Safari, Opera */
+}

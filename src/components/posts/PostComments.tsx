@@ -134,7 +134,7 @@ export function PostComments({
                     <div className="flex-1 min-w-0">
                       <button
                         onClick={() => onProfileClick(comment.user.id)}
-                        className="text-xs font-medium text-gray-900 hover:text-blue-600 transition-colors focus:outline-none"
+                        className="text-xs font-medium text-gray-900 hover:text-blue-600 transition-colors focus:outline-none truncate max-w-[150px] sm:max-w-[200px] md:max-w-none"
                       >
                         {comment.user.full_name || 'Ukjent'}
                       </button>
