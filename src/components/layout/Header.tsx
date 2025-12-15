@@ -22,6 +22,7 @@ import { SocialPanel } from '@/components/social/SocialPanel'
 import { Users, X, Search } from 'lucide-react'
 import { UnifiedSearchBar } from '@/components/search/UnifiedSearchBar'
 import { cn } from '@/lib/utils'
+import { formatVersionString } from '@/lib/version'
 
 interface Profile {
   full_name: string | null
@@ -309,7 +310,7 @@ export function Header({ currentCategory }: HeaderProps) {
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <div className="px-3 py-2 text-center">
-                    <p className="text-[10px] text-gray-400 font-mono">Versjon 1.2.0</p>
+                    <p className="text-[10px] text-gray-400 font-mono">{formatVersionString()}</p>
                   </div>
                 </DropdownMenuContent>
               </DropdownMenu>
