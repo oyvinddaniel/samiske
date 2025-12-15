@@ -32,7 +32,8 @@ export function JoinGroupButton({
     const { status, error } = await joinGroup(groupId)
 
     if (error) {
-      toast.error('Kunne ikke bli med i gruppen')
+      console.error('Join group error:', error)
+      toast.error(`Kunne ikke bli med i gruppen: ${error}`)
     } else if (status === 'joined') {
       toast.success('Du er nå medlem av gruppen!')
       onStatusChange?.()

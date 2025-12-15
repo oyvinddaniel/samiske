@@ -39,15 +39,9 @@ interface Profile {
   created_at: string
 }
 
-interface UserStats {
-  postCount: number
-  commentCount: number
-  likeCount: number
-}
 
 export default function ProfilePage() {
   const [profile, setProfile] = useState<Profile | null>(null)
-  const [stats, setStats] = useState<UserStats>({ postCount: 0, commentCount: 0, likeCount: 0 })
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [uploadingImage, setUploadingImage] = useState(false)
@@ -93,28 +87,6 @@ export default function ProfilePage() {
         setPhonePublic(profileData.phone_public || false)
         setAvatarUrl(profileData.avatar_url || '')
       }
-
-      // Fetch stats
-      const { count: postCount } = await supabase
-        .from('posts')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', user.id)
-
-      const { count: commentCount } = await supabase
-        .from('comments')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', user.id)
-
-      const { count: likeCount } = await supabase
-        .from('likes')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', user.id)
-
-      setStats({
-        postCount: postCount || 0,
-        commentCount: commentCount || 0,
-        likeCount: likeCount || 0,
-      })
 
       setLoading(false)
     }
@@ -402,28 +374,6 @@ export default function ProfilePage() {
             </div>
           </CardContent>
         </Card>
-
-        {/* Stats */}
-        <div className="grid grid-cols-3 gap-4 mb-6">
-          <Card>
-            <CardContent className="pt-6 text-center">
-              <p className="text-3xl font-bold text-gray-900">{stats.postCount}</p>
-              <p className="text-sm text-gray-500">Innlegg</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6 text-center">
-              <p className="text-3xl font-bold text-gray-900">{stats.commentCount}</p>
-              <p className="text-sm text-gray-500">Kommentarer</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6 text-center">
-              <p className="text-3xl font-bold text-gray-900">{stats.likeCount}</p>
-              <p className="text-sm text-gray-500">Likes gitt</p>
-            </CardContent>
-          </Card>
-        </div>
 
         {/* Edit profile */}
         <Card>

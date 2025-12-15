@@ -109,6 +109,7 @@ export function InlineRegistrationForm({ onLoginClick }: InlineRegistrationFormP
       email,
       password,
       options: {
+        emailRedirectTo: `${window.location.origin}/auth/callback`,
         data: {
           full_name: fullName,
           privacy_consent_at: new Date().toISOString(),

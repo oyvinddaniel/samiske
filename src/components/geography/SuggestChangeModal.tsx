@@ -22,7 +22,8 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { toast } from 'sonner'
-import { Loader2, Plus, Languages, MapPin, Building2 } from 'lucide-react'
+import { Loader2, Plus, Languages, MapPin, Building2, Upload, X } from 'lucide-react'
+import Image from 'next/image'
 
 interface LanguageArea {
   id: string
@@ -61,6 +62,13 @@ interface SuggestChangeModalProps {
   onSuccess?: () => void
 }
 
+interface GeographyImage {
+  id: string
+  image_url: string
+  caption: string | null
+  sort_order: number
+}
+
 export function SuggestChangeModal({
   open,
   onOpenChange,
@@ -78,9 +86,24 @@ export function SuggestChangeModal({
   // Form state
   const [name, setName] = useState('')
   const [nameSami, setNameSami] = useState('')
+  const [description, setDescription] = useState('')
   const [selectedLanguageAreas, setSelectedLanguageAreas] = useState<string[]>([])
   const [selectedMunicipality, setSelectedMunicipality] = useState('')
   const [reason, setReason] = useState('')
+
+  // Image state
+  const [images, setImages] = useState<GeographyImage[]>([])
+  const [uploadingImage, setUploadingImage] = useState(false)
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
+
+  // Fetch current user
+  useEffect(() => {
+    const getUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      setCurrentUserId(user?.id || null)
+    }
+    getUser()
+  }, [supabase])
 
   // Fetch language areas and municipalities for selects
   useEffect(() => {
@@ -95,11 +118,35 @@ export function SuggestChangeModal({
     if (open) fetchData()
   }, [open, supabase])
 
+  // Fetch images for existing entity
+  useEffect(() => {
+    const fetchImages = async () => {
+      if (!entity || suggestionType === 'new_item') {
+        setImages([])
+        return
+      }
+
+      const column = entityType === 'language_area' ? 'language_area_id' :
+                     entityType === 'municipality' ? 'municipality_id' : 'place_id'
+
+      const { data } = await supabase
+        .from('geography_images')
+        .select('*')
+        .eq(column, entity.id)
+        .order('sort_order')
+        .limit(5)
+
+      if (data) setImages(data)
+    }
+    if (open) fetchImages()
+  }, [open, entity, entityType, suggestionType, supabase])
+
   // Initialize form with existing data
   useEffect(() => {
     if (entity && suggestionType !== 'new_item') {
       setName(entity.name || '')
       setNameSami(entity.name_sami || '')
+      setDescription((entity as any).description || '')
 
       if (entityType === 'municipality') {
         const muni = entity as Municipality
@@ -115,6 +162,7 @@ export function SuggestChangeModal({
       // Reset for new item
       setName('')
       setNameSami('')
+      setDescription('')
       setSelectedLanguageAreas([])
       setSelectedMunicipality(parentId || '')
     }
@@ -129,15 +177,77 @@ export function SuggestChangeModal({
     )
   }
 
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file || !currentUserId || !entity) return
+
+    if (images.length >= 5) {
+      toast.error('Maks 5 bilder per sted')
+      return
+    }
+
+    setUploadingImage(true)
+
+    try {
+      // Upload to storage
+      const fileExt = file.name.split('.').pop()
+      const fileName = `${entityType}/${entity.id}/${Date.now()}.${fileExt}`
+
+      const { error: uploadError } = await supabase.storage
+        .from('geography-images')
+        .upload(fileName, file)
+
+      if (uploadError) throw uploadError
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('geography-images')
+        .getPublicUrl(fileName)
+
+      // Save to database
+      const column = entityType === 'language_area' ? 'language_area_id' :
+                     entityType === 'municipality' ? 'municipality_id' : 'place_id'
+
+      const { error: dbError } = await supabase.from('geography_images').insert({
+        [column]: entity.id,
+        image_url: publicUrl,
+        uploaded_by: currentUserId,
+        sort_order: images.length,
+      })
+
+      if (dbError) throw dbError
+
+      toast.success('Bilde lastet opp')
+
+      // Refresh images
+      const { data } = await supabase
+        .from('geography_images')
+        .select('*')
+        .eq(column, entity.id)
+        .order('sort_order')
+        .limit(5)
+
+      if (data) setImages(data)
+    } catch (error) {
+      console.error('Upload error:', error)
+      toast.error('Kunne ikke laste opp bilde')
+    } finally {
+      setUploadingImage(false)
+      // Reset file input
+      e.target.value = ''
+    }
+  }
+
   const handleSubmit = async () => {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
-      toast.error('Du må være innlogget for å foreslå endringer')
+      toast.error('Du må være innlogget for å redigere')
       return
     }
 
     // Input length validation
     const MAX_NAME_LENGTH = 255
+    const MAX_DESCRIPTION_LENGTH = 2000
     const MAX_REASON_LENGTH = 1000
 
     if (name.trim().length > MAX_NAME_LENGTH) {
@@ -147,6 +257,11 @@ export function SuggestChangeModal({
 
     if (nameSami.trim().length > MAX_NAME_LENGTH) {
       toast.error(`Samisk navn kan ikke være lengre enn ${MAX_NAME_LENGTH} tegn`)
+      return
+    }
+
+    if (description.trim().length > MAX_DESCRIPTION_LENGTH) {
+      toast.error(`Beskrivelse kan ikke være lengre enn ${MAX_DESCRIPTION_LENGTH} tegn`)
       return
     }
 
@@ -177,121 +292,179 @@ export function SuggestChangeModal({
       }
     }
 
-    // Check for slug collision on new items
-    if (suggestionType === 'new_item' && name.trim()) {
-      const generatedSlug = name.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-æøåä]/g, '')
-
-      try {
-        let collisionCheck
-
-        if (entityType === 'language_area') {
-          collisionCheck = await supabase
-            .from('language_areas')
-            .select('id')
-            .eq('code', generatedSlug)
-            .limit(1)
-        } else if (entityType === 'municipality') {
-          collisionCheck = await supabase
-            .from('municipalities')
-            .select('id')
-            .eq('slug', generatedSlug)
-            .limit(1)
-        } else if (entityType === 'place') {
-          const municipalityId = selectedMunicipality || parentId
-          if (municipalityId) {
-            collisionCheck = await supabase
-              .from('places')
-              .select('id')
-              .eq('slug', generatedSlug)
-              .eq('municipality_id', municipalityId)
-              .limit(1)
-          }
-        }
-
-        if (collisionCheck?.data && collisionCheck.data.length > 0) {
-          toast.error('Dette navnet er allerede i bruk. Vennligst velg et annet navn.')
-          return
-        }
-      } catch (error) {
-        console.error('Error checking slug collision:', error)
-        // Continue anyway - server-side constraints will catch duplicates
-      }
-    }
-
     setLoading(true)
 
     try {
-      // Build suggested data based on suggestion type
+      let resultId: string | null = null
       let suggestedData: Record<string, unknown> = {}
       let currentData: Record<string, unknown> | null = null
 
+      // NEW ITEM - Create directly in database
       if (suggestionType === 'new_item') {
-        suggestedData = {
-          name: name.trim(),
-          name_sami: nameSami.trim() || null,
-          slug: name.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-æøåä]/g, ''),
-        }
+        const generatedSlug = name.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-æøåä]/g, '')
 
-        if (entityType === 'municipality') {
-          suggestedData.language_area_ids = selectedLanguageAreas
+        if (entityType === 'language_area') {
+          const { data, error } = await supabase.from('language_areas').insert({
+            name: name.trim(),
+            name_sami: nameSami.trim() || null,
+            code: generatedSlug,
+            description: description.trim() || null,
+            sort_order: 999 // Admin can reorder
+          }).select().single()
+
+          if (error) throw error
+          resultId = data.id
+          suggestedData = { name: name.trim(), name_sami: nameSami.trim() || null, description: description.trim() || null }
         }
-        if (entityType === 'place') {
-          suggestedData.municipality_id = selectedMunicipality || parentId
+        else if (entityType === 'municipality') {
+          // Get first available country as default (Norway)
+          const { data: countries } = await supabase.from('countries').select('id').eq('code', 'NO').limit(1)
+          const defaultCountryId = countries?.[0]?.id || null
+
+          const { data, error } = await supabase.from('municipalities').insert({
+            name: name.trim(),
+            name_sami: nameSami.trim() || null,
+            slug: generatedSlug,
+            description: description.trim() || null,
+            language_area_id: selectedLanguageAreas[0] || null,
+            country_id: defaultCountryId
+          }).select().single()
+
+          if (error) throw error
+          resultId = data.id
+          suggestedData = { name: name.trim(), name_sami: nameSami.trim() || null, description: description.trim() || null, language_area_id: selectedLanguageAreas[0] }
         }
-      } else if (suggestionType === 'edit_name') {
-        suggestedData = {
-          name: name.trim(),
-          name_sami: nameSami.trim() || null,
-        }
-        if (entity) {
-          currentData = {
-            name: entity.name,
-            name_sami: entity.name_sami,
-          }
-        }
-      } else if (suggestionType === 'edit_relationship') {
-        if (entityType === 'municipality') {
-          suggestedData = {
-            language_area_ids: selectedLanguageAreas,
-          }
-          if (entity) {
-            const muni = entity as Municipality
-            currentData = {
-              language_area_id: muni.language_area_id,
-            }
-          }
-        }
-        if (entityType === 'place') {
-          suggestedData = {
-            municipality_id: selectedMunicipality,
-          }
-          if (entity) {
-            const place = entity as Place
-            currentData = {
-              municipality_id: place.municipality_id,
-            }
-          }
+        else if (entityType === 'place') {
+          const { data, error } = await supabase.from('places').insert({
+            name: name.trim(),
+            name_sami: nameSami.trim() || null,
+            slug: generatedSlug,
+            description: description.trim() || null,
+            municipality_id: selectedMunicipality || parentId,
+            created_by: user.id
+          }).select().single()
+
+          if (error) throw error
+          resultId = data.id
+          suggestedData = { name: name.trim(), name_sami: nameSami.trim() || null, description: description.trim() || null, municipality_id: selectedMunicipality || parentId }
         }
       }
+      // EDIT NAME - Update directly (includes description and relationships)
+      else if (suggestionType === 'edit_name') {
+        if (!entity) throw new Error('No entity to update')
 
-      const { error } = await supabase.from('geography_suggestions').insert({
+        currentData = {
+          name: entity.name,
+          name_sami: entity.name_sami,
+          description: (entity as any).description
+        }
+
+        suggestedData = {
+          name: name.trim(),
+          name_sami: nameSami.trim() || null,
+          description: description.trim() || null
+        }
+
+        // Update name, description, and relationships
+        if (entityType === 'municipality') {
+          currentData.language_area_id = (entity as Municipality).language_area_id
+          suggestedData.language_area_id = selectedLanguageAreas[0] || null
+
+          const { error } = await supabase
+            .from('municipalities')
+            .update({
+              name: name.trim(),
+              name_sami: nameSami.trim() || null,
+              description: description.trim() || null,
+              language_area_id: selectedLanguageAreas[0] || null
+            })
+            .eq('id', entity.id)
+
+          if (error) throw error
+        } else if (entityType === 'place') {
+          currentData.municipality_id = (entity as Place).municipality_id
+          suggestedData.municipality_id = selectedMunicipality
+
+          const { error } = await supabase
+            .from('places')
+            .update({
+              name: name.trim(),
+              name_sami: nameSami.trim() || null,
+              description: description.trim() || null,
+              municipality_id: selectedMunicipality
+            })
+            .eq('id', entity.id)
+
+          if (error) throw error
+        } else {
+          // Language area - no relationships to update
+          const { error } = await supabase
+            .from('language_areas')
+            .update({
+              name: name.trim(),
+              name_sami: nameSami.trim() || null,
+              description: description.trim() || null
+            })
+            .eq('id', entity.id)
+
+          if (error) throw error
+        }
+
+        resultId = entity.id
+      }
+      // EDIT RELATIONSHIP - Update directly
+      else if (suggestionType === 'edit_relationship') {
+        if (!entity) throw new Error('No entity to update')
+
+        if (entityType === 'municipality') {
+          currentData = { language_area_id: (entity as Municipality).language_area_id }
+          suggestedData = { language_area_id: selectedLanguageAreas[0] || null }
+
+          const { error } = await supabase
+            .from('municipalities')
+            .update({ language_area_id: selectedLanguageAreas[0] || null })
+            .eq('id', entity.id)
+
+          if (error) throw error
+        }
+        else if (entityType === 'place') {
+          currentData = { municipality_id: (entity as Place).municipality_id }
+          suggestedData = { municipality_id: selectedMunicipality }
+
+          const { error } = await supabase
+            .from('places')
+            .update({ municipality_id: selectedMunicipality })
+            .eq('id', entity.id)
+
+          if (error) throw error
+        }
+        resultId = entity.id
+      }
+
+      // Log to geography_suggestions for admin reference (with auto-approved status)
+      await supabase.from('geography_suggestions').insert({
         user_id: user.id,
         suggestion_type: suggestionType,
         entity_type: entityType,
-        entity_id: entity?.id || null,
+        entity_id: resultId,
         suggested_data: suggestedData,
         current_data: currentData,
         reason: reason.trim() || null,
+        status: 'approved', // Auto-approved
+        reviewed_at: new Date().toISOString(),
+        reviewed_by: user.id // Self-approved for logging
       })
 
-      if (error) throw error
-
-      toast.success('Forslag sendt! Admin vil vurdere det.')
+      toast.success(suggestionType === 'new_item' ? 'Opprettet!' : 'Endringer lagret!')
       onOpenChange(false)
       onSuccess?.()
-    } catch (error) {
-      console.error('Error submitting suggestion:', error)
-      toast.error('Kunne ikke sende forslag')
+    } catch (error: any) {
+      console.error('Error saving changes:', error)
+      if (error.code === '23505') {
+        toast.error('Dette navnet er allerede i bruk')
+      } else {
+        toast.error('Kunne ikke lagre endringer')
+      }
     } finally {
       setLoading(false)
     }
@@ -300,31 +473,31 @@ export function SuggestChangeModal({
   const getTitle = () => {
     if (suggestionType === 'new_item') {
       switch (entityType) {
-        case 'language_area': return 'Foreslå nytt språkområde'
-        case 'municipality': return 'Foreslå ny kommune'
-        case 'place': return 'Foreslå ny by/sted'
+        case 'language_area': return 'Legg til nytt språkområde'
+        case 'municipality': return 'Legg til ny kommune'
+        case 'place': return 'Legg til ny by/sted'
       }
     }
     if (suggestionType === 'edit_name') {
-      return `Foreslå navneendring: ${entity?.name || ''}`
+      return `Rediger: ${entity?.name || ''}`
     }
     if (suggestionType === 'edit_relationship') {
-      return `Foreslå tilknytning: ${entity?.name || ''}`
+      return `Endre tilknytning: ${entity?.name || ''}`
     }
-    return 'Foreslå endring'
+    return 'Rediger'
   }
 
   const getDescription = () => {
     if (suggestionType === 'new_item') {
-      return 'Forslaget sendes til admin for godkjenning før det legges til.'
+      return 'Endringen lagres umiddelbart og admin får beskjed.'
     }
-    return 'Endringen må godkjennes av admin før den trer i kraft.'
+    return 'Endringen lagres umiddelbart og admin får beskjed.'
   }
 
   const getIcon = () => {
     switch (entityType) {
-      case 'language_area': return <Languages className="w-5 h-5 text-blue-600" />
-      case 'municipality': return <Building2 className="w-5 h-5 text-orange-600" />
+      case 'language_area': return <MapPin className="w-5 h-5 text-blue-600" />
+      case 'municipality': return <MapPin className="w-5 h-5 text-orange-600" />
       case 'place': return <MapPin className="w-5 h-5 text-purple-600" />
     }
   }
@@ -340,68 +513,107 @@ export function SuggestChangeModal({
           <DialogDescription>{getDescription()}</DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-4">
-          {/* Name fields - shown for new_item and edit_name */}
-          {(suggestionType === 'new_item' || suggestionType === 'edit_name') && (
-            <>
-              <div className="space-y-2">
-                <Label htmlFor="name">Navn (norsk)</Label>
-                <Input
-                  id="name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="F.eks. Kautokeino"
-                />
-              </div>
+        <div className="space-y-4 py-4 max-h-[70vh] overflow-y-auto">
+          {/* Name and description fields */}
+          <div className="space-y-2">
+            <Label htmlFor="name">Navn (norsk)</Label>
+            <Input
+              id="name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="F.eks. Kautokeino"
+            />
+          </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="nameSami">Navn (samisk)</Label>
-                <Input
-                  id="nameSami"
-                  value={nameSami}
-                  onChange={(e) => setNameSami(e.target.value)}
-                  placeholder="F.eks. Guovdageaidnu"
-                />
-              </div>
-            </>
+          <div className="space-y-2">
+            <Label htmlFor="nameSami">Navn (samisk)</Label>
+            <Input
+              id="nameSami"
+              value={nameSami}
+              onChange={(e) => setNameSami(e.target.value)}
+              placeholder="F.eks. Guovdageaidnu"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="description">Beskrivelse (valgfritt)</Label>
+            <Textarea
+              id="description"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="En kort beskrivelse av stedet..."
+              rows={3}
+            />
+          </div>
+
+          {/* Images section - only for existing entities */}
+          {suggestionType !== 'new_item' && entity && (
+            <div className="space-y-2">
+              <Label>Bilder ({images.length}/5)</Label>
+              {images.length > 0 && (
+                <div className="grid grid-cols-3 gap-2 mb-2">
+                  {images.map((img) => (
+                    <div key={img.id} className="relative aspect-square rounded-lg overflow-hidden bg-gray-100">
+                      <Image
+                        src={img.image_url}
+                        alt={img.caption || name}
+                        fill
+                        className="object-cover"
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
+              {currentUserId && images.length < 5 && (
+                <label className="flex items-center justify-center gap-2 px-4 py-2 border-2 border-dashed border-gray-300 rounded-lg hover:border-gray-400 cursor-pointer transition-colors">
+                  {uploadingImage ? (
+                    <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
+                  ) : (
+                    <Upload className="w-4 h-4 text-gray-400" />
+                  )}
+                  <span className="text-sm text-gray-600">
+                    {uploadingImage ? 'Laster opp...' : 'Last opp bilde'}
+                  </span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    className="hidden"
+                    disabled={uploadingImage}
+                  />
+                </label>
+              )}
+            </div>
           )}
 
           {/* Language area selection - for municipalities */}
-          {(entityType === 'municipality' && (suggestionType === 'new_item' || suggestionType === 'edit_relationship')) && (
+          {entityType === 'municipality' && (
             <div className="space-y-2">
-              <Label>Språkområde(r)</Label>
+              <Label>Språkområde</Label>
               <p className="text-xs text-gray-500 mb-2">
-                En kommune kan tilhøre flere språkområder
+                Velg hvilket språkområde kommunen tilhører
               </p>
-              <div className="max-h-48 overflow-y-auto border rounded-md p-2 space-y-2">
-                {languageAreas.map((area) => (
-                  <div key={area.id} className="flex items-center space-x-2">
-                    <Checkbox
-                      id={`area-${area.id}`}
-                      checked={selectedLanguageAreas.includes(area.id)}
-                      onCheckedChange={() => handleLanguageAreaToggle(area.id)}
-                    />
-                    <label
-                      htmlFor={`area-${area.id}`}
-                      className="text-sm flex items-center gap-2 cursor-pointer"
-                    >
-                      <div
-                        className="w-3 h-3 rounded-full"
-                        style={{ backgroundColor: area.color }}
-                      />
+              <Select
+                value={selectedLanguageAreas[0] || ''}
+                onValueChange={(value) => setSelectedLanguageAreas([value])}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Velg språkområde" />
+                </SelectTrigger>
+                <SelectContent>
+                  {languageAreas.map((area) => (
+                    <SelectItem key={area.id} value={area.id}>
                       {area.name}
-                      {area.name_sami && (
-                        <span className="text-gray-500">({area.name_sami})</span>
-                      )}
-                    </label>
-                  </div>
-                ))}
-              </div>
+                      {area.name_sami && ` (${area.name_sami})`}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           )}
 
           {/* Municipality selection - for places */}
-          {(entityType === 'place' && (suggestionType === 'new_item' || suggestionType === 'edit_relationship')) && (
+          {entityType === 'place' && (
             <div className="space-y-2">
               <Label>Kommune</Label>
               <Select value={selectedMunicipality} onValueChange={setSelectedMunicipality}>
@@ -417,37 +629,6 @@ export function SuggestChangeModal({
                   ))}
                 </SelectContent>
               </Select>
-            </div>
-          )}
-
-          {/* Language area selection - for places (multiple) */}
-          {(entityType === 'place' && suggestionType === 'new_item') && (
-            <div className="space-y-2">
-              <Label>Språkområde(r) (valgfritt)</Label>
-              <p className="text-xs text-gray-500 mb-2">
-                Stedet arver normalt fra kommunen, men kan også knyttes direkte
-              </p>
-              <div className="max-h-32 overflow-y-auto border rounded-md p-2 space-y-2">
-                {languageAreas.map((area) => (
-                  <div key={area.id} className="flex items-center space-x-2">
-                    <Checkbox
-                      id={`place-area-${area.id}`}
-                      checked={selectedLanguageAreas.includes(area.id)}
-                      onCheckedChange={() => handleLanguageAreaToggle(area.id)}
-                    />
-                    <label
-                      htmlFor={`place-area-${area.id}`}
-                      className="text-sm flex items-center gap-2 cursor-pointer"
-                    >
-                      <div
-                        className="w-3 h-3 rounded-full"
-                        style={{ backgroundColor: area.color }}
-                      />
-                      {area.name}
-                    </label>
-                  </div>
-                ))}
-              </div>
             </div>
           )}
 
@@ -470,8 +651,7 @@ export function SuggestChangeModal({
           </Button>
           <Button onClick={handleSubmit} disabled={loading}>
             {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-            <Plus className="w-4 h-4 mr-2" />
-            Send forslag
+            {suggestionType === 'new_item' ? 'Opprett' : 'Lagre endringer'}
           </Button>
         </div>
       </DialogContent>

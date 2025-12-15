@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Star, Loader2, MapPin, Globe, Languages, Pencil, Plus, Search, X } from 'lucide-react'
+import { Star, Loader2, MapPin, Globe, Languages, Pencil, Plus, Search, X, Building2, ArrowRight } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -31,7 +31,6 @@ interface Place {
   name: string
   name_sami: string | null
   slug: string
-  place_type: string
   municipality_id: string
 }
 
@@ -98,22 +97,24 @@ export function GeographyExplorerView({ onClose }: GeographyExplorerViewProps) {
     getUser()
   }, [supabase])
 
+  // Fetch data function (can be called to refresh)
+  const fetchData = useCallback(async () => {
+    const [languageAreasRes, municipalitiesRes, placesRes] = await Promise.all([
+      supabase.from('language_areas').select('id, name, name_sami, code').order('sort_order'),
+      supabase.from('municipalities').select('id, name, name_sami, slug, language_area_id').order('name'),
+      supabase.from('places').select('id, name, name_sami, slug, municipality_id').order('name'),
+    ])
+
+    if (languageAreasRes.data) setLanguageAreas(languageAreasRes.data)
+    if (municipalitiesRes.data) setAllMunicipalities(municipalitiesRes.data)
+    if (placesRes.data) setAllPlaces(placesRes.data)
+    setLoading(false)
+  }, [supabase])
+
   // Fetch language areas and all data for search
   useEffect(() => {
-    const fetchInitialData = async () => {
-      const [languageAreasRes, municipalitiesRes, placesRes] = await Promise.all([
-        supabase.from('language_areas').select('id, name, name_sami, code').order('sort_order'),
-        supabase.from('municipalities').select('id, name, name_sami, slug, language_area_id').order('name'),
-        supabase.from('places').select('id, name, name_sami, slug, place_type, municipality_id').order('name'),
-      ])
-
-      if (languageAreasRes.data) setLanguageAreas(languageAreasRes.data)
-      if (municipalitiesRes.data) setAllMunicipalities(municipalitiesRes.data)
-      if (placesRes.data) setAllPlaces(placesRes.data)
-      setLoading(false)
-    }
-    fetchInitialData()
-  }, [supabase])
+    fetchData()
+  }, [fetchData])
 
   // Search results
   const searchResults = useMemo(() => {
@@ -189,7 +190,7 @@ export function GeographyExplorerView({ onClose }: GeographyExplorerViewProps) {
 
       const { data } = await supabase
         .from('places')
-        .select('id, name, name_sami, slug, place_type, municipality_id')
+        .select('id, name, name_sami, slug, municipality_id')
         .eq('municipality_id', selectedMunicipality)
         .order('name')
 
@@ -348,7 +349,7 @@ export function GeographyExplorerView({ onClose }: GeographyExplorerViewProps) {
   // Helper to get type icon and color
   const getTypeStyle = (type: 'language_area' | 'municipality' | 'place') => {
     switch (type) {
-      case 'language_area': return { icon: Languages, color: 'text-blue-600', bg: 'bg-blue-100' }
+      case 'language_area': return { icon: MapPin, color: 'text-blue-600', bg: 'bg-blue-100' }
       case 'municipality': return { icon: MapPin, color: 'text-orange-600', bg: 'bg-orange-100' }
       case 'place': return { icon: MapPin, color: 'text-purple-600', bg: 'bg-purple-100' }
     }
@@ -492,272 +493,307 @@ export function GeographyExplorerView({ onClose }: GeographyExplorerViewProps) {
         <div className="flex-1 h-px bg-gray-200" />
       </div>
 
-      {/* Three column layout */}
-      <div className="flex-1 grid grid-cols-3 gap-3 min-h-0">
-        {/* Column 1: Language Areas */}
-        <div className="flex flex-col bg-white rounded-lg border border-gray-200 overflow-hidden">
-          <div className="px-3 py-2 bg-gray-50 border-b border-gray-200">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Languages className="w-4 h-4 text-blue-600" />
-                <h2 className="font-semibold text-sm text-gray-700">Språkområder</h2>
-              </div>
-              <button
-                onClick={() => openSuggestionModal('language_area', 'new_item')}
-                className="p-1 text-gray-400 hover:text-blue-600 transition-colors"
-                title="Foreslå nytt språkområde"
-              >
-                <Plus className="w-4 h-4" />
-              </button>
+      {/* Vertical group layout with cards */}
+      <div className="flex-1 overflow-y-auto space-y-6 pb-6">
+        {/* Group 1: Language Areas as Cards */}
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Languages className="w-5 h-5 text-blue-600" />
+              <h2 className="font-semibold text-lg text-gray-900">Språkområder</h2>
             </div>
+            <button
+              onClick={() => openSuggestionModal('language_area', 'new_item')}
+              className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+              title="Foreslå nytt språkområde"
+            >
+              <Plus className="w-5 h-5" />
+            </button>
           </div>
-          <div className="flex-1 overflow-y-auto">
+
+          <div className="flex flex-wrap gap-3">
             {languageAreas.map((area) => (
               <div
                 key={area.id}
                 className={cn(
-                  'group flex items-center gap-2 px-3 py-2 cursor-pointer border-b border-gray-100 transition-colors',
+                  'group relative px-4 py-3 rounded-lg border-2 cursor-pointer transition-all w-[140px]',
                   selectedLanguageArea === area.id
-                    ? 'bg-blue-50 border-l-2 border-l-blue-600'
-                    : 'hover:bg-gray-50'
+                    ? 'border-blue-600 bg-blue-50 shadow-md'
+                    : 'border-gray-200 bg-white hover:border-blue-300 hover:shadow-sm'
                 )}
                 onClick={() => setSelectedLanguageArea(area.id)}
               >
-                <div className="flex-1 min-w-0">
-                  <p className={cn(
-                    'text-sm font-medium truncate',
-                    selectedLanguageArea === area.id ? 'text-blue-700' : 'text-gray-900'
-                  )}>
-                    {area.name}
-                  </p>
-                  {area.name_sami && (
-                    <p className="text-xs text-gray-500 truncate">{area.name_sami}</p>
-                  )}
-                </div>
-                <div className="flex items-center gap-1 flex-shrink-0">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      toggleStarLanguageArea(area.id, area.name)
-                    }}
-                    className={cn(
-                      'p-1 rounded transition-colors',
-                      starredLanguageAreas.has(area.id)
-                        ? 'text-yellow-500 hover:text-yellow-600'
-                        : 'text-gray-300 hover:text-gray-400'
-                    )}
-                    title="Favoritt"
-                  >
-                    <Star className={cn(
-                      'w-4 h-4',
-                      starredLanguageAreas.has(area.id) && 'fill-current'
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-start justify-between gap-1">
+                    <MapPin className={cn(
+                      'w-5 h-5 flex-shrink-0',
+                      selectedLanguageArea === area.id ? 'text-blue-600' : 'text-gray-400'
                     )} />
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      openDetailView('language_area', area.id, area.name)
-                    }}
-                    className="p-1 rounded text-gray-300 opacity-0 group-hover:opacity-100 hover:text-blue-600 transition-all"
-                    title="Hjelp til å redigere"
-                  >
-                    <Pencil className="w-4 h-4" />
-                  </button>
+                    <div className="flex items-center gap-0.5">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          toggleStarLanguageArea(area.id, area.name)
+                        }}
+                        className={cn(
+                          'p-1 rounded transition-colors',
+                          starredLanguageAreas.has(area.id)
+                            ? 'text-yellow-500 hover:text-yellow-600'
+                            : 'text-gray-300 hover:text-gray-400'
+                        )}
+                        title="Favoritt"
+                      >
+                        <Star className={cn(
+                          'w-4 h-4',
+                          starredLanguageAreas.has(area.id) && 'fill-current'
+                        )} />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          openDetailView('language_area', area.id, area.name)
+                        }}
+                        className="p-1 rounded transition-colors text-gray-300 hover:text-blue-600 hover:bg-blue-50"
+                        title="Åpne"
+                      >
+                        <ArrowRight className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <p className={cn(
+                      'font-semibold text-sm leading-tight',
+                      selectedLanguageArea === area.id ? 'text-blue-900' : 'text-gray-900'
+                    )}>
+                      {area.name}
+                    </p>
+                    {area.name_sami && (
+                      <p className="text-xs text-gray-500 mt-1">{area.name_sami}</p>
+                    )}
+                  </div>
                 </div>
+
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    openSuggestionModal('language_area', 'edit_name', area)
+                  }}
+                  className="absolute bottom-2 right-2 p-1.5 rounded-lg bg-white/80 text-gray-400 opacity-0 group-hover:opacity-100 hover:text-blue-600 hover:bg-white transition-all shadow-sm"
+                  title="Rediger"
+                >
+                  <Pencil className="w-4 h-4" />
+                </button>
               </div>
             ))}
-            {/* Add new language area at bottom */}
-            <button
-              onClick={() => openSuggestionModal('language_area', 'new_item')}
-              className="flex items-center gap-2 px-3 py-3 w-full text-left text-blue-600 hover:bg-blue-50 transition-colors border-t border-gray-200"
-            >
-              <Plus className="w-4 h-4" />
-              <span className="text-sm">Legg til nytt språkområde</span>
-            </button>
           </div>
         </div>
 
-        {/* Column 2: Municipalities */}
-        <div className="flex flex-col bg-white rounded-lg border border-gray-200 overflow-hidden">
-          <div className="px-3 py-2 bg-gray-50 border-b border-gray-200">
-            <div className="flex items-center justify-between">
+        {/* Group 2: Municipalities as Cards (only shown when language area selected) */}
+        {selectedLanguageArea && (
+          <div>
+            <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
-                <MapPin className="w-4 h-4 text-orange-600" />
-                <h2 className="font-semibold text-sm text-gray-700">Kommuner</h2>
+                <Building2 className="w-5 h-5 text-orange-600" />
+                <h2 className="font-semibold text-lg text-gray-900">Kommuner</h2>
               </div>
-              {selectedLanguageArea && (
+              <button
+                onClick={() => openSuggestionModal('municipality', 'new_item', undefined, selectedLanguageArea)}
+                className="p-2 text-gray-400 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
+                title="Foreslå ny kommune"
+              >
+                <Plus className="w-5 h-5" />
+              </button>
+            </div>
+
+            {municipalities.length === 0 ? (
+              <div className="p-8 text-center bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
+                <Building2 className="w-12 h-12 mx-auto mb-2 text-gray-300" />
+                <p className="text-gray-500 mb-3">Ingen kommuner funnet</p>
                 <button
                   onClick={() => openSuggestionModal('municipality', 'new_item', undefined, selectedLanguageArea)}
-                  className="p-1 text-gray-400 hover:text-orange-600 transition-colors"
-                  title="Foreslå ny kommune"
+                  className="text-orange-600 hover:underline text-sm"
                 >
-                  <Plus className="w-4 h-4" />
+                  Foreslå å legge til en kommune
                 </button>
-              )}
-            </div>
-          </div>
-          <div className="flex-1 overflow-y-auto">
-            {!selectedLanguageArea ? (
-              <div className="p-4 text-center text-gray-400 text-sm">
-                Velg et språkområde
               </div>
             ) : (
-              <>
-                {municipalities.length === 0 && (
-                  <div className="p-4 text-center text-gray-400 text-sm">
-                    Ingen kommuner funnet
-                  </div>
-                )}
+              <div className="flex flex-wrap gap-3">
                 {municipalities.map((municipality) => (
                   <div
                     key={municipality.id}
                     className={cn(
-                      'group flex items-center gap-2 px-3 py-2 cursor-pointer border-b border-gray-100 transition-colors',
+                      'group relative px-4 py-3 rounded-lg border-2 cursor-pointer transition-all w-[140px]',
                       selectedMunicipality === municipality.id
-                        ? 'bg-orange-50 border-l-2 border-l-orange-600'
-                        : 'hover:bg-gray-50'
+                        ? 'border-orange-600 bg-orange-50 shadow-md'
+                        : 'border-gray-200 bg-white hover:border-orange-300 hover:shadow-sm'
                     )}
                     onClick={() => setSelectedMunicipality(municipality.id)}
                   >
-                    <div className="flex-1 min-w-0">
-                      <p className={cn(
-                        'text-sm font-medium truncate',
-                        selectedMunicipality === municipality.id ? 'text-orange-700' : 'text-gray-900'
-                      )}>
-                        {municipality.name}
-                      </p>
-                      {municipality.name_sami && (
-                        <p className="text-xs text-gray-500 truncate">{municipality.name_sami}</p>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-1 flex-shrink-0">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          toggleStarMunicipality(municipality.id, municipality.name)
-                        }}
-                        className={cn(
-                          'p-1 rounded transition-colors',
-                          starredMunicipalities.has(municipality.id)
-                            ? 'text-yellow-500 hover:text-yellow-600'
-                            : 'text-gray-300 hover:text-gray-400'
-                        )}
-                        title="Favoritt"
-                      >
-                        <Star className={cn(
-                          'w-4 h-4',
-                          starredMunicipalities.has(municipality.id) && 'fill-current'
+                    <div className="flex flex-col gap-2">
+                      <div className="flex items-start justify-between gap-1">
+                        <MapPin className={cn(
+                          'w-5 h-5 flex-shrink-0',
+                          selectedMunicipality === municipality.id ? 'text-orange-600' : 'text-gray-400'
                         )} />
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          openDetailView('municipality', municipality.id, municipality.name)
-                        }}
-                        className="p-1 rounded text-gray-300 opacity-0 group-hover:opacity-100 hover:text-orange-600 transition-all"
-                        title="Hjelp til å redigere"
-                      >
-                        <Pencil className="w-4 h-4" />
-                      </button>
+                        <div className="flex items-center gap-0.5">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              toggleStarMunicipality(municipality.id, municipality.name)
+                            }}
+                            className={cn(
+                              'p-1 rounded transition-colors',
+                              starredMunicipalities.has(municipality.id)
+                                ? 'text-yellow-500 hover:text-yellow-600'
+                                : 'text-gray-300 hover:text-gray-400'
+                            )}
+                            title="Favoritt"
+                          >
+                            <Star className={cn(
+                              'w-4 h-4',
+                              starredMunicipalities.has(municipality.id) && 'fill-current'
+                            )} />
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              openDetailView('municipality', municipality.id, municipality.name)
+                            }}
+                            className="p-1 rounded transition-colors text-gray-300 hover:text-orange-600 hover:bg-orange-50"
+                            title="Åpne"
+                          >
+                            <ArrowRight className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+
+                      <div>
+                        <p className={cn(
+                          'font-semibold text-sm leading-tight',
+                          selectedMunicipality === municipality.id ? 'text-orange-900' : 'text-gray-900'
+                        )}>
+                          {municipality.name}
+                        </p>
+                        {municipality.name_sami && (
+                          <p className="text-xs text-gray-500 mt-1">{municipality.name_sami}</p>
+                        )}
+                      </div>
                     </div>
+
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        openSuggestionModal('municipality', 'edit_name', municipality)
+                      }}
+                      className="absolute bottom-2 right-2 p-1.5 rounded-lg bg-white/80 text-gray-400 opacity-0 group-hover:opacity-100 hover:text-orange-600 hover:bg-white transition-all shadow-sm"
+                      title="Rediger"
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </button>
                   </div>
                 ))}
-                {/* Add new municipality at bottom */}
-                <button
-                  onClick={() => openSuggestionModal('municipality', 'new_item', undefined, selectedLanguageArea)}
-                  className="flex items-center gap-2 px-3 py-3 w-full text-left text-orange-600 hover:bg-orange-50 transition-colors border-t border-gray-200"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span className="text-sm">Legg til ny kommune</span>
-                </button>
-              </>
+              </div>
             )}
           </div>
-        </div>
+        )}
 
-        {/* Column 3: Places */}
-        <div className="flex flex-col bg-white rounded-lg border border-gray-200 overflow-hidden">
-          <div className="px-3 py-2 bg-gray-50 border-b border-gray-200">
-            <div className="flex items-center justify-between">
+        {/* Group 3: Places as Cards (only shown when municipality selected) */}
+        {selectedMunicipality && (
+          <div>
+            <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
-                <MapPin className="w-4 h-4 text-purple-600" />
-                <h2 className="font-semibold text-sm text-gray-700">Byer & steder</h2>
+                <MapPin className="w-5 h-5 text-purple-600" />
+                <h2 className="font-semibold text-lg text-gray-900">Byer & steder</h2>
               </div>
-              {selectedMunicipality && (
+              <button
+                onClick={() => openSuggestionModal('place', 'new_item', undefined, selectedMunicipality)}
+                className="p-2 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
+                title="Foreslå ny by/sted"
+              >
+                <Plus className="w-5 h-5" />
+              </button>
+            </div>
+
+            {places.length === 0 ? (
+              <div className="p-8 text-center bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
+                <MapPin className="w-12 h-12 mx-auto mb-2 text-gray-300" />
+                <p className="text-gray-500 mb-3">Ingen steder funnet</p>
                 <button
                   onClick={() => openSuggestionModal('place', 'new_item', undefined, selectedMunicipality)}
-                  className="p-1 text-gray-400 hover:text-purple-600 transition-colors"
-                  title="Foreslå ny by/sted"
+                  className="text-purple-600 hover:underline text-sm"
                 >
-                  <Plus className="w-4 h-4" />
+                  Foreslå å legge til et sted
                 </button>
-              )}
-            </div>
-          </div>
-          <div className="flex-1 overflow-y-auto">
-            {!selectedMunicipality ? (
-              <div className="p-4 text-center text-gray-400 text-sm">
-                Velg en kommune
               </div>
             ) : (
-              <>
-                {places.length === 0 && (
-                  <div className="p-4 text-center text-gray-400 text-sm">
-                    Ingen steder funnet
-                  </div>
-                )}
+              <div className="flex flex-wrap gap-3">
                 {places.map((place) => (
                   <div
                     key={place.id}
-                    className="group flex items-center gap-2 px-3 py-2 border-b border-gray-100 hover:bg-gray-50 transition-colors"
+                    className="group relative px-4 py-3 rounded-lg border-2 border-gray-200 bg-white hover:border-purple-300 hover:shadow-sm cursor-pointer transition-all w-[140px]"
                   >
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900 truncate">
-                        {place.name}
-                      </p>
-                      {place.name_sami && (
-                        <p className="text-xs text-gray-500 truncate">{place.name_sami}</p>
-                      )}
-                      <p className="text-xs text-gray-400 capitalize">{place.place_type}</p>
-                    </div>
-                    <div className="flex items-center gap-1 flex-shrink-0">
-                      <button
-                        onClick={() => toggleStarPlace(place.id, place.name)}
-                        className={cn(
-                          'p-1 rounded transition-colors',
-                          starredPlaces.has(place.id)
-                            ? 'text-yellow-500 hover:text-yellow-600'
-                            : 'text-gray-300 hover:text-gray-400'
+                    <div className="flex flex-col gap-2">
+                      <div className="flex items-start justify-between gap-1">
+                        <MapPin className="w-5 h-5 flex-shrink-0 text-gray-400" />
+                        <div className="flex items-center gap-0.5">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              toggleStarPlace(place.id, place.name)
+                            }}
+                            className={cn(
+                              'p-1 rounded transition-colors',
+                              starredPlaces.has(place.id)
+                                ? 'text-yellow-500 hover:text-yellow-600'
+                                : 'text-gray-300 hover:text-gray-400'
+                            )}
+                            title="Favoritt"
+                          >
+                            <Star className={cn(
+                              'w-4 h-4',
+                              starredPlaces.has(place.id) && 'fill-current'
+                            )} />
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              openDetailView('place', place.id, place.name)
+                            }}
+                            className="p-1 rounded transition-colors text-gray-300 hover:text-purple-600 hover:bg-purple-50"
+                            title="Åpne"
+                          >
+                            <ArrowRight className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+
+                      <div>
+                        <p className="font-semibold text-sm leading-tight text-gray-900">
+                          {place.name}
+                        </p>
+                        {place.name_sami && (
+                          <p className="text-xs text-gray-500 mt-1">{place.name_sami}</p>
                         )}
-                        title="Favoritt"
-                      >
-                        <Star className={cn(
-                          'w-4 h-4',
-                          starredPlaces.has(place.id) && 'fill-current'
-                        )} />
-                      </button>
-                      <button
-                        onClick={() => openDetailView('place', place.id, place.name)}
-                        className="p-1 rounded text-gray-300 opacity-0 group-hover:opacity-100 hover:text-purple-600 transition-all"
-                        title="Hjelp til å redigere"
-                      >
-                        <Pencil className="w-4 h-4" />
-                      </button>
+                      </div>
                     </div>
+
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        openSuggestionModal('place', 'edit_name', place)
+                      }}
+                      className="absolute bottom-2 right-2 p-1.5 rounded-lg bg-white/80 text-gray-400 opacity-0 group-hover:opacity-100 hover:text-purple-600 hover:bg-white transition-all shadow-sm"
+                      title="Rediger"
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </button>
                   </div>
                 ))}
-                {/* Add new place at bottom */}
-                <button
-                  onClick={() => openSuggestionModal('place', 'new_item', undefined, selectedMunicipality)}
-                  className="flex items-center gap-2 px-3 py-3 w-full text-left text-purple-600 hover:bg-purple-50 transition-colors border-t border-gray-200"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span className="text-sm">Legg til ny by/sted</span>
-                </button>
-              </>
+              </div>
             )}
           </div>
-        </div>
+        )}
       </div>
 
       {/* Help text */}
@@ -784,6 +820,7 @@ export function GeographyExplorerView({ onClose }: GeographyExplorerViewProps) {
         entity={suggestionEntity}
         suggestionType={suggestionType}
         parentId={suggestionParentId}
+        onSuccess={fetchData}
       />
     </div>
   )

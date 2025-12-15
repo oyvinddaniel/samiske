@@ -50,7 +50,6 @@ interface Place {
   name: string
   name_sami: string | null
   slug: string
-  place_type: string
   municipality_id: string
   municipality?: Municipality
 }
@@ -281,7 +280,6 @@ export function GeographyTab() {
         name: formData.name,
         name_sami: formData.name_sami || null,
         slug: formData.slug || formData.name.toLowerCase().replace(/\s+/g, '-').replace(/[æ]/g, 'ae').replace(/[ø]/g, 'o').replace(/[å]/g, 'a'),
-        place_type: formData.place_type || 'area',
         municipality_id: formData.municipality_id,
       })
 
@@ -301,7 +299,6 @@ export function GeographyTab() {
         name: formData.name,
         name_sami: formData.name_sami || null,
         slug: formData.slug,
-        place_type: formData.place_type,
         municipality_id: formData.municipality_id,
       })
       .eq('id', id)
@@ -1078,19 +1075,6 @@ export function GeographyTab() {
                       ))}
                     </select>
                   </div>
-                  <div>
-                    <Label className="text-xs">Type</Label>
-                    <select
-                      value={formData.place_type || 'area'}
-                      onChange={e => setFormData({ ...formData, place_type: e.target.value })}
-                      className="w-full border rounded px-2 py-1.5 text-sm"
-                    >
-                      <option value="area">Område</option>
-                      <option value="landmark">Landemerke</option>
-                      <option value="venue">Sted/bygning</option>
-                      <option value="natural">Naturområde</option>
-                    </select>
-                  </div>
                 </div>
                 <div className="flex gap-2">
                   <Button size="sm" onClick={handleCreatePlace}>
@@ -1134,19 +1118,6 @@ export function GeographyTab() {
                             onChange={e => setFormData({ ...formData, slug: e.target.value })}
                           />
                         </div>
-                        <div>
-                          <Label className="text-xs">Type</Label>
-                          <select
-                            value={formData.place_type || 'area'}
-                            onChange={e => setFormData({ ...formData, place_type: e.target.value })}
-                            className="w-full border rounded px-2 py-1.5 text-sm"
-                          >
-                            <option value="area">Område</option>
-                            <option value="landmark">Landemerke</option>
-                            <option value="venue">Sted/bygning</option>
-                            <option value="natural">Naturområde</option>
-                          </select>
-                        </div>
                         <div className="col-span-2">
                           <Label className="text-xs">Kommune</Label>
                           <select
@@ -1180,9 +1151,6 @@ export function GeographyTab() {
                           <p className="text-xs text-gray-500">
                             {place.name_sami && <span className="mr-2">{place.name_sami}</span>}
                             <span className="text-gray-400">{place.municipality?.name}</span>
-                            <span className="ml-2 px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded text-[10px]">
-                              {place.place_type}
-                            </span>
                           </p>
                         </div>
                       </div>

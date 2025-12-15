@@ -106,19 +106,22 @@ export function GroupSettingsDialog({
       setSearching(true)
 
       try {
-        // Query profiles that are NOT already members of the group
-        const { data, error } = await supabase
+        // Query profiles that match search
+        let query = supabase
           .from('profiles')
           .select('id, full_name, avatar_url')
           .ilike('full_name', `%${searchQuery}%`)
-          .not('id', 'in', `(${existingMemberIds.length > 0 ? existingMemberIds.join(',') : 'null'})`)
           .limit(10)
+
+        const { data, error } = await query
 
         if (error) {
           console.error('Error searching users:', error)
           setSearchResults([])
         } else {
-          setSearchResults(data || [])
+          // Filter out existing members client-side (more reliable)
+          const filtered = (data || []).filter(user => !existingMemberIds.includes(user.id))
+          setSearchResults(filtered)
         }
       } catch (error) {
         console.error('Error searching users:', error)
@@ -276,7 +279,7 @@ export function GroupSettingsDialog({
           </TabsList>
 
           {/* Invite tab */}
-          <TabsContent value="invite" className="mt-4">
+          <TabsContent value="invite" className="mt-4 min-h-[350px]">
             <div className="space-y-4">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -339,7 +342,7 @@ export function GroupSettingsDialog({
           </TabsContent>
 
           {/* Pending tab */}
-          <TabsContent value="pending" className="mt-4">
+          <TabsContent value="pending" className="mt-4 min-h-[350px]">
             {pendingMembers.length === 0 ? (
               <div className="text-center py-8 text-gray-500">
                 <Clock className="w-12 h-12 mx-auto mb-4 text-gray-300" />
@@ -390,7 +393,7 @@ export function GroupSettingsDialog({
           </TabsContent>
 
           {/* Geography tab */}
-          <TabsContent value="geography" className="mt-4">
+          <TabsContent value="geography" className="mt-4 min-h-[350px]">
             <div className="space-y-4">
               <div className="text-sm text-gray-600 bg-blue-50 border border-blue-200 rounded-lg p-3">
                 <p className="font-medium mb-1">Hvorfor koble til et sted?</p>

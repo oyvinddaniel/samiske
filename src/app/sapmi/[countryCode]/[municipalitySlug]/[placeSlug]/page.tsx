@@ -102,14 +102,6 @@ export default async function PlacePage({ params }: PlacePageProps) {
     }
   ]
 
-  // Place type labels
-  const placeTypeLabels: Record<string, string> = {
-    area: 'Område',
-    landmark: 'Landemerke',
-    venue: 'Lokale',
-    natural: 'Natursted'
-  }
-
   return (
     <div className="container max-w-4xl mx-auto py-6 px-4">
       {/* Header */}
@@ -143,9 +135,6 @@ export default async function PlacePage({ params }: PlacePageProps) {
 
         {/* Meta info */}
         <div className="flex flex-wrap gap-4 mt-4 text-sm text-muted-foreground">
-          {place.place_type && (
-            <span>Type: {placeTypeLabels[place.place_type] || place.place_type}</span>
-          )}
           <span>Kommune: {municipality?.name}</span>
           {municipality?.language_area && (
             <span>Sprakområde: {municipality.language_area.name}</span>

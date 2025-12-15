@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Users, Plus, Search, FileText, Grid, ArrowLeft, Settings } from 'lucide-react'
+import { Users, Plus, Search, FileText, Grid, X, Settings } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -22,7 +22,7 @@ export function GroupsContent() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
-  const [activeTab, setActiveTab] = useState('feed')
+  const [activeTab, setActiveTab] = useState('utforsk')
 
   // Selected group state
   const [selectedGroup, setSelectedGroup] = useState<Group | null>(null)
@@ -117,51 +117,29 @@ export function GroupsContent() {
   )
 
   const userGroupIds = userGroups.map(g => g.id)
-  const discoverGroups = filteredGroups.filter(g => !userGroupIds.includes(g.id))
 
-  if (loading) {
-    return (
-      <div className="animate-pulse space-y-4">
-        <div className="h-8 bg-gray-200 rounded w-1/3" />
-        <div className="h-10 bg-gray-200 rounded w-full" />
-        <div className="space-y-4 mt-4">
-          {[1, 2, 3].map(i => (
-            <div key={i} className="h-40 bg-gray-200 rounded-lg" />
-          ))}
-        </div>
-      </div>
-    )
-  }
+  // Group detail view component
+  const renderSelectedGroup = () => {
+    if (!selectedGroup) return null
 
-  // If a group is selected, show group content
-  if (selectedGroup) {
     const isAdmin = membership.role === 'admin'
     const canViewContent = selectedGroup.group_type === 'open' || membership.isMember
 
     return (
-      <>
-        {/* Back button and header */}
-        <div className="flex items-center gap-3 mb-4">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={handleBackToGroups}
-            className="flex-shrink-0"
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </Button>
-          <div className="flex items-center gap-3 flex-1">
-            <div className="p-2 rounded-xl bg-blue-100">
-              <Users className="h-6 w-6 text-blue-600" />
-            </div>
-            <h1 className="text-2xl font-bold text-gray-900">Grupper</h1>
-          </div>
-        </div>
-
+      <div className="space-y-4">
         {/* Group header card */}
-        <div className="bg-white rounded-xl p-6 mb-6 shadow-sm border border-gray-200">
-          <div className="flex items-start gap-4">
-            <div className="w-16 h-16 rounded-xl bg-blue-100 flex items-center justify-center flex-shrink-0">
+        <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
+          <div className="flex items-start gap-3">
+            {/* Close button */}
+            <button
+              onClick={handleBackToGroups}
+              className="p-1.5 -ml-1 -mt-1 rounded-lg hover:bg-gray-100 transition-colors"
+              title="Tilbake til alle grupper"
+            >
+              <X className="w-5 h-5 text-gray-500" />
+            </button>
+
+            <div className="w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center flex-shrink-0">
               {selectedGroup.image_url ? (
                 <img
                   src={selectedGroup.image_url}
@@ -169,25 +147,25 @@ export function GroupsContent() {
                   className="w-full h-full rounded-xl object-cover"
                 />
               ) : (
-                <Users className="w-8 h-8 text-blue-600" />
+                <Users className="w-6 h-6 text-blue-600" />
               )}
             </div>
 
-            <div className="flex-1">
-              <div className="flex items-center gap-2 mb-1">
-                <h2 className="text-xl font-bold">{selectedGroup.name}</h2>
-                <Badge variant="secondary">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+                <h2 className="text-lg font-bold truncate">{selectedGroup.name}</h2>
+                <Badge variant="secondary" className="text-xs">
                   {groupTypeLabels[selectedGroup.group_type]}
                 </Badge>
               </div>
 
               {selectedGroup.description && (
-                <p className="text-gray-600 mb-3">{selectedGroup.description}</p>
+                <p className="text-sm text-gray-600 line-clamp-2 mb-2">{selectedGroup.description}</p>
               )}
 
-              <div className="flex items-center gap-4 text-sm text-gray-500">
+              <div className="flex items-center gap-3 text-xs text-gray-500">
                 <span className="flex items-center gap-1">
-                  <Users className="w-4 h-4" />
+                  <Users className="w-3.5 h-3.5" />
                   {selectedGroup.member_count} medlemmer
                 </span>
                 <span>{selectedGroup.post_count} innlegg</span>
@@ -195,7 +173,7 @@ export function GroupsContent() {
             </div>
 
             {/* Actions */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-shrink-0">
               {currentUserId && (
                 <JoinGroupButton
                   groupId={selectedGroup.id}
@@ -211,6 +189,7 @@ export function GroupsContent() {
                 <Button
                   variant="outline"
                   size="icon"
+                  className="h-8 w-8"
                   onClick={() => setShowSettings(true)}
                 >
                   <Settings className="w-4 h-4" />
@@ -220,50 +199,56 @@ export function GroupsContent() {
           </div>
         </div>
 
-        {/* Create post button - only show for members who can view content */}
-        {canViewContent && currentUserId && membership.isMember && (
-          <div className="flex justify-center mb-6">
-            <button
-              onClick={() => setShowCreatePost(true)}
-              className="group flex items-center gap-2.5 px-5 py-2.5 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white rounded-full shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/30 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
-            >
-              <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center group-hover:bg-white/30 transition-colors">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
-                </svg>
-              </div>
-              <span className="font-medium text-sm">Nytt innlegg</span>
-            </button>
-          </div>
-        )}
-
-        {/* Group content */}
+        {/* Group content tabs */}
         {canViewContent ? (
-          <Tabs value={groupTab} onValueChange={setGroupTab}>
-            <div className="flex justify-center mb-6">
-              <TabsList>
-                <TabsTrigger value="posts">
-                  <FileText className="w-4 h-4 mr-1" />
-                  Innlegg
-                </TabsTrigger>
-                <TabsTrigger value="members">
-                  <Users className="w-4 h-4 mr-1" />
-                  Medlemmer ({selectedGroup.member_count})
-                </TabsTrigger>
-              </TabsList>
+          <>
+            {/* Sub-tabs for posts/members */}
+            <div className="flex items-center gap-2 border-b border-gray-200 pb-2">
+              <button
+                onClick={() => setGroupTab('posts')}
+                className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
+                  groupTab === 'posts'
+                    ? 'bg-blue-100 text-blue-700'
+                    : 'text-gray-600 hover:bg-gray-100'
+                }`}
+              >
+                <FileText className="w-4 h-4 inline mr-1" />
+                Innlegg
+              </button>
+              <button
+                onClick={() => setGroupTab('members')}
+                className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
+                  groupTab === 'members'
+                    ? 'bg-blue-100 text-blue-700'
+                    : 'text-gray-600 hover:bg-gray-100'
+                }`}
+              >
+                <Users className="w-4 h-4 inline mr-1" />
+                Medlemmer ({selectedGroup.member_count})
+              </button>
+
+              {/* Create post button - inline with tabs */}
+              {membership.isMember && currentUserId && (
+                <button
+                  onClick={() => setShowCreatePost(true)}
+                  className="ml-auto px-3 py-1.5 text-sm font-medium bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors flex items-center gap-1"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span className="hidden sm:inline">Nytt innlegg</span>
+                </button>
+              )}
             </div>
 
-            <TabsContent value="posts" className="mt-0">
-              {membership.isMember ? (
-                <Feed groupId={selectedGroup.id} hideCreateButton={false} />
+            {/* Content */}
+            {groupTab === 'posts' ? (
+              membership.isMember ? (
+                <Feed groupId={selectedGroup.id} hideCreateButton={true} />
               ) : (
                 <div className="text-center py-12 text-gray-500 bg-white rounded-lg border">
                   <p>Bli medlem for å se og opprette innlegg</p>
                 </div>
-              )}
-            </TabsContent>
-
-            <TabsContent value="members" className="mt-0">
+              )
+            ) : (
               <div className="bg-white rounded-lg border divide-y">
                 {groupMembers.map(member => (
                   <div key={member.id} className="flex items-center gap-3 p-4">
@@ -287,8 +272,8 @@ export function GroupsContent() {
                   </div>
                 )}
               </div>
-            </TabsContent>
-          </Tabs>
+            )}
+          </>
         ) : (
           <div className="bg-white rounded-lg p-12 text-center border">
             <Users className="w-12 h-12 mx-auto mb-4 text-gray-300" />
@@ -333,7 +318,21 @@ export function GroupsContent() {
             }}
           />
         )}
-      </>
+      </div>
+    )
+  }
+
+  if (loading) {
+    return (
+      <div className="animate-pulse space-y-4">
+        <div className="h-8 bg-gray-200 rounded w-1/3" />
+        <div className="h-10 bg-gray-200 rounded w-full" />
+        <div className="space-y-4 mt-4">
+          {[1, 2, 3].map(i => (
+            <div key={i} className="h-40 bg-gray-200 rounded-lg" />
+          ))}
+        </div>
+      </div>
     )
   }
 
@@ -362,59 +361,88 @@ export function GroupsContent() {
       </div>
 
       {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
+      <Tabs value={activeTab} onValueChange={(value) => {
+        setActiveTab(value)
+        // Clear selected group when switching tabs
+        if (selectedGroup) {
+          handleBackToGroups()
+        }
+      }}>
         <div className="flex justify-center mb-6">
-          <TabsList>
-            <TabsTrigger value="feed">
-              <FileText className="w-4 h-4" />
-              Innlegg fra mine grupper
+          <TabsList className="h-auto">
+            <TabsTrigger value="utforsk" className="gap-1">
+              <Grid className="w-4 h-4 flex-shrink-0" />
+              <span>Utforsk</span>
             </TabsTrigger>
-            <TabsTrigger value="mine">
-              <Users className="w-4 h-4" />
-              Mine grupper
+            <TabsTrigger value="mine" className="gap-1">
+              <Users className="w-4 h-4 flex-shrink-0" />
+              <span>Mine</span>
             </TabsTrigger>
-            <TabsTrigger value="utforsk">
-              <Grid className="w-4 h-4" />
-              Utforsk
+            <TabsTrigger value="feed" className="gap-1 whitespace-normal text-left leading-tight py-1.5 max-w-[120px] sm:max-w-none">
+              <FileText className="w-4 h-4 flex-shrink-0" />
+              <span className="text-xs">Innlegg fra grupper jeg følger</span>
             </TabsTrigger>
           </TabsList>
         </div>
 
-        {/* Feed tab */}
-        <TabsContent value="feed" className="mt-0">
-          {!currentUserId ? (
-            <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
-              <Users className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-              <p className="text-gray-600 mb-2">Logg inn for å se aktivitet fra gruppene dine</p>
-              <p className="text-sm text-gray-500">
-                Bli med i grupper for å se innlegg og arrangementer her.
-              </p>
-            </div>
-          ) : userGroupIds.length === 0 ? (
-            <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
-              <Users className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-              <p className="text-gray-600 mb-2">Du er ikke medlem av noen grupper ennå</p>
-              <p className="text-sm text-gray-500 mb-4">
-                Utforsk grupper og bli med for å se aktivitet her.
-              </p>
-              <Button
-                variant="outline"
-                onClick={() => setActiveTab('utforsk')}
-              >
-                Utforsk grupper
-              </Button>
-            </div>
+        {/* Explore tab */}
+        <TabsContent value="utforsk" className="mt-0">
+          {selectedGroup ? (
+            renderSelectedGroup()
           ) : (
-            <Feed
-              groupIds={userGroupIds}
-              hideCreateButton={true}
-            />
+            <>
+              <div className="relative mb-4">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <Input
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Søk etter grupper..."
+                  className="pl-9"
+                />
+              </div>
+
+              {filteredGroups.length > 0 ? (
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {filteredGroups.map(group => {
+                    const userGroup = userGroups.find(ug => ug.id === group.id)
+                    return (
+                      <GroupCard
+                        key={group.id}
+                        group={group}
+                        userRole={userGroup?.user_role}
+                        showType={true}
+                        onClick={() => handleSelectGroup(group)}
+                      />
+                    )
+                  })}
+                </div>
+              ) : searchQuery ? (
+                <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
+                  <p className="text-gray-600">Ingen grupper funnet for &quot;{searchQuery}&quot;</p>
+                </div>
+              ) : (
+                <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
+                  <Users className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                  <p className="text-gray-600 mb-2">Ingen grupper ennå</p>
+                  {currentUserId && (
+                    <Button
+                      variant="link"
+                      onClick={() => setShowCreateModal(true)}
+                    >
+                      Opprett den første gruppen
+                    </Button>
+                  )}
+                </div>
+              )}
+            </>
           )}
         </TabsContent>
 
         {/* My groups tab */}
         <TabsContent value="mine" className="mt-0">
-          {!currentUserId ? (
+          {selectedGroup ? (
+            renderSelectedGroup()
+          ) : !currentUserId ? (
             <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
               <Users className="w-12 h-12 mx-auto mb-4 text-gray-300" />
               <p className="text-gray-600">Logg inn for å se gruppene dine</p>
@@ -451,45 +479,35 @@ export function GroupsContent() {
           )}
         </TabsContent>
 
-        {/* Explore tab */}
-        <TabsContent value="utforsk" className="mt-0">
-          <div className="relative mb-4">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <Input
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Søk etter grupper..."
-              className="pl-9"
-            />
-          </div>
-
-          {discoverGroups.length > 0 ? (
-            <div className="grid gap-4 sm:grid-cols-2">
-              {discoverGroups.map(group => (
-                <GroupCard
-                  key={group.id}
-                  group={group}
-                  onClick={() => handleSelectGroup(group)}
-                />
-              ))}
-            </div>
-          ) : searchQuery ? (
-            <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
-              <p className="text-gray-600">Ingen grupper funnet for &quot;{searchQuery}&quot;</p>
-            </div>
-          ) : (
+        {/* Feed tab */}
+        <TabsContent value="feed" className="mt-0">
+          {!currentUserId ? (
             <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
               <Users className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-              <p className="text-gray-600 mb-2">Ingen flere grupper å utforske</p>
-              {currentUserId && (
-                <Button
-                  variant="link"
-                  onClick={() => setShowCreateModal(true)}
-                >
-                  Opprett en ny gruppe
-                </Button>
-              )}
+              <p className="text-gray-600 mb-2">Logg inn for å se aktivitet fra gruppene dine</p>
+              <p className="text-sm text-gray-500">
+                Bli med i grupper for å se innlegg og arrangementer her.
+              </p>
             </div>
+          ) : userGroupIds.length === 0 ? (
+            <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
+              <Users className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+              <p className="text-gray-600 mb-2">Du er ikke medlem av noen grupper ennå</p>
+              <p className="text-sm text-gray-500 mb-4">
+                Utforsk grupper og bli med for å se aktivitet her.
+              </p>
+              <Button
+                variant="outline"
+                onClick={() => setActiveTab('utforsk')}
+              >
+                Utforsk grupper
+              </Button>
+            </div>
+          ) : (
+            <Feed
+              groupIds={userGroupIds}
+              hideCreateButton={true}
+            />
           )}
         </TabsContent>
       </Tabs>

@@ -618,9 +618,9 @@ function MobileNavContent({ currentCategory = '' }: MobileNavProps) {
                           className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors text-left text-gray-600 hover:bg-blue-50/50 hover:text-gray-700"
                         >
                           {location.type === 'language_area' ? (
-                            <Languages className="w-4 h-4 text-blue-500" />
+                            <MapPin className="w-4 h-4 text-blue-500" />
                           ) : location.type === 'municipality' ? (
-                            <Building2 className="w-4 h-4 text-orange-500" />
+                            <MapPin className="w-4 h-4 text-orange-500" />
                           ) : (
                             <MapPin className="w-4 h-4 text-purple-500" />
                           )}

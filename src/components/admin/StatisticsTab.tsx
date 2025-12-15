@@ -44,26 +44,32 @@ export function StatisticsTab() {
   useEffect(() => {
     fetchAllStats()
 
-    // Auto-refresh every 30 seconds
-    const interval = setInterval(fetchAllStats, 30000)
+    // Debounced refresh function
+    let refreshTimeout: NodeJS.Timeout | null = null
+    const debouncedRefresh = () => {
+      if (refreshTimeout) clearTimeout(refreshTimeout)
+      refreshTimeout = setTimeout(() => {
+        fetchAllStats(false) // Don't show loading spinner for realtime updates
+      }, 2000) // Wait 2 seconds after last change
+    }
 
-    // Real-time subscriptions
+    // Real-time subscriptions with debouncing
     const channel = supabase
       .channel('statistics-realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, fetchAllStats)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'posts' }, fetchAllStats)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'comments' }, fetchAllStats)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'likes' }, fetchAllStats)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, debouncedRefresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'posts' }, debouncedRefresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'comments' }, debouncedRefresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'likes' }, debouncedRefresh)
       .subscribe()
 
     return () => {
-      clearInterval(interval)
+      if (refreshTimeout) clearTimeout(refreshTimeout)
       supabase.removeChannel(channel)
     }
   }, [])
 
-  const fetchAllStats = async () => {
-    setLoading(true)
+  const fetchAllStats = async (showLoading = true) => {
+    if (showLoading) setLoading(true)
     await Promise.all([
       fetchNewUsers(),
       fetchActiveUsers(),
@@ -72,7 +78,7 @@ export function StatisticsTab() {
       fetchEngagement(),
       fetchActivityLog()
     ])
-    setLoading(false)
+    if (showLoading) setLoading(false)
   }
 
   const fetchNewUsers = async () => {

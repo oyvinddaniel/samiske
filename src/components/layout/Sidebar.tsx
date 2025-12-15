@@ -489,9 +489,9 @@ export function Sidebar({ currentCategory = '', activePanel = 'feed', selectedLo
                     )}
                   >
                     {location.type === 'language_area' ? (
-                      <Languages className="w-4 h-4 text-blue-500" />
+                      <MapPin className="w-4 h-4 text-blue-500" />
                     ) : location.type === 'municipality' ? (
-                      <Building2 className="w-4 h-4 text-orange-500" />
+                      <MapPin className="w-4 h-4 text-orange-500" />
                     ) : (
                       <MapPin className="w-4 h-4 text-purple-500" />
                     )}

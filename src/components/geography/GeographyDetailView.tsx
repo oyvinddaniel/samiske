@@ -3,18 +3,10 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import {
-  Star, Pencil, MapPin, Languages, Building2,
-  Calendar, Users, FileText, Upload, Loader2
+  Star, Pencil, MapPin, Building2,
+  Calendar, Users, FileText, Loader2
 } from 'lucide-react'
-import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Textarea } from '@/components/ui/textarea'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import { Feed } from '@/components/feed/Feed'
@@ -61,7 +53,6 @@ export function GeographyDetailView({
     description: string | null
     code?: string
     slug?: string
-    place_type?: string
   } | null>(null)
 
   // Related data
@@ -74,10 +65,7 @@ export function GeographyDetailView({
   const [isStarred, setIsStarred] = useState(false)
 
   // Edit state
-  const [isEditingDescription, setIsEditingDescription] = useState(false)
-  const [descriptionDraft, setDescriptionDraft] = useState('')
   const [suggestionModalOpen, setSuggestionModalOpen] = useState(false)
-  const [suggestionType, setSuggestionType] = useState<'edit_name' | 'edit_relationship'>('edit_name')
 
   // Loading
   const [loading, setLoading] = useState(true)
@@ -102,7 +90,7 @@ export function GeographyDetailView({
     } else if (entityType === 'municipality') {
       query = supabase.from('municipalities').select('id, name, name_sami, description, slug, language_area_id').eq('id', entityId).single()
     } else {
-      query = supabase.from('places').select('id, name, name_sami, description, slug, place_type, municipality_id').eq('id', entityId).single()
+      query = supabase.from('places').select('id, name, name_sami, description, slug, municipality_id').eq('id', entityId).single()
     }
 
     const { data, error } = await query
@@ -113,7 +101,6 @@ export function GeographyDetailView({
     }
 
     setEntity(data)
-    setDescriptionDraft(data.description || '')
 
     // Fetch parent info for context
     if (entityType === 'municipality' && 'language_area_id' in data && data.language_area_id) {
@@ -227,30 +214,6 @@ export function GeographyDetailView({
     }
   }
 
-  // Submit description suggestion
-  const submitDescriptionSuggestion = async () => {
-    if (!currentUserId) {
-      toast.error('Du må være innlogget')
-      return
-    }
-
-    const { error } = await supabase.from('geography_suggestions').insert({
-      user_id: currentUserId,
-      suggestion_type: 'edit_description',
-      entity_type: entityType,
-      entity_id: entityId,
-      suggested_data: { description: descriptionDraft },
-      current_data: { description: entity?.description || null },
-    })
-
-    if (error) {
-      toast.error('Kunne ikke sende forslag')
-    } else {
-      toast.success('Forslag til beskrivelse sendt til admin')
-      setIsEditingDescription(false)
-    }
-  }
-
   // Upload image
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -305,8 +268,8 @@ export function GeographyDetailView({
   // Get entity icon and color
   const getEntityStyle = () => {
     switch (entityType) {
-      case 'language_area': return { icon: Languages, color: 'text-blue-600', bg: 'bg-blue-100', label: 'Språkområde' }
-      case 'municipality': return { icon: Building2, color: 'text-orange-600', bg: 'bg-orange-100', label: 'Kommune' }
+      case 'language_area': return { icon: MapPin, color: 'text-blue-600', bg: 'bg-blue-100', label: 'Språkområde' }
+      case 'municipality': return { icon: MapPin, color: 'text-orange-600', bg: 'bg-orange-100', label: 'Kommune' }
       case 'place': return { icon: MapPin, color: 'text-purple-600', bg: 'bg-purple-100', label: 'By/sted' }
     }
   }
@@ -375,58 +338,16 @@ export function GeographyDetailView({
               </span>
             </div>
 
-            {/* Edit button with dropdown */}
+            {/* Edit button */}
             <div className="flex flex-col items-center">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button className="p-3 rounded-full text-gray-400 bg-gray-50 hover:bg-gray-100 hover:text-gray-600 transition-colors">
-                    <Pencil className="w-6 h-6" />
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56">
-                  <DropdownMenuItem
-                    onClick={() => {
-                      setSuggestionType('edit_name')
-                      setSuggestionModalOpen(true)
-                    }}
-                  >
-                    <Languages className="w-4 h-4 mr-2" />
-                    Endre navn
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setIsEditingDescription(true)}>
-                    <FileText className="w-4 h-4 mr-2" />
-                    {entity.description ? 'Endre beskrivelse' : 'Legg til beskrivelse'}
-                  </DropdownMenuItem>
-                  {currentUserId && images.length < 5 && (
-                    <DropdownMenuItem asChild>
-                      <label className="cursor-pointer">
-                        <Upload className="w-4 h-4 mr-2" />
-                        Last opp bilde ({images.length}/5)
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={handleImageUpload}
-                          className="hidden"
-                          disabled={uploadingImage}
-                        />
-                      </label>
-                    </DropdownMenuItem>
-                  )}
-                  {entityType !== 'language_area' && (
-                    <DropdownMenuItem
-                      onClick={() => {
-                        setSuggestionType('edit_relationship')
-                        setSuggestionModalOpen(true)
-                      }}
-                    >
-                      <MapPin className="w-4 h-4 mr-2" />
-                      Endre tilknytning
-                    </DropdownMenuItem>
-                  )}
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <button
+                onClick={() => setSuggestionModalOpen(true)}
+                className="p-3 rounded-full text-gray-400 bg-gray-50 hover:bg-gray-100 hover:text-gray-600 transition-colors"
+              >
+                <Pencil className="w-6 h-6" />
+              </button>
               <span className="text-[10px] text-gray-400 mt-1 text-center whitespace-nowrap">
-                Hjelp til å redigere
+                Rediger
               </span>
             </div>
           </div>
@@ -434,38 +355,10 @@ export function GeographyDetailView({
 
         {/* Description */}
         <div className="border-t border-gray-100 pt-4">
-          {isEditingDescription ? (
-            <div className="space-y-3">
-              <Textarea
-                value={descriptionDraft}
-                onChange={(e) => setDescriptionDraft(e.target.value)}
-                placeholder="Skriv en beskrivelse av dette stedet..."
-                rows={4}
-                className="resize-none"
-              />
-              <div className="flex gap-2">
-                <Button size="sm" onClick={submitDescriptionSuggestion}>
-                  Send forslag
-                </Button>
-                <Button size="sm" variant="outline" onClick={() => {
-                  setIsEditingDescription(false)
-                  setDescriptionDraft(entity.description || '')
-                }}>
-                  Avbryt
-                </Button>
-              </div>
-              <p className="text-xs text-gray-400">
-                Beskrivelsen må godkjennes av admin før den vises
-              </p>
-            </div>
+          {entity.description ? (
+            <p className="text-gray-600 text-sm whitespace-pre-wrap">{entity.description}</p>
           ) : (
-            <div>
-              {entity.description ? (
-                <p className="text-gray-600 text-sm whitespace-pre-wrap">{entity.description}</p>
-              ) : (
-                <p className="text-gray-400 text-sm italic">Ingen beskrivelse ennå</p>
-              )}
-            </div>
+            <p className="text-gray-400 text-sm italic">Ingen beskrivelse ennå</p>
           )}
         </div>
 
@@ -628,13 +521,17 @@ export function GeographyDetailView({
         </TabsContent>
       </Tabs>
 
-      {/* Suggestion Modal */}
+      {/* Edit Modal */}
       <SuggestChangeModal
         open={suggestionModalOpen}
         onOpenChange={setSuggestionModalOpen}
         entityType={entityType}
         entity={entity}
-        suggestionType={suggestionType}
+        suggestionType="edit_name"
+        onSuccess={() => {
+          fetchEntity()
+          fetchImages()
+        }}
       />
     </div>
   )

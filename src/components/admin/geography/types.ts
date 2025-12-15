@@ -33,7 +33,6 @@ export interface Place {
   name: string
   name_sami: string | null
   slug: string
-  place_type: string
   municipality_id: string
   municipality?: Municipality
 }

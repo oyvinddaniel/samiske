@@ -176,8 +176,8 @@ export function GeographySearchInput({
 
   const getIcon = (type: GeographyType) => {
     switch (type) {
-      case 'language_area': return <Languages className="w-4 h-4 text-blue-500" />
-      case 'municipality': return <Building2 className="w-4 h-4 text-orange-500" />
+      case 'language_area': return <MapPin className="w-4 h-4 text-blue-500" />
+      case 'municipality': return <MapPin className="w-4 h-4 text-orange-500" />
       case 'place': return <MapPin className="w-4 h-4 text-purple-500" />
     }
   }

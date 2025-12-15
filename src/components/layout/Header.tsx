@@ -307,6 +307,10 @@ export function Header({ currentCategory }: HeaderProps) {
                     </svg>
                     Logg ut
                   </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <div className="px-3 py-2 text-center">
+                    <p className="text-[10px] text-gray-400 font-mono">Versjon 1.2.0</p>
+                  </div>
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>

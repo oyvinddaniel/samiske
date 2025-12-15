@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import { MapPin, Calendar, MessageSquare, Heart, FileText, Settings, Plus, Save, X } from 'lucide-react'
+import { MapPin, Calendar, Settings, Save, X } from 'lucide-react'
 
 interface Profile {
   id: string
@@ -21,11 +21,6 @@ interface Profile {
   created_at: string
 }
 
-interface UserStats {
-  postCount: number
-  commentCount: number
-  likeCount: number
-}
 
 interface ProfileHeaderProps {
   userId: string
@@ -49,7 +44,6 @@ export function ProfileHeader({
   onCancel
 }: ProfileHeaderProps) {
   const [profile, setProfile] = useState<Profile | null>(null)
-  const [stats, setStats] = useState<UserStats>({ postCount: 0, commentCount: 0, likeCount: 0 })
   const [loading, setLoading] = useState(true)
   const supabase = useMemo(() => createClient(), [])
 
@@ -78,19 +72,6 @@ export function ProfileHeader({
           location: profileData.location || ''
         })
       }
-
-      // Fetch stats
-      const [postResult, commentResult, likeResult] = await Promise.all([
-        supabase.from('posts').select('*', { count: 'exact', head: true }).eq('user_id', userId),
-        supabase.from('comments').select('*', { count: 'exact', head: true }).eq('user_id', userId),
-        supabase.from('likes').select('*', { count: 'exact', head: true }).eq('user_id', userId),
-      ])
-
-      setStats({
-        postCount: postResult.count || 0,
-        commentCount: commentResult.count || 0,
-        likeCount: likeResult.count || 0,
-      })
 
       setLoading(false)
     }
@@ -146,9 +127,9 @@ export function ProfileHeader({
   if (loading) {
     return (
       <Card className="mb-6">
-        <CardContent className="pt-6">
+        <CardContent className="pt-4 pb-[15px]">
           <div className="animate-pulse">
-            <div className="flex items-start gap-4">
+            <div className="flex items-start gap-4 -mt-[15px]">
               <div className="w-20 h-20 rounded-full bg-gray-200" />
               <div className="flex-1 space-y-2">
                 <div className="h-6 bg-gray-200 rounded w-1/3" />
@@ -168,8 +149,8 @@ export function ProfileHeader({
 
   return (
     <Card className="mb-6">
-      <CardContent className="pt-6">
-        <div className="flex flex-col sm:flex-row items-start gap-4">
+      <CardContent className="pt-4 pb-[15px]">
+        <div className="flex flex-col sm:flex-row items-start gap-4 -mt-[15px]">
           {/* Avatar */}
           <Avatar className="w-20 h-20 border-2 border-white shadow-lg">
             <AvatarImage src={profile.avatar_url || undefined} alt={profile.full_name || 'Profilbilde'} />
@@ -273,31 +254,6 @@ export function ProfileHeader({
                 )}
               </>
             )}
-          </div>
-        </div>
-
-        {/* Stats */}
-        <div className="grid grid-cols-3 gap-4 mt-6 pt-4 border-t border-gray-100">
-          <div className="text-center">
-            <div className="flex items-center justify-center gap-1 text-gray-500 mb-1">
-              <FileText className="w-4 h-4" />
-            </div>
-            <p className="text-2xl font-bold text-gray-900">{stats.postCount}</p>
-            <p className="text-xs text-gray-500">Innlegg</p>
-          </div>
-          <div className="text-center">
-            <div className="flex items-center justify-center gap-1 text-gray-500 mb-1">
-              <MessageSquare className="w-4 h-4" />
-            </div>
-            <p className="text-2xl font-bold text-gray-900">{stats.commentCount}</p>
-            <p className="text-xs text-gray-500">Kommentarer</p>
-          </div>
-          <div className="text-center">
-            <div className="flex items-center justify-center gap-1 text-gray-500 mb-1">
-              <Heart className="w-4 h-4" />
-            </div>
-            <p className="text-2xl font-bold text-gray-900">{stats.likeCount}</p>
-            <p className="text-xs text-gray-500">Likes gitt</p>
           </div>
         </div>
       </CardContent>

@@ -2,8 +2,6 @@
 
 export type GeographyScope = 'place' | 'municipality' | 'language_area' | 'country' | 'sapmi'
 
-export type PlaceType = 'area' | 'landmark' | 'venue' | 'natural'
-
 export interface Region {
   id: string
   name: string
@@ -60,7 +58,6 @@ export interface Place {
   name: string
   name_sami: string | null
   slug: string
-  place_type: PlaceType
   description: string | null
   address: string | null
   latitude: number | null
