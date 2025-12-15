@@ -1,16 +1,17 @@
 -- =====================================================
--- OPPDATER INNLEGGSKONTEKST-VISNING
--- Vis hvor innlegg er publisert: grupper, bedrifter, steder, privat
+-- KRITISK SIKKERHETSFIKS V2: Korrekt håndtering av gruppeinnlegg og private poster
+-- =====================================================
+-- Problem 1: Gruppeinnlegg fra lukkede grupper vises på geografiske feeds
+-- Problem 2: Private innlegg (uten geografi) vises overalt på Sapmi
+-- Problem 3: Sapmi-logikk tillot gruppeinnlegg uten geografisk tilknytning
+-- Løsning: INGEN gruppeinnlegg på geografiske feeds - de skal kun vises i gruppens egen feed
 -- =====================================================
 
--- 1. OPPDATER get_posts_for_geography TIL Å INKLUDERE GRUPPE OG BEDRIFT
--- =====================================================
--- Drop existing function first
 DROP FUNCTION IF EXISTS get_posts_for_geography(TEXT, UUID, INT, INT);
 
 CREATE OR REPLACE FUNCTION get_posts_for_geography(
-  geography_type_param TEXT,  -- 'sapmi', 'country', 'language_area', 'municipality', 'place'
-  geography_id_param UUID DEFAULT NULL,  -- NULL for 'sapmi'
+  geography_type_param TEXT,
+  geography_id_param UUID DEFAULT NULL,
   limit_param INT DEFAULT 50,
   offset_param INT DEFAULT 0
 )
@@ -34,7 +35,6 @@ RETURNS TABLE (
   geography_scope TEXT,
   created_for_group_id UUID,
   created_for_community_id UUID,
-  -- Ekstra felter for visning av kontekst
   posted_from_name TEXT,
   posted_from_type TEXT,
   posted_from_id UUID
@@ -61,13 +61,12 @@ BEGIN
     p.geography_scope,
     p.created_for_group_id,
     p.created_for_community_id,
-    -- Prioriter kontekst: gruppe -> bedrift -> sted -> kommune -> sapmi
     COALESCE(
-      g.name,           -- Gruppenavn først
-      c.name,           -- Bedriftsnavn
-      pl.name,          -- Stednavn
-      m.name,           -- Kommunenavn
-      'Sápmi'           -- Standard
+      g.name,
+      c.name,
+      pl.name,
+      m.name,
+      'Sápmi'
     ) as posted_from_name,
     CASE
       WHEN p.created_for_group_id IS NOT NULL THEN 'group'
@@ -88,36 +87,27 @@ BEGIN
   LEFT JOIN places pl ON p.place_id = pl.id
   LEFT JOIN municipalities m ON p.municipality_id = m.id
   WHERE
-    -- KRITISK SIKKERHET: Ekskluder personlige innlegg uten geografisk tilknytning
-    -- Personlige innlegg skal KUN vises på brukerens egen feed, IKKE på geografiske feeds
+    -- =====================================================
+    -- KRITISK SIKKERHET: Geografiske feeds skal ALDRI vise:
+    -- 1. Gruppeinnlegg (de skal kun vises i gruppens egen feed)
+    -- 2. Private innlegg uten geografisk eller community-tilknytning
+    -- =====================================================
+
+    -- Ekskluder ALLE gruppeinnlegg fra geografiske feeds
+    p.created_for_group_id IS NULL
+
+    AND
+
+    -- Ekskluder private innlegg uten geografisk/community-tilknytning
     (
       p.created_for_community_id IS NOT NULL
       OR p.municipality_id IS NOT NULL
       OR p.place_id IS NOT NULL
-      OR (
-        -- Tillat gruppe-innlegg kun hvis de er knyttet til denne geografien
-        p.created_for_group_id IS NOT NULL
-        AND (
-          (
-            geography_type_param = 'place'
-            AND EXISTS (
-              SELECT 1 FROM group_places gp
-              WHERE gp.group_id = p.created_for_group_id
-              AND gp.place_id = geography_id_param
-            )
-          )
-          OR (
-            geography_type_param = 'municipality'
-            AND EXISTS (
-              SELECT 1 FROM group_places gp
-              WHERE gp.group_id = p.created_for_group_id
-              AND gp.municipality_id = geography_id_param
-            )
-          )
-        )
-      )
     )
+
     AND
+
+    -- Geografisk matching per type
     CASE geography_type_param
       -- Sapmi: Vis alle innlegg med geografisk/community-kontekst
       WHEN 'sapmi' THEN (
@@ -126,7 +116,7 @@ BEGIN
         OR p.place_id IS NOT NULL
       )
 
-      -- Land: Vis innlegg fra dette landet og alle underordnede
+      -- Land: Vis innlegg fra dette landet
       WHEN 'country' THEN
         p.municipality_id IN (
           SELECT id FROM municipalities WHERE country_id = geography_id_param
@@ -136,7 +126,6 @@ BEGIN
           JOIN municipalities m2 ON pl2.municipality_id = m2.id
           WHERE m2.country_id = geography_id_param
         )
-        OR (p.municipality_id IS NULL AND p.place_id IS NULL AND p.geography_scope = 'country')
 
       -- Språkområde: Vis innlegg fra kommuner i dette språkområdet
       WHEN 'language_area' THEN
@@ -148,9 +137,8 @@ BEGIN
           JOIN municipalities m2 ON pl2.municipality_id = m2.id
           WHERE m2.language_area_id = geography_id_param
         )
-        OR (p.municipality_id IS NULL AND p.place_id IS NULL AND p.geography_scope = 'language_area')
 
-      -- Kommune: Vis innlegg fra denne kommunen og alle steder i den
+      -- Kommune: Vis innlegg fra denne kommunen og steder i den
       WHEN 'municipality' THEN
         p.municipality_id = geography_id_param
         OR p.place_id IN (
@@ -169,7 +157,16 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- 2. GRANT PERMISSIONS
--- =====================================================
 GRANT EXECUTE ON FUNCTION get_posts_for_geography TO authenticated;
 GRANT EXECUTE ON FUNCTION get_posts_for_geography TO anon;
+
+-- =====================================================
+-- KOMMENTAR: Gruppeinnlegg ekskluderes nå fullstendig
+-- =====================================================
+-- Rasjonale: Gruppeinnlegg skal KUN vises i gruppens egen feed.
+-- Geografiske feeds (Sapmi, land, språkområde, kommune, sted) skal
+-- vise innlegg som er eksplisitt publisert til disse geografiene,
+-- IKKE innlegg fra grupper som tilfeldigvis har geografisk tilknytning.
+-- Dette sikrer at lukket/skjult gruppeinnlegg ALDRI lekker til
+-- offentlige feeds.
+-- =====================================================

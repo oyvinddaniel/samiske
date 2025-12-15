@@ -1,11 +1,12 @@
 -- =====================================================
--- OPPDATER INNLEGGSKONTEKST-VISNING
--- Vis hvor innlegg er publisert: grupper, bedrifter, steder, privat
+-- FIX: KRITISK SIKKERHETSHULL - Personlige poster vises på geografiske feeds
+-- =====================================================
+-- Problem: Personlige poster uten geografisk tilknytning vises på alle
+-- geografiske feeds (Sápmi, country, language area, osv.)
+-- Løsning: Ekskluder alle poster som mangler geografisk/community-kontekst
 -- =====================================================
 
--- 1. OPPDATER get_posts_for_geography TIL Å INKLUDERE GRUPPE OG BEDRIFT
--- =====================================================
--- Drop existing function first
+-- Drop existing function
 DROP FUNCTION IF EXISTS get_posts_for_geography(TEXT, UUID, INT, INT);
 
 CREATE OR REPLACE FUNCTION get_posts_for_geography(
@@ -169,7 +170,6 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- 2. GRANT PERMISSIONS
--- =====================================================
+-- Grant permissions
 GRANT EXECUTE ON FUNCTION get_posts_for_geography TO authenticated;
 GRANT EXECUTE ON FUNCTION get_posts_for_geography TO anon;

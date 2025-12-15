@@ -188,8 +188,17 @@ export function Feed({ categorySlug, geography, geographyName, showFilters = fal
           console.warn('RPC function not available, falling back to standard query:', error)
           fetchError = error
         } else {
-          // RPC returns posts without user/category joins, need to fetch those separately
-          postsData = data
+          // KRITISK SIKKERHET: Ekstra lag - filtrer bort ALLE gruppeinnlegg fra geografiske feeds
+          // Dette beskytter mot bugs i RPC-funksjonen og er et ekstra sikkerhetslag
+          // Gruppeinnlegg skal BARE vises i gruppens egen feed, IKKE på geografiske feeds
+          const filteredData = (data || []).filter((post: { created_for_group_id?: string | null }) => {
+            if (post.created_for_group_id) {
+              console.warn('Blocked group post in geographic feed:', post.created_for_group_id)
+              return false  // Ekskluder ALLE gruppeinnlegg
+            }
+            return true
+          })
+          postsData = filteredData
         }
       }
 
@@ -358,8 +367,33 @@ export function Feed({ categorySlug, geography, geographyName, showFilters = fal
 
           // Ekskluder personlige innlegg fra geografiske feeds
           if (geography || starredLocations) {
-            // Only show posts with geographic or community context (not personal posts)
-            query = query.or('created_for_group_id.not.is.null,created_for_community_id.not.is.null,municipality_id.not.is.null,place_id.not.is.null')
+            // KRITISK: Vis bare poster som matcher DENNE geografien
+            // Ikke bare "har en geografi", men "matcher denne spesifikke geografien"
+
+            if (geography && geography.type === 'municipality' && geography.id) {
+              // For municipality: Vis kun poster fra DENNE municipality
+              query = query.or(`created_for_community_id.not.is.null,municipality_id.eq.${geography.id}`)
+            } else if (geography && geography.type === 'place' && geography.id) {
+              // For place: Vis kun poster fra DETTE place
+              query = query.or(`created_for_community_id.not.is.null,place_id.eq.${geography.id}`)
+            } else if (geography && geography.type === 'sapmi') {
+              // For sapmi: Vis alle poster med geografi-kontekst (ikke personlige)
+              query = query.or('created_for_group_id.not.is.null,created_for_community_id.not.is.null,municipality_id.not.is.null,place_id.not.is.null')
+            } else if (starredLocations) {
+              // For starred locations: Vis poster fra alle favorittlokasjoner
+              const locationFilters: string[] = []
+
+              if (starredLocations.municipalityIds.length > 0) {
+                locationFilters.push(`municipality_id.in.(${starredLocations.municipalityIds.join(',')})`)
+              }
+              if (starredLocations.placeIds.length > 0) {
+                locationFilters.push(`place_id.in.(${starredLocations.placeIds.join(',')})`)
+              }
+
+              if (locationFilters.length > 0) {
+                query = query.or(locationFilters.join(','))
+              }
+            }
           }
         }
 

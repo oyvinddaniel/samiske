@@ -7,6 +7,10 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
+import { MaintenanceBanner, isMaintenanceMode } from '@/components/maintenance/MaintenanceBanner'
+
+// Check maintenance mode at module level (stable)
+const maintenanceMode = isMaintenanceMode()
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -14,6 +18,16 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const supabase = createClient()
+
+  // Show maintenance banner if enabled
+  if (maintenanceMode) {
+    return (
+      <MaintenanceBanner
+        title="Innlogging stengt"
+        message="Vi jobber med en oppdatering av samiske.no. Innlogging er midlertidig stengt. Prøv igjen senere!"
+      />
+    )
+  }
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()

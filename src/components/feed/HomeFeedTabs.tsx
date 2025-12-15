@@ -105,7 +105,11 @@ export function HomeFeedTabs({ categorySlug = '' }: HomeFeedTabsProps) {
 
       {/* Sápmi - all posts */}
       <TabsContent value="sapmi" className="mt-0">
-        <Feed categorySlug={categorySlug} showFilters={true} />
+        <Feed
+          categorySlug={categorySlug}
+          showFilters={true}
+          geography={{ type: 'sapmi' }}
+        />
       </TabsContent>
     </Tabs>
   )

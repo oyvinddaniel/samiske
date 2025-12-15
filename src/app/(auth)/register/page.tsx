@@ -8,6 +8,10 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
+import { MaintenanceBanner, isMaintenanceMode } from '@/components/maintenance/MaintenanceBanner'
+
+// Check maintenance mode at module level (stable)
+const maintenanceMode = isMaintenanceMode()
 
 // Password validation function
 function validatePassword(password: string): { valid: boolean; errors: string[] } {
@@ -38,6 +42,16 @@ export default function RegisterPage() {
   const [success, setSuccess] = useState(false)
   const [loading, setLoading] = useState(false)
   const supabase = createClient()
+
+  // Show maintenance banner if enabled
+  if (maintenanceMode) {
+    return (
+      <MaintenanceBanner
+        title="Registrering stengt"
+        message="Vi jobber med en oppdatering av samiske.no. Registrering er midlertidig stengt. Prøv igjen senere!"
+      />
+    )
+  }
 
   const handlePasswordChange = (value: string) => {
     setPassword(value)
