@@ -19,11 +19,13 @@ import { createClient } from '@/lib/supabase/client'
 interface GeographySearchResultProps {
   location: GeographyResultType
   isHighlighted: boolean
+  onClick: () => void
 }
 
 export function GeographySearchResult({
   location,
   isHighlighted,
+  onClick,
 }: GeographySearchResultProps) {
   const [isStarred, setIsStarred] = useState(false)
   const [isStarring, setIsStarring] = useState(false)
@@ -123,17 +125,18 @@ export function GeographySearchResult({
   }
 
   return (
-    <div
+    <button
+      onClick={onClick}
       className={cn(
-        'flex items-center justify-between p-3 hover:bg-gray-50 transition-colors',
+        'w-full flex items-center justify-between p-2 sm:p-3 hover:bg-gray-50 transition-colors text-left',
         isHighlighted && 'bg-blue-50 ring-2 ring-blue-500'
       )}
     >
       {/* Left: Icon + Content */}
-      <div className="flex items-center gap-3 flex-1 min-w-0">
+      <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
         {/* Icon */}
-        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
-          <MapPin className="w-4 h-4 text-blue-600" />
+        <div className="flex-shrink-0 w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-blue-100 flex items-center justify-center">
+          <MapPin className="w-3 h-3 sm:w-4 sm:h-4 text-blue-600" />
         </div>
 
         {/* Content */}
@@ -171,6 +174,6 @@ export function GeographySearchResult({
           />
         </button>
       )}
-    </div>
+    </button>
   )
 }

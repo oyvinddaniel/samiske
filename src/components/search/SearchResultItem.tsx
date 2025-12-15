@@ -56,6 +56,7 @@ export function SearchResultItem({
               detail: { userId: result.id }
             })
           );
+          onClick(); // Close search after opening profile
         }}
         className={cn(
           'w-full flex items-center gap-2 sm:gap-3 p-2 sm:p-3 hover:bg-gray-50 transition-colors text-left',
@@ -95,7 +96,7 @@ export function SearchResultItem({
 
   // Special handling for geography - has starring functionality
   if (result.type === 'geografi') {
-    return <GeographySearchResult location={result} isHighlighted={isHighlighted} />
+    return <GeographySearchResult location={result} isHighlighted={isHighlighted} onClick={onClick} />
   }
 
   // Generic result item for all other types

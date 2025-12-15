@@ -16,6 +16,7 @@ export function UnifiedSearchBar() {
   const [selectedCategory, setSelectedCategory] = useState<SearchCategory>('brukere')
   const [showResults, setShowResults] = useState(false)
   const [debouncedQuery, setDebouncedQuery] = useState('')
+  const savedScrollPosition = useRef<number>(0)
 
   const searchRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -33,7 +34,12 @@ export function UnifiedSearchBar() {
 
   // Handle result selection
   const handleSelectResult = (result: SearchResult) => {
-    // Navigate to result based on type
+    // Save scroll position before closing
+    if (scrollContainerRef.current) {
+      savedScrollPosition.current = scrollContainerRef.current.scrollTop
+    }
+
+    // Navigate to result based on type - all open in feed area with hash anchors
     switch (result.type) {
       case 'brukere':
         // Will be handled by ProfileOverlay in the result component
@@ -48,31 +54,26 @@ export function UnifiedSearchBar() {
         }
         break
       case 'geografi':
-        // Navigate to geography page
-        if (result.location_type === 'municipality' && result.slug && result.country_code) {
-          window.location.href = `/sapmi/${result.country_code}/${result.slug}`
-        } else if (result.location_type === 'place' && result.slug && result.parent) {
-          // Need municipality slug from parent
-          window.location.href = `/#geography-${result.id}`
-        }
+        // Open in feed area with hash anchor
+        window.location.href = `/#geography-${result.id}`
         break
       case 'samfunn':
-        window.location.href = `/samfunn/${result.slug}`
+        // Open in feed area with hash anchor
+        window.location.href = `/#community-${result.id}`
         break
       case 'tjenester':
-        if (result.community?.slug) {
-          window.location.href = `/samfunn/${result.community.slug}/tjenester/${result.slug}`
-        }
+        // Open in feed area with hash anchor
+        window.location.href = `/#service-${result.id}`
         break
       case 'produkter':
-        if (result.community?.slug) {
-          window.location.href = `/samfunn/${result.community.slug}/produkter/${result.slug}`
-        }
+        // Open in feed area with hash anchor
+        window.location.href = `/#product-${result.id}`
         break
     }
 
+    // Close search but keep query and results
     setShowResults(false)
-    setQuery('')
+    // DON'T clear query - keep search state for reopening
   }
 
   // Keyboard navigation
@@ -103,6 +104,10 @@ export function UnifiedSearchBar() {
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
+        // Save scroll position before closing
+        if (scrollContainerRef.current) {
+          savedScrollPosition.current = scrollContainerRef.current.scrollTop
+        }
         setShowResults(false)
       }
     }
@@ -121,11 +126,24 @@ export function UnifiedSearchBar() {
     }
   }
 
+  // Restore scroll position when search reopens
+  useEffect(() => {
+    if (showResults && scrollContainerRef.current && savedScrollPosition.current > 0) {
+      // Use setTimeout to ensure DOM is ready
+      setTimeout(() => {
+        if (scrollContainerRef.current) {
+          scrollContainerRef.current.scrollTop = savedScrollPosition.current
+        }
+      }, 100)
+    }
+  }, [showResults])
+
   // Handle clear
   const handleClear = () => {
     setQuery('')
     setDebouncedQuery('')
     clearResults()
+    savedScrollPosition.current = 0 // Reset scroll position
     inputRef.current?.focus()
   }
 
