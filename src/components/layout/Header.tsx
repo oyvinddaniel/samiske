@@ -40,12 +40,35 @@ export function Header({ currentCategory }: HeaderProps) {
   const [showSocialPanel, setShowSocialPanel] = useState(false)
   const [mounted, setMounted] = useState(false)
   const [socialNotifications, setSocialNotifications] = useState(0)
+  const [isCollapsed, setIsCollapsed] = useState(false)
+  const lastScrollY = useRef(0)
 
   // Create stable supabase client reference
   const supabase = useMemo(() => createClient(), [])
 
   useEffect(() => {
     setMounted(true)
+  }, [])
+
+  // Scroll detection for collapsing navbar
+  useEffect(() => {
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY
+
+      // Scrolling down - collapse to show only search
+      if (currentScrollY > lastScrollY.current && currentScrollY > 50) {
+        setIsCollapsed(true)
+      }
+      // Scrolling up - expand to show full navbar
+      else if (currentScrollY < lastScrollY.current) {
+        setIsCollapsed(false)
+      }
+
+      lastScrollY.current = currentScrollY
+    }
+
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
   useEffect(() => {
@@ -166,8 +189,12 @@ export function Header({ currentCategory }: HeaderProps) {
   }
 
   return (
-    <header className="sticky top-0 z-50 shadow-md" style={{ backgroundColor: '#0143F5' }}>
-      <div className="flex items-center justify-between px-4 md:px-6 h-16">
+    <header className="sticky top-0 z-50 shadow-md transition-all duration-300" style={{ backgroundColor: '#0143F5' }}>
+      {/* Top row - collapses when scrolling down on mobile */}
+      <div className={cn(
+        "flex items-center justify-between px-4 md:px-6 transition-all duration-300 overflow-hidden",
+        isCollapsed ? "h-0 opacity-0" : "h-16 opacity-100"
+      )}>
         {/* Mobile nav */}
         <div className="flex items-center gap-3 md:hidden">
           <MobileNav currentCategory={currentCategory} />
@@ -352,8 +379,11 @@ export function Header({ currentCategory }: HeaderProps) {
         document.body
       )}
 
-      {/* Large Search Bar */}
-      <div className="px-4 md:px-6 pb-3">
+      {/* Large Search Bar - always visible */}
+      <div className={cn(
+        "px-4 md:px-6 transition-all duration-300",
+        isCollapsed ? "pt-3 pb-3" : "pb-3"
+      )}>
         <div className="max-w-2xl mx-auto">
           <UnifiedSearchBar />
         </div>

@@ -155,3 +155,34 @@
 .animate-slide-down {
   animation: slide-down 0.3s ease-out forwards;
 }
+
+/* iOS keyboard viewport fixes */
+@supports (-webkit-touch-callout: none) {
+  /* Prevent zoom on input focus - iOS zooms if font-size < 16px */
+  input, textarea, select {
+    font-size: max(16px, 1em) !important;
+  }
+
+  /* Fix viewport height on iOS when keyboard appears */
+  html {
+    height: -webkit-fill-available;
+  }
+
+  body {
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
+  }
+
+  /* Ensure sticky header stays in place */
+  header.sticky {
+    position: -webkit-sticky;
+    position: sticky;
+  }
+}
+
+/* Prevent horizontal overflow on mobile */
+@media (max-width: 640px) {
+  body {
+    overflow-x: hidden;
+  }
+}

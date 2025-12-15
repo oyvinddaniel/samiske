@@ -175,7 +175,7 @@ export function UnifiedSearchBar() {
           className={cn(
             'w-full pl-9 pr-9 py-2 sm:pl-10 sm:pr-10 sm:py-2.5 rounded-lg border border-gray-200',
             'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent',
-            'bg-white text-gray-900 placeholder-gray-400 text-sm sm:text-base',
+            'bg-white text-gray-900 placeholder-gray-400 text-base',
             'transition-shadow'
           )}
           role="search"
