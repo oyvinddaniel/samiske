@@ -42,6 +42,7 @@ export function SearchModal({ open, onClose, anchorRef }: SearchModalProps) {
   const [position, setPosition] = useState({ top: 0, right: 0 })
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null)
   const [isMobile, setIsMobile] = useState(false)
+  const [keyboardHeight, setKeyboardHeight] = useState(0)
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const [friendships, setFriendships] = useState<FriendshipMap>({})
   const [pendingRequests, setPendingRequests] = useState<Set<string>>(new Set())
@@ -55,6 +56,22 @@ export function SearchModal({ open, onClose, anchorRef }: SearchModalProps) {
     const checkMobile = () => setIsMobile(window.innerWidth < 640)
     checkMobile()
     window.addEventListener('resize', checkMobile)
+
+    // Detect virtual keyboard on mobile using visualViewport API
+    const viewport = window.visualViewport
+    if (viewport) {
+      const handleViewportResize = () => {
+        // Calculate keyboard height by comparing visualViewport to window height
+        const heightDiff = window.innerHeight - viewport.height
+        setKeyboardHeight(heightDiff > 100 ? heightDiff : 0)
+      }
+      viewport.addEventListener('resize', handleViewportResize)
+      return () => {
+        window.removeEventListener('resize', checkMobile)
+        viewport.removeEventListener('resize', handleViewportResize)
+      }
+    }
+
     return () => window.removeEventListener('resize', checkMobile)
   }, [])
 
@@ -364,23 +381,47 @@ export function SearchModal({ open, onClose, anchorRef }: SearchModalProps) {
 
       {/* Search Modal */}
       {open && createPortal(
-    <div
-      ref={panelRef}
-      className={cn(
-        'fixed z-[10000] bg-white shadow-2xl border border-gray-200 overflow-hidden',
-        'animate-in fade-in-0 zoom-in-95 duration-200',
-        // Mobile: full width with safe margins, Desktop: anchored to button
-        isMobile
-          ? 'inset-x-4 top-16 bottom-20 rounded-xl flex flex-col'
-          : 'w-96 max-h-[70vh] rounded-xl'
+    <>
+      {/* Backdrop for mobile */}
+      {isMobile && (
+        <div
+          className="fixed inset-0 bg-black/50 z-[9999]"
+          onClick={onClose}
+        />
       )}
-      style={isMobile ? {} : {
-        top: position.top,
-        right: Math.max(16, position.right - 40)
-      }}
-    >
+      <div
+        ref={panelRef}
+        className={cn(
+          'fixed z-[10000] bg-white shadow-2xl border border-gray-200 overflow-hidden',
+          'animate-in fade-in-0 zoom-in-95 duration-200',
+          // Mobile: fullscreen-ish from top, Desktop: anchored to button
+          isMobile
+            ? 'inset-x-0 top-0 rounded-b-xl flex flex-col'
+            : 'w-96 max-h-[70vh] rounded-xl'
+        )}
+        style={isMobile ? {
+          // Use visual viewport height minus keyboard, with some padding
+          maxHeight: keyboardHeight > 0
+            ? `calc(100vh - ${keyboardHeight}px)`
+            : 'calc(100vh - 80px)', // Leave space for BottomNav when no keyboard
+          paddingTop: 'env(safe-area-inset-top, 0px)'
+        } : {
+          top: position.top,
+          right: Math.max(16, position.right - 40)
+        }}
+      >
       {/* Search input */}
       <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-100">
+        {/* Close button for mobile */}
+        {isMobile && (
+          <button
+            onClick={onClose}
+            className="p-1 -ml-1 text-gray-500 hover:text-gray-700 rounded flex-shrink-0"
+            aria-label="Lukk søk"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        )}
         <Search className="w-5 h-5 text-gray-400 flex-shrink-0" />
         <Input
           ref={inputRef}
@@ -527,11 +568,14 @@ export function SearchModal({ open, onClose, anchorRef }: SearchModalProps) {
         )}
       </div>
 
-      {/* Footer hint */}
-      <div className="px-3 py-2 bg-gray-50 text-[10px] text-gray-400 text-center border-t border-gray-100">
-        ESC for å lukke • ⌘K for å åpne
-      </div>
-    </div>,
+      {/* Footer hint - hide on mobile when keyboard is open */}
+      {(!isMobile || keyboardHeight === 0) && (
+        <div className="px-3 py-2 bg-gray-50 text-[10px] text-gray-400 text-center border-t border-gray-100">
+          {isMobile ? 'Trykk utenfor for å lukke' : 'ESC for å lukke • ⌘K for å åpne'}
+        </div>
+      )}
+    </div>
+    </>,
     document.body
   )}
     </>
