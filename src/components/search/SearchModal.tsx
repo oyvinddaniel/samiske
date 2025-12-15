@@ -367,13 +367,12 @@ export function SearchModal({ open, onClose, anchorRef }: SearchModalProps) {
     <div
       ref={panelRef}
       className={cn(
-        'fixed z-[10000] bg-white rounded-xl shadow-2xl border border-gray-200 overflow-hidden',
-        'max-h-[70vh]',
+        'fixed z-[10000] bg-white shadow-2xl border border-gray-200 overflow-hidden',
         'animate-in fade-in-0 zoom-in-95 duration-200',
-        // Mobile: centered, Desktop: anchored to button
+        // Mobile: full width with safe margins, Desktop: anchored to button
         isMobile
-          ? 'w-[90vw] left-1/2 -translate-x-1/2 top-20'
-          : 'w-96'
+          ? 'inset-x-4 top-16 bottom-20 rounded-xl flex flex-col'
+          : 'w-96 max-h-[70vh] rounded-xl'
       )}
       style={isMobile ? {} : {
         top: position.top,
@@ -403,7 +402,10 @@ export function SearchModal({ open, onClose, anchorRef }: SearchModalProps) {
       </div>
 
       {/* Results */}
-      <div className="overflow-y-auto max-h-[calc(70vh-60px)]">
+      <div className={cn(
+        "overflow-y-auto",
+        isMobile ? "flex-1" : "max-h-[calc(70vh-60px)]"
+      )}>
         {loading ? (
           <div className="p-4 text-center">
             <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600 mx-auto" />

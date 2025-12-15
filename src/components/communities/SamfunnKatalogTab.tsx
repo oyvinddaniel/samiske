@@ -1,14 +1,15 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Loader2, Package, Briefcase } from 'lucide-react'
+import { Loader2, Package, Briefcase, Building2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { ProductCard, ServiceCard } from '@/components/communities'
+import { ProductCard, ServiceCard, CommunityCard } from '@/components/communities'
 import { createClient } from '@/lib/supabase/client'
 import type { Product } from '@/lib/types/products'
 import type { Service } from '@/lib/types/services'
+import type { Community } from '@/lib/types/communities'
 
-type CatalogFilter = 'all' | 'products' | 'services'
+type CatalogFilter = 'all' | 'communities' | 'products' | 'services'
 
 interface ProductWithCommunity extends Product {
   community?: {
@@ -30,6 +31,7 @@ interface ServiceWithCommunity extends Service {
 
 export function SamfunnKatalogTab() {
   const [filter, setFilter] = useState<CatalogFilter>('all')
+  const [communities, setCommunities] = useState<Community[]>([])
   const [products, setProducts] = useState<ProductWithCommunity[]>([])
   const [services, setServices] = useState<ServiceWithCommunity[]>([])
   const [loading, setLoading] = useState(true)
@@ -40,7 +42,12 @@ export function SamfunnKatalogTab() {
     async function loadCatalog() {
       setLoading(true)
 
-      const [productsData, servicesData] = await Promise.all([
+      const [communitiesData, productsData, servicesData] = await Promise.all([
+        supabase
+          .from('communities')
+          .select('*')
+          .order('name', { ascending: true })
+          .limit(50),
         supabase
           .from('products')
           .select('*, community:communities(id, name, slug, logo_url)')
@@ -54,6 +61,10 @@ export function SamfunnKatalogTab() {
           .order('created_at', { ascending: false })
           .limit(50)
       ])
+
+      if (communitiesData.data) {
+        setCommunities(communitiesData.data)
+      }
 
       if (productsData.data) {
         setProducts(productsData.data as ProductWithCommunity[])
@@ -69,6 +80,7 @@ export function SamfunnKatalogTab() {
     loadCatalog()
   }, [supabase])
 
+  const showCommunities = filter === 'all' || filter === 'communities'
   const showProducts = filter === 'all' || filter === 'products'
   const showServices = filter === 'all' || filter === 'services'
 
@@ -92,6 +104,14 @@ export function SamfunnKatalogTab() {
           Alle
         </Button>
         <Button
+          variant={filter === 'communities' ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => setFilter('communities')}
+        >
+          <Building2 className="w-4 h-4 mr-1" />
+          Sider ({communities.length})
+        </Button>
+        <Button
           variant={filter === 'products' ? 'default' : 'outline'}
           size="sm"
           onClick={() => setFilter('products')}
@@ -108,6 +128,18 @@ export function SamfunnKatalogTab() {
           Tjenester ({services.length})
         </Button>
       </div>
+
+      {/* Communities */}
+      {showCommunities && communities.length > 0 && (
+        <section>
+          <h3 className="font-semibold mb-3">Sider</h3>
+          <div className="grid gap-4">
+            {communities.map((community) => (
+              <CommunityCard key={community.id} community={community} />
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Products */}
       {showProducts && products.length > 0 && (
@@ -142,21 +174,28 @@ export function SamfunnKatalogTab() {
       )}
 
       {/* Empty state */}
-      {products.length === 0 && services.length === 0 && (
+      {communities.length === 0 && products.length === 0 && services.length === 0 && (
         <div className="text-center py-12 bg-white rounded-lg">
           <Package className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-          <p className="text-gray-500">Ingen produkter eller tjenester ennå</p>
+          <p className="text-gray-500">Ingen sider, produkter eller tjenester ennå</p>
         </div>
       )}
 
-      {showProducts && products.length === 0 && services.length > 0 && (
+      {showCommunities && communities.length === 0 && (products.length > 0 || services.length > 0) && (
+        <div className="text-center py-8 bg-gray-50 rounded-lg">
+          <Building2 className="w-10 h-10 mx-auto mb-3 text-gray-300" />
+          <p className="text-gray-500 text-sm">Ingen sider ennå</p>
+        </div>
+      )}
+
+      {showProducts && products.length === 0 && (communities.length > 0 || services.length > 0) && (
         <div className="text-center py-8 bg-gray-50 rounded-lg">
           <Package className="w-10 h-10 mx-auto mb-3 text-gray-300" />
           <p className="text-gray-500 text-sm">Ingen produkter ennå</p>
         </div>
       )}
 
-      {showServices && services.length === 0 && products.length > 0 && (
+      {showServices && services.length === 0 && (communities.length > 0 || products.length > 0) && (
         <div className="text-center py-8 bg-gray-50 rounded-lg">
           <Briefcase className="w-10 h-10 mx-auto mb-3 text-gray-300" />
           <p className="text-gray-500 text-sm">Ingen tjenester ennå</p>

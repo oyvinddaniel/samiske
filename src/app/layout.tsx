@@ -6,6 +6,7 @@ import { FloatingSocialBubbles } from "@/components/social/FloatingSocialBubbles
 import { FeedbackBubble } from "@/components/feedback/FeedbackBubble";
 import { BugReportBubble } from "@/components/bug-reports";
 import { Toaster } from "@/components/ui/sonner";
+import { ResponsivePreview } from "@/components/dev/ResponsivePreview";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -55,11 +56,13 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-gray-50`}
       >
         <ServiceWorkerRegistration />
-        {children}
-        <FloatingSocialBubbles />
-        <FeedbackBubble />
-        <BugReportBubble />
-        <InstallPrompt />
+        <ResponsivePreview>
+          {children}
+          <FloatingSocialBubbles />
+          <FeedbackBubble />
+          <BugReportBubble />
+          <InstallPrompt />
+        </ResponsivePreview>
         <Toaster richColors position="top-center" />
       </body>
     </html>

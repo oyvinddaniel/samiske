@@ -11,7 +11,14 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
-import { Pencil, MessageCircle, Share2 } from 'lucide-react'
+import { Pencil, MessageCircle, Share2, MoreVertical, Trash2 } from 'lucide-react'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { PostData, Comment, CommentLikeUser, categoryColors } from './types'
 import { getInitials, formatDate, formatEventDate } from './utils'
 import { RSVPButton } from '@/components/events/RSVPButton'
@@ -37,6 +44,8 @@ interface PostDialogContentProps {
   currentUserId?: string | null
   isOwner: boolean
   commentLikes: Record<string, CommentLikeData>
+  editingCommentId: string | null
+  editCommentContent: string
   onLike: () => void
   onNewCommentChange: (value: string) => void
   onReplyContentChange: (value: string) => void
@@ -45,6 +54,10 @@ interface PostDialogContentProps {
   onDeleteComment: (commentId: string) => void
   onCommentLike: (commentId: string) => void
   onEdit: () => void
+  onStartEditComment: (commentId: string, content: string) => void
+  onSaveEditComment: (commentId: string) => void
+  onCancelEditComment: () => void
+  onEditCommentContentChange: (value: string) => void
 }
 
 export function PostDialogContent({
@@ -61,6 +74,8 @@ export function PostDialogContent({
   currentUserId,
   isOwner,
   commentLikes,
+  editingCommentId,
+  editCommentContent,
   onLike,
   onNewCommentChange,
   onReplyContentChange,
@@ -69,6 +84,10 @@ export function PostDialogContent({
   onDeleteComment,
   onCommentLike,
   onEdit,
+  onStartEditComment,
+  onSaveEditComment,
+  onCancelEditComment,
+  onEditCommentContentChange,
 }: PostDialogContentProps) {
   const categoryColor = postData.category?.color || categoryColors[postData.category?.slug || ''] || '#6B7280'
   const [showShareDialog, setShowShareDialog] = useState(false)
@@ -87,67 +106,129 @@ export function PostDialogContent({
             </AvatarFallback>
           </Avatar>
           <div className="flex-1 min-w-0">
-            <div className="bg-gray-50 rounded-md px-2 py-1">
-              <span className="text-xs font-medium text-gray-900">
-                {comment.user.full_name || 'Ukjent'}
-              </span>
-              <p className="text-sm text-gray-700 whitespace-pre-wrap break-words">
-                {comment.content}
-              </p>
-            </div>
-            <div className="flex items-center gap-2 mt-0.5 px-0.5">
-              <span className="text-[9px] text-gray-400">
-                {formatDate(comment.created_at)}
-              </span>
+            {editingCommentId === comment.id ? (
+              // Edit mode
+              <div className="space-y-1.5">
+                <Textarea
+                  value={editCommentContent}
+                  onChange={(e) => onEditCommentContentChange(e.target.value)}
+                  className="resize-none text-sm min-h-[60px] py-2"
+                  autoFocus
+                />
+                <div className="flex gap-1.5 justify-end">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={onCancelEditComment}
+                    className="h-7 text-xs"
+                  >
+                    Avbryt
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={() => onSaveEditComment(comment.id)}
+                    disabled={submitting || !editCommentContent.trim()}
+                    className="h-7 text-xs"
+                    style={{ backgroundColor: '#1472E6' }}
+                  >
+                    {submitting ? 'Lagrer...' : 'Lagre'}
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              // View mode
+              <>
+                <div className="bg-gray-50 rounded-md px-2 py-1 relative">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <span className="text-xs font-medium text-gray-900">
+                        {comment.user.full_name || 'Ukjent'}
+                      </span>
+                      <p className="text-sm text-gray-700 whitespace-pre-wrap break-words">
+                        {comment.content}
+                      </p>
+                    </div>
 
-              {/* Comment like button */}
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      onClick={() => onCommentLike(comment.id)}
-                      disabled={!currentUserId}
-                      className={`text-[9px] hover:underline flex items-center gap-0.5 ${
-                        likeData.liked ? 'text-red-500' : 'text-gray-400'
-                      }`}
-                    >
-                      {likeData.liked ? '❤️' : '🤍'}
-                      {likeData.count > 0 && <span>{likeData.count}</span>}
-                    </button>
-                  </TooltipTrigger>
-                  {likeData.count > 0 && (
-                    <TooltipContent side="top" className="p-1.5">
-                      <p className="text-xs font-medium mb-0.5">Likt av:</p>
-                      <div className="space-y-0.5">
-                        {likeData.users.slice(0, 5).map((user) => (
-                          <p key={user.id} className="text-xs">{user.full_name || 'Ukjent'}</p>
-                        ))}
-                        {likeData.count > 5 && (
-                          <p className="text-[9px] text-gray-400">og {likeData.count - 5} andre</p>
-                        )}
+                    {/* 3-dot menu for comment actions */}
+                    {currentUserId === comment.user.id && (
+                      <div className="flex-shrink-0">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <button
+                              className="p-0.5 rounded hover:bg-gray-200 transition-colors"
+                              onClick={(e) => e.stopPropagation()}
+                              aria-label="Kommentarmeny"
+                            >
+                              <MoreVertical className="w-3.5 h-3.5 text-gray-400" />
+                            </button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-40">
+                            <DropdownMenuItem onClick={() => onStartEditComment(comment.id, comment.content)}>
+                              <Pencil className="w-3.5 h-3.5 mr-2" />
+                              Rediger
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => onDeleteComment(comment.id)}
+                              className="text-red-600 focus:text-red-600"
+                            >
+                              <Trash2 className="w-3.5 h-3.5 mr-2" />
+                              Slett
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </div>
-                    </TooltipContent>
-                  )}
-                </Tooltip>
-              </TooltipProvider>
+                    )}
+                  </div>
+                </div>
 
-              {currentUserId && (
-                <button
-                  onClick={() => onReplyingToChange(replyingTo === comment.id ? null : comment.id)}
-                  className="text-[9px] text-blue-500 hover:underline"
-                >
-                  Svar
-                </button>
-              )}
-              {currentUserId === comment.user.id && (
-                <button
-                  onClick={() => onDeleteComment(comment.id)}
-                  className="text-[9px] text-red-500 hover:underline"
-                >
-                  Slett
-                </button>
-              )}
-            </div>
+                <div className="flex items-center gap-2 mt-0.5 px-0.5">
+                  <span className="text-[9px] text-gray-400">
+                    {formatDate(comment.created_at)}
+                  </span>
+
+                  {/* Comment like button */}
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          onClick={() => onCommentLike(comment.id)}
+                          disabled={!currentUserId}
+                          className={`text-[9px] hover:underline flex items-center gap-0.5 ${
+                            likeData.liked ? 'text-red-500' : 'text-gray-400'
+                          }`}
+                        >
+                          {likeData.liked ? '❤️' : '🤍'}
+                          {likeData.count > 0 && <span>{likeData.count}</span>}
+                        </button>
+                      </TooltipTrigger>
+                      {likeData.count > 0 && (
+                        <TooltipContent side="top" className="p-1.5">
+                          <p className="text-xs font-medium mb-0.5">Likt av:</p>
+                          <div className="space-y-0.5">
+                            {likeData.users.slice(0, 5).map((user) => (
+                              <p key={user.id} className="text-xs">{user.full_name || 'Ukjent'}</p>
+                            ))}
+                            {likeData.count > 5 && (
+                              <p className="text-[9px] text-gray-400">og {likeData.count - 5} andre</p>
+                            )}
+                          </div>
+                        </TooltipContent>
+                      )}
+                    </Tooltip>
+                  </TooltipProvider>
+
+                  {/* Reply button */}
+                  {currentUserId && (
+                    <button
+                      onClick={() => onReplyingToChange(replyingTo === comment.id ? null : comment.id)}
+                      className="text-[9px] text-gray-400 hover:underline"
+                    >
+                      Svar
+                    </button>
+                  )}
+                </div>
+              </>
+            )}
 
             {/* Reply form */}
             {replyingTo === comment.id && (

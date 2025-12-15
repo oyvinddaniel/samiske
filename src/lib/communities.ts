@@ -376,3 +376,16 @@ export async function updateAdminRole(
 
   return true
 }
+
+// Delete community (soft delete by setting is_active to false)
+export async function deleteCommunity(communityId: string): Promise<boolean> {
+  const { data, error } = await supabase
+    .rpc('delete_community', { p_community_id: communityId })
+
+  if (error) {
+    console.error('Error deleting community:', error)
+    return false
+  }
+
+  return data === true
+}

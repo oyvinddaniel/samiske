@@ -15,6 +15,7 @@ import {
   BugReportsTab,
   GeographyTab,
   StatsCards,
+  StatisticsTab,
 } from '@/components/admin'
 import type { User, Post, Stats, Feedback, Report, BugReportWithUser } from '@/components/admin'
 import type { BugReportPriority, BugReportStatus } from '@/lib/types/bug-reports'
@@ -417,6 +418,7 @@ export default function AdminPage() {
               Bug-rapporter ({bugReports.filter(br => br.status === 'new').length})
             </TabsTrigger>
             <TabsTrigger value="geography">Geografi</TabsTrigger>
+            <TabsTrigger value="statistics">Statistikk</TabsTrigger>
           </TabsList>
 
           <TabsContent value="users">
@@ -448,6 +450,10 @@ export default function AdminPage() {
 
           <TabsContent value="geography">
             <GeographyTab />
+          </TabsContent>
+
+          <TabsContent value="statistics">
+            <StatisticsTab />
           </TabsContent>
         </Tabs>
       </div>

@@ -32,6 +32,10 @@ export function usePostCard({ post, currentUserId }: UsePostCardProps) {
   const [commentLikes, setCommentLikes] = useState<Record<string, { count: number; liked: boolean; users: CommentLikeUser[] }>>({})
   const [previewComments, setPreviewComments] = useState<Comment[]>([])
 
+  // Edit comment state
+  const [editingCommentId, setEditingCommentId] = useState<string | null>(null)
+  const [editCommentContent, setEditCommentContent] = useState('')
+
   // UI state
   const [profileOverlayUserId, setProfileOverlayUserId] = useState<string | null>(null)
   const [showDialog, setShowDialog] = useState(false)
@@ -333,6 +337,36 @@ export function usePostCard({ post, currentUserId }: UsePostCardProps) {
     fetchComments()
   }
 
+  const handleStartEditComment = (commentId: string, currentContent: string) => {
+    setEditingCommentId(commentId)
+    setEditCommentContent(currentContent)
+  }
+
+  const handleSaveEditComment = async (commentId: string) => {
+    if (!editCommentContent.trim()) return
+
+    setSubmitting(true)
+    const { error } = await supabase
+      .from('comments')
+      .update({ content: editCommentContent.trim() })
+      .eq('id', commentId)
+
+    if (!error) {
+      setEditingCommentId(null)
+      setEditCommentContent('')
+      fetchComments()
+      toast.success('Kommentar oppdatert')
+    } else {
+      toast.error('Kunne ikke oppdatere kommentar')
+    }
+    setSubmitting(false)
+  }
+
+  const handleCancelEditComment = () => {
+    setEditingCommentId(null)
+    setEditCommentContent('')
+  }
+
   // Edit handlers
   const handleSaveEdit = async () => {
     if (!isOwner) return
@@ -577,11 +611,14 @@ export function usePostCard({ post, currentUserId }: UsePostCardProps) {
     bookmarking,
     isOwner,
     isBlurred,
+    editingCommentId,
+    editCommentContent,
 
     // Setters
     setNewComment,
     setReplyingTo,
     setReplyContent,
+    setEditCommentContent,
     setProfileOverlayUserId,
     setShowDialog,
     setIsEditing,
@@ -599,6 +636,9 @@ export function usePostCard({ post, currentUserId }: UsePostCardProps) {
     handleToggleComments,
     handleSubmitComment,
     handleDeleteComment,
+    handleStartEditComment,
+    handleSaveEditComment,
+    handleCancelEditComment,
     handleStartEdit,
     handleSaveEdit,
     handleCancelEdit,

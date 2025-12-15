@@ -47,7 +47,7 @@ export function SamfunnInnleggTab({ currentUserId }: SamfunnInnleggTabProps) {
             size="sm"
             onClick={() => setFilter('following')}
           >
-            Følger
+            De jeg følger
           </Button>
         </div>
       )}

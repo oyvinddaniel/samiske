@@ -14,6 +14,7 @@ import { ServiceCard } from '@/components/communities/ServiceCard'
 import { CreateProductModal } from '@/components/communities/CreateProductModal'
 import { CreateServiceModal } from '@/components/communities/CreateServiceModal'
 import { SendMessageToCommunityModal } from '@/components/communities/SendMessageToCommunityModal'
+import { CommunitySettingsDialog } from '@/components/communities/CommunitySettingsDialog'
 import {
   getCommunityBySlug,
   getCommunityAdmins,
@@ -52,6 +53,7 @@ export default function CommunityPage() {
   const [showCreateProduct, setShowCreateProduct] = useState(false)
   const [showCreateService, setShowCreateService] = useState(false)
   const [showSendMessage, setShowSendMessage] = useState(false)
+  const [showSettings, setShowSettings] = useState(false)
 
   const supabase = createClient()
 
@@ -252,7 +254,11 @@ export default function CommunityPage() {
             )}
 
             {adminStatus.isAdmin && (
-              <Button variant="outline" size="icon">
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => setShowSettings(true)}
+              >
                 <Settings className="w-4 h-4" />
               </Button>
             )}
@@ -491,6 +497,12 @@ export default function CommunityPage() {
         onOpenChange={setShowSendMessage}
         communityId={community.id}
         communityName={community.name}
+      />
+
+      <CommunitySettingsDialog
+        open={showSettings}
+        onOpenChange={setShowSettings}
+        community={community}
       />
     </div>
   )

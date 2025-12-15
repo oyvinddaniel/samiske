@@ -13,6 +13,7 @@ import { getIndustryDisplayName } from '@/lib/types/industries'
 export function SamfunnBransjeTab() {
   const [industries, setIndustries] = useState<Industry[]>([])
   const [selectedIndustry, setSelectedIndustry] = useState<Industry | null>(null)
+  const [showAllIndustries, setShowAllIndustries] = useState(false)
   const [communities, setCommunities] = useState<Community[]>([])
   const [loading, setLoading] = useState(true)
   const [loadingCommunities, setLoadingCommunities] = useState(false)
@@ -31,19 +32,39 @@ export function SamfunnBransjeTab() {
 
   useEffect(() => {
     async function loadCommunitiesByIndustry() {
-      if (!selectedIndustry) {
+      if (!selectedIndustry && !showAllIndustries) {
         setCommunities([])
         return
       }
 
       setLoadingCommunities(true)
 
+      if (showAllIndustries) {
+        // Load all communities
+        const { data, error } = await supabase
+          .from('communities')
+          .select('*')
+          .order('name', { ascending: true })
+          .limit(100)
+
+        if (error) {
+          console.error('Error fetching all communities:', error)
+          setLoadingCommunities(false)
+          return
+        }
+
+        setCommunities(data || [])
+        setLoadingCommunities(false)
+        return
+      }
+
+      // Load communities by industry
       const { data, error } = await supabase
         .from('community_industries')
         .select(`
           community:communities(*)
         `)
-        .eq('industry_id', selectedIndustry.id)
+        .eq('industry_id', selectedIndustry!.id)
 
       if (error) {
         console.error('Error fetching communities by industry:', error)
@@ -66,7 +87,7 @@ export function SamfunnBransjeTab() {
     }
 
     loadCommunitiesByIndustry()
-  }, [selectedIndustry, supabase])
+  }, [selectedIndustry, showAllIndustries, supabase])
 
   if (loading) {
     return (
@@ -82,14 +103,27 @@ export function SamfunnBransjeTab() {
       <div>
         <h3 className="font-semibold mb-3">Velg bransje</h3>
         <div className="flex flex-wrap gap-2">
+          <Badge
+            variant={showAllIndustries ? 'default' : 'outline'}
+            className="cursor-pointer hover:bg-gray-100"
+            onClick={() => {
+              setShowAllIndustries(!showAllIndustries)
+              setSelectedIndustry(null)
+            }}
+          >
+            Alle bransjer
+          </Badge>
           {industries.map((industry) => (
             <Badge
               key={industry.id}
               variant={selectedIndustry?.id === industry.id ? 'default' : 'outline'}
               className="cursor-pointer hover:bg-gray-100"
-              onClick={() => setSelectedIndustry(
-                selectedIndustry?.id === industry.id ? null : industry
-              )}
+              onClick={() => {
+                setSelectedIndustry(
+                  selectedIndustry?.id === industry.id ? null : industry
+                )
+                setShowAllIndustries(false)
+              }}
             >
               {getIndustryDisplayName(industry)}
             </Badge>
@@ -98,10 +132,13 @@ export function SamfunnBransjeTab() {
       </div>
 
       {/* Communities */}
-      {selectedIndustry && (
+      {(selectedIndustry || showAllIndustries) && (
         <div>
           <h3 className="font-semibold mb-3">
-            Sider i {getIndustryDisplayName(selectedIndustry)}
+            {showAllIndustries
+              ? 'Alle sider'
+              : `Sider i ${getIndustryDisplayName(selectedIndustry!)}`
+            }
           </h3>
 
           {loadingCommunities ? (
@@ -112,7 +149,10 @@ export function SamfunnBransjeTab() {
             <div className="text-center py-12 bg-white rounded-lg">
               <Briefcase className="w-12 h-12 mx-auto mb-4 text-gray-300" />
               <p className="text-gray-500">
-                Ingen sider i denne bransjen ennå
+                {showAllIndustries
+                  ? 'Ingen sider ennå'
+                  : 'Ingen sider i denne bransjen ennå'
+                }
               </p>
             </div>
           ) : (
@@ -125,7 +165,7 @@ export function SamfunnBransjeTab() {
         </div>
       )}
 
-      {!selectedIndustry && (
+      {!selectedIndustry && !showAllIndustries && (
         <div className="text-center py-12 bg-gray-50 rounded-lg">
           <Briefcase className="w-12 h-12 mx-auto mb-4 text-gray-300" />
           <p className="text-gray-500">

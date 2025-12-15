@@ -53,8 +53,8 @@ export default function CommunitiesPage() {
       {/* Tabs */}
       <Tabs defaultValue="innlegg" className="space-y-4">
         <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="innlegg">Innlegg</TabsTrigger>
-          <TabsTrigger value="sted">Sted</TabsTrigger>
+          <TabsTrigger value="innlegg">Innlegg fra sider</TabsTrigger>
+          <TabsTrigger value="sted">Sider</TabsTrigger>
           <TabsTrigger value="bransje">Bransje</TabsTrigger>
           <TabsTrigger value="katalog">Katalog</TabsTrigger>
         </TabsList>

@@ -190,9 +190,6 @@ export function FullWidthVariants({ variant, onLoginClick }: FullWidthVariantsPr
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             <div className="space-y-8">
               <div className="space-y-6">
-                {/* Live activity indicator */}
-                <ActiveUsersIndicator />
-
                 <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-white leading-tight drop-shadow-2xl">
                   Møtested for det samiske
                 </h1>

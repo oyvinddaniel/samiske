@@ -189,13 +189,19 @@ function ExpandedPostView({
     commentLikes,
     postData,
     isOwner,
+    editingCommentId,
+    editCommentContent,
     setNewComment,
     setReplyingTo,
     setReplyContent,
+    setEditCommentContent,
     handleLike,
     handleCommentLike,
     handleSubmitComment,
     handleDeleteComment,
+    handleStartEditComment,
+    handleSaveEditComment,
+    handleCancelEditComment,
     fetchComments,
   } = usePostCard({ post: postCardData, currentUserId })
 
@@ -224,6 +230,8 @@ function ExpandedPostView({
           currentUserId={currentUserId}
           isOwner={isOwner}
           commentLikes={commentLikes}
+          editingCommentId={editingCommentId}
+          editCommentContent={editCommentContent}
           onLike={handleLike}
           onNewCommentChange={setNewComment}
           onReplyContentChange={setReplyContent}
@@ -232,6 +240,10 @@ function ExpandedPostView({
           onDeleteComment={handleDeleteComment}
           onCommentLike={handleCommentLike}
           onEdit={() => {}}
+          onStartEditComment={handleStartEditComment}
+          onSaveEditComment={handleSaveEditComment}
+          onCancelEditComment={handleCancelEditComment}
+          onEditCommentContentChange={setEditCommentContent}
         />
       </div>
     </BottomSheet>
