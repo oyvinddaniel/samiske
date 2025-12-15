@@ -10,6 +10,10 @@ interface DesignPickerProps {
 }
 
 export function DesignPicker({ currentTheme, onThemeChange }: DesignPickerProps) {
+  // Validate that currentTheme exists, fallback to first theme if not
+  const validTheme = designThemes[currentTheme] ? currentTheme : Object.keys(designThemes)[0] as DesignTheme
+  const currentThemeConfig = designThemes[validTheme]
+
   return (
     <div className="border-t border-gray-200 bg-white py-12">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -19,7 +23,7 @@ export function DesignPicker({ currentTheme, onThemeChange }: DesignPickerProps)
             <h3 className="text-xl font-bold">Velg Design</h3>
           </div>
           <p className="text-sm text-gray-600">
-            Utforsk 10 forskjellige moderne SaaS-design-varianter
+            Utforsk 20 forskjellige moderne SaaS-design-varianter
           </p>
         </div>
 
@@ -98,18 +102,18 @@ export function DesignPicker({ currentTheme, onThemeChange }: DesignPickerProps)
             <div className="flex gap-1">
               <div
                 className="w-12 h-12 rounded-lg shadow-md"
-                style={{ background: designThemes[currentTheme].colors.primary }}
+                style={{ background: currentThemeConfig.colors.primary }}
               />
             </div>
             <div className="flex-1">
               <h4 className="font-bold text-gray-900 mb-1">
-                {designThemes[currentTheme].name}
+                {currentThemeConfig.name}
               </h4>
               <p className="text-sm text-gray-600 mb-3">
-                {designThemes[currentTheme].description}
+                {currentThemeConfig.description}
               </p>
               <div className="flex flex-wrap gap-2">
-                {designThemes[currentTheme].features.map((feature, i) => (
+                {currentThemeConfig.features.map((feature, i) => (
                   <span
                     key={i}
                     className="text-xs px-3 py-1 rounded-full bg-blue-100 text-blue-800"

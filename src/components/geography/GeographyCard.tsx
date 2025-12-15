@@ -24,13 +24,6 @@ const typeIcons: Record<CardType, React.ElementType> = {
   place: MapPin,
 }
 
-const typeLabels: Record<CardType, string> = {
-  country: 'Land',
-  language_area: 'Sprakområde',
-  municipality: 'Kommune',
-  place: 'Sted',
-}
-
 export function GeographyCard({
   type,
   name,

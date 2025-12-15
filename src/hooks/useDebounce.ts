@@ -50,7 +50,7 @@ export function useDebouncedCallback<T extends (...args: never[]) => void>(
   }, [])
 
   return useCallback(
-    ((...args: Parameters<T>) => {
+    (...args: Parameters<T>) => {
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current)
       }
@@ -58,9 +58,9 @@ export function useDebouncedCallback<T extends (...args: never[]) => void>(
       timeoutRef.current = setTimeout(() => {
         callbackRef.current(...args)
       }, delay)
-    }) as T,
+    },
     [delay]
-  )
+  ) as T
 }
 
 /**
@@ -81,7 +81,7 @@ export function useThrottledCallback<T extends (...args: never[]) => void>(
   }, [callback])
 
   return useCallback(
-    ((...args: Parameters<T>) => {
+    (...args: Parameters<T>) => {
       if (!inThrottle.current) {
         callbackRef.current(...args)
         inThrottle.current = true
@@ -89,7 +89,7 @@ export function useThrottledCallback<T extends (...args: never[]) => void>(
           inThrottle.current = false
         }, limit)
       }
-    }) as T,
+    },
     [limit]
-  )
+  ) as T
 }

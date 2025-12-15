@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Users, Plus, Search, FileText, Grid, ArrowLeft, Settings, PenSquare } from 'lucide-react'
+import { Users, Plus, Search, FileText, Grid, ArrowLeft, Settings } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -136,8 +136,6 @@ export function GroupsContent() {
   // If a group is selected, show group content
   if (selectedGroup) {
     const isAdmin = membership.role === 'admin'
-    const isModerator = membership.role === 'moderator'
-    const canModerate = isAdmin || isModerator
     const canViewContent = selectedGroup.group_type === 'open' || membership.isMember
 
     return (

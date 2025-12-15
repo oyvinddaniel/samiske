@@ -59,9 +59,35 @@ interface Post {
   comment_count: number
   like_count: number
   user_has_liked: boolean
-  // Geografisk info
+  // Kontekst - hvor innlegget er publisert
   posted_from_name?: string
-  posted_from_type?: 'place' | 'municipality' | 'sapmi'
+  posted_from_type?: 'group' | 'community' | 'place' | 'municipality' | 'private'
+  posted_from_id?: string
+  created_for_group_id?: string | null
+  created_for_community_id?: string | null
+  // Joined data for context (from standard query)
+  group?: {
+    id: string
+    name: string
+    slug: string
+    group_type?: 'open' | 'closed' | 'hidden'
+  } | null
+  community?: {
+    id: string
+    name: string
+    slug: string
+    category?: string
+  } | null
+  place?: {
+    id: string
+    name: string
+    slug: string
+  } | null
+  municipality?: {
+    id: string
+    name: string
+    slug: string
+  } | null
 }
 
 export function Feed({ categorySlug, geography, geographyName, showFilters = false, groupId, groupIds, communityIds, userId: filterUserId, hideCreateButton = false, starredLocations, friendsOnly = false, onlyFromCommunities = false }: FeedProps) {
@@ -136,8 +162,15 @@ export function Feed({ categorySlug, geography, geographyName, showFilters = fal
         category_id: string | null
         posted_from_name?: string
         posted_from_type?: string
+        posted_from_id?: string
+        created_for_group_id?: string | null
+        created_for_community_id?: string | null
         user?: unknown
         category?: unknown
+        group?: unknown
+        community?: unknown
+        place?: unknown
+        municipality?: unknown
       }> | null = null
       let fetchError: Error | null = null
 
@@ -180,6 +213,8 @@ export function Feed({ categorySlug, geography, geographyName, showFilters = fal
             category_id,
             municipality_id,
             place_id,
+            created_for_group_id,
+            created_for_community_id,
             user:profiles!posts_user_id_fkey (
               id,
               full_name,
@@ -189,6 +224,28 @@ export function Feed({ categorySlug, geography, geographyName, showFilters = fal
               name,
               slug,
               color
+            ),
+            group:groups (
+              id,
+              name,
+              slug,
+              group_type
+            ),
+            community:communities (
+              id,
+              name,
+              slug,
+              category
+            ),
+            place:places (
+              id,
+              name,
+              slug
+            ),
+            municipality:municipalities (
+              id,
+              name,
+              slug
             )
           `)
           .order('pinned', { ascending: false, nullsFirst: false })
@@ -515,6 +572,39 @@ export function Feed({ categorySlug, geography, geographyName, showFilters = fal
           ? (Array.isArray(post.category) ? post.category[0] : post.category)
           : (post.category_id ? categoriesMap[post.category_id] : null)
 
+        // Calculate posted_from context if not from RPC
+        let postedFromName = post.posted_from_name
+        let postedFromType = post.posted_from_type
+        let postedFromId = post.posted_from_id
+
+        if (!postedFromName) {
+          // Extract from joined data
+          const groupData = post.group ? (Array.isArray(post.group) ? post.group[0] : post.group) : null
+          const communityData = post.community ? (Array.isArray(post.community) ? post.community[0] : post.community) : null
+          const placeData = post.place ? (Array.isArray(post.place) ? post.place[0] : post.place) : null
+          const municipalityData = post.municipality ? (Array.isArray(post.municipality) ? post.municipality[0] : post.municipality) : null
+
+          if (groupData && post.created_for_group_id) {
+            postedFromName = groupData.name
+            postedFromType = 'group'
+            postedFromId = groupData.id
+          } else if (communityData && post.created_for_community_id) {
+            postedFromName = communityData.name
+            postedFromType = 'community'
+            postedFromId = communityData.id
+          } else if (placeData) {
+            postedFromName = placeData.name
+            postedFromType = 'place'
+            postedFromId = placeData.id
+          } else if (municipalityData) {
+            postedFromName = municipalityData.name
+            postedFromType = 'municipality'
+            postedFromId = municipalityData.id
+          } else {
+            postedFromType = 'private'
+          }
+        }
+
         return {
           id: post.id,
           title: post.title,
@@ -531,8 +621,11 @@ export function Feed({ categorySlug, geography, geographyName, showFilters = fal
           comment_count: commentCountMap[post.id] || 0,
           like_count: likeCountMap[post.id] || 0,
           user_has_liked: userLikedPostIds.includes(post.id),
-          posted_from_name: post.posted_from_name,
-          posted_from_type: post.posted_from_type as Post['posted_from_type'],
+          posted_from_name: postedFromName,
+          posted_from_type: postedFromType as Post['posted_from_type'],
+          posted_from_id: postedFromId,
+          created_for_group_id: post.created_for_group_id,
+          created_for_community_id: post.created_for_community_id,
         }
       })
 

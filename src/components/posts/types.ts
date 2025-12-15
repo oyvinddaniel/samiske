@@ -69,9 +69,25 @@ export interface PostData {
     name: string
     slug: string
   } | null
-  // Display fields from RPC
+  // Display fields from RPC - hvor innlegget er publisert
   posted_from_name?: string
-  posted_from_type?: 'place' | 'municipality' | 'sapmi'
+  posted_from_type?: 'group' | 'community' | 'place' | 'municipality' | 'private'
+  posted_from_id?: string
+  // Group and community context
+  created_for_group_id?: string | null
+  created_for_community_id?: string | null
+  group?: {
+    id: string
+    name: string
+    slug: string
+    group_type?: 'open' | 'closed' | 'hidden'
+  } | null
+  community?: {
+    id: string
+    name: string
+    slug: string
+    category?: string
+  } | null
   // Product/Service promotion
   product_id?: string | null
   service_id?: string | null

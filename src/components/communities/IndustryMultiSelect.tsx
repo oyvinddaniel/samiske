@@ -30,14 +30,11 @@ interface IndustryMultiSelectProps {
 export function IndustryMultiSelect({ selectedIds, onChange, onCreateNew }: IndustryMultiSelectProps) {
   const [open, setOpen] = useState(false)
   const [industries, setIndustries] = useState<Industry[]>([])
-  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     async function loadIndustries() {
-      setLoading(true)
       const data = await getIndustries()
       setIndustries(data)
-      setLoading(false)
     }
     loadIndustries()
   }, [])

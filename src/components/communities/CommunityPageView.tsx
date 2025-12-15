@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Building2, Users, Settings, Globe, Mail, Phone, MapPin, BadgeCheck, ExternalLink, Package, Briefcase, Plus, MessageCircle, X, PenSquare } from 'lucide-react'
+import { Settings, Globe, Mail, Phone, MapPin, BadgeCheck, Plus, MessageCircle, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -40,7 +40,6 @@ interface CommunityPageViewProps {
 export function CommunityPageView({ slug, onClose }: CommunityPageViewProps) {
   const [community, setCommunity] = useState<Community | null>(null)
   const [admins, setAdmins] = useState<CommunityAdmin[]>([])
-  const [followers, setFollowers] = useState<CommunityFollower[]>([])
   const [products, setProducts] = useState<Product[]>([])
   const [services, setServices] = useState<Service[]>([])
   const [industries, setIndustries] = useState<Industry[]>([])
@@ -99,7 +98,6 @@ export function CommunityPageView({ slug, onClose }: CommunityPageViewProps) {
       ])
 
       setAdmins(adminsData)
-      setFollowers(followersData)
       setProducts(productsData)
       setServices(servicesData)
       setIndustries(industriesData)

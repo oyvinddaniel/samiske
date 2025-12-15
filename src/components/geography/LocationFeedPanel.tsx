@@ -187,15 +187,6 @@ export function LocationFeedPanel({ locationType, locationId, locationName, onCl
     }
   }
 
-  // Get icon based on location type
-  const getIcon = () => {
-    switch (locationType) {
-      case 'language_area': return Languages
-      case 'municipality': return Building2
-      case 'place': return MapPin
-    }
-  }
-
   // Get color based on location type
   const getColor = () => {
     switch (locationType) {
@@ -205,7 +196,6 @@ export function LocationFeedPanel({ locationType, locationId, locationName, onCl
     }
   }
 
-  const Icon = getIcon()
   const colorClass = getColor()
 
   // Build geography filter for Feed
@@ -230,7 +220,9 @@ export function LocationFeedPanel({ locationType, locationId, locationName, onCl
       <div className="flex items-center justify-between mb-4 bg-white rounded-lg border border-gray-200 p-4">
         <div className="flex items-center gap-3">
           <div className={cn('p-2.5 rounded-lg', colorClass)}>
-            <Icon className="w-6 h-6" />
+            {locationType === 'language_area' && <Languages className="w-6 h-6" />}
+            {locationType === 'municipality' && <Building2 className="w-6 h-6" />}
+            {locationType === 'place' && <MapPin className="w-6 h-6" />}
           </div>
           <div>
             <h1 className="text-xl font-bold text-gray-900">

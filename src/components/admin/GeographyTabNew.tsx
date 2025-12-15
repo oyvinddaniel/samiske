@@ -24,7 +24,6 @@ export function GeographyTab() {
     supabase,
     countries,
     languageAreas,
-    municipalities,
     places,
     suggestions,
     fetchData,

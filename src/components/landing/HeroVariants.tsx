@@ -13,9 +13,9 @@ interface HeroVariantsProps {
   onLoginClick: () => void
 }
 
-export function HeroVariants({ theme, onLoginClick }: HeroVariantsProps) {
-  // Header component reused across variants
-  const Header = ({ dark = false }: { dark?: boolean }) => (
+// Header component reused across variants - moved outside to avoid "Cannot create components during render"
+function Header({ dark = false, onLoginClick }: { dark?: boolean; onLoginClick: () => void }) {
+  return (
     <header className={`border-b ${dark ? 'border-gray-800 bg-gray-900/80' : 'border-gray-200 bg-white/80'} backdrop-blur-sm sticky top-0 z-40`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -36,12 +36,15 @@ export function HeroVariants({ theme, onLoginClick }: HeroVariantsProps) {
       </div>
     </header>
   )
+}
+
+export function HeroVariants({ theme, onLoginClick }: HeroVariantsProps) {
 
   // Minimal Clean - Inspired by Stripe/Linear
   if (theme === 'minimal-clean') {
     return (
       <div className="bg-white">
-        <Header />
+        <Header onLoginClick={onLoginClick} />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 md:py-32">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
             {/* Left - Content */}
@@ -86,7 +89,7 @@ export function HeroVariants({ theme, onLoginClick }: HeroVariantsProps) {
   if (theme === 'dark-mode') {
     return (
       <div className="bg-gray-950 text-white min-h-screen">
-        <Header dark />
+        <Header dark onLoginClick={onLoginClick} />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 md:py-32">
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-12 items-start">
             <div className="lg:col-span-3 space-y-8">
@@ -119,7 +122,7 @@ export function HeroVariants({ theme, onLoginClick }: HeroVariantsProps) {
   if (theme === 'gradient-modern') {
     return (
       <div className="bg-gradient-to-br from-purple-50 via-pink-50 to-blue-50 min-h-screen">
-        <Header />
+        <Header onLoginClick={onLoginClick} />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 md:py-32">
           <div className="text-center space-y-8 mb-16">
             <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold leading-tight">
@@ -153,7 +156,7 @@ export function HeroVariants({ theme, onLoginClick }: HeroVariantsProps) {
   if (theme === 'screenshot-first') {
     return (
       <div className="bg-gray-50">
-        <Header />
+        <Header onLoginClick={onLoginClick} />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-20">
           <div className="text-center space-y-6 mb-12">
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900">
@@ -183,7 +186,7 @@ export function HeroVariants({ theme, onLoginClick }: HeroVariantsProps) {
   if (theme === 'split-screen') {
     return (
       <div className="bg-white min-h-screen">
-        <Header />
+        <Header onLoginClick={onLoginClick} />
         <div className="grid grid-cols-1 lg:grid-cols-2 min-h-[calc(100vh-4rem)]">
           {/* Left side - Content & Registration */}
           <div className="flex items-center justify-center px-8 py-16 lg:py-0">
@@ -214,7 +217,7 @@ export function HeroVariants({ theme, onLoginClick }: HeroVariantsProps) {
   if (theme === 'browser-mockup') {
     return (
       <div className="bg-gradient-to-b from-gray-100 to-white">
-        <Header />
+        <Header onLoginClick={onLoginClick} />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-12 items-center">
             <div className="lg:col-span-2 space-y-8">
@@ -251,7 +254,7 @@ export function HeroVariants({ theme, onLoginClick }: HeroVariantsProps) {
 
     return (
       <div className="bg-white">
-        <Header />
+        <Header onLoginClick={onLoginClick} />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
           <div className="text-center space-y-6 mb-16">
             <h1 className="text-5xl md:text-6xl font-bold text-gray-900">
@@ -299,7 +302,7 @@ export function HeroVariants({ theme, onLoginClick }: HeroVariantsProps) {
   if (theme === 'social-proof') {
     return (
       <div className="bg-white">
-        <Header />
+        <Header onLoginClick={onLoginClick} />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
             <div className="space-y-8">
@@ -335,7 +338,7 @@ export function HeroVariants({ theme, onLoginClick }: HeroVariantsProps) {
               {/* Testimonial */}
               <div className="bg-gray-50 rounded-xl p-6 border border-gray-200">
                 <p className="text-gray-700 mb-4 italic">
-                  "Endelig et sted hvor jeg kan koble sammen med andre samer og følge med på hva som skjer i Sápmi"
+                  &ldquo;Endelig et sted hvor jeg kan koble sammen med andre samer og følge med på hva som skjer i Sápmi&rdquo;
                 </p>
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-blue-600" />
@@ -361,7 +364,7 @@ export function HeroVariants({ theme, onLoginClick }: HeroVariantsProps) {
   if (theme === 'glassmorphism') {
     return (
       <div className="min-h-screen bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500">
-        <Header dark />
+        <Header dark onLoginClick={onLoginClick} />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
           <div className="text-center space-y-8 mb-16">
             <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-white leading-tight drop-shadow-lg">
@@ -395,7 +398,7 @@ export function HeroVariants({ theme, onLoginClick }: HeroVariantsProps) {
   if (theme === 'bento-box') {
     return (
       <div className="bg-gray-50 min-h-screen">
-        <Header />
+        <Header onLoginClick={onLoginClick} />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
           <div className="text-center space-y-6 mb-12">
             <h1 className="text-5xl md:text-6xl font-bold text-gray-900">

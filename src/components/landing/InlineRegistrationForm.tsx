@@ -197,7 +197,11 @@ export function InlineRegistrationForm({ onLoginClick }: InlineRegistrationFormP
           </div>
         </CardContent>
         <CardFooter className="flex flex-col gap-3 pt-2">
-          <Button type="submit" className="w-full h-9" disabled={loading}>
+          <Button
+            type="submit"
+            className="w-full h-9 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white shadow-lg shadow-blue-500/25 hover:shadow-blue-500/30"
+            disabled={loading}
+          >
             {loading ? 'Registrerer...' : 'Registrer deg'}
           </Button>
           <p className="text-xs text-gray-600 text-center">
@@ -205,7 +209,7 @@ export function InlineRegistrationForm({ onLoginClick }: InlineRegistrationFormP
             <button
               type="button"
               onClick={onLoginClick}
-              className="text-blue-600 hover:underline"
+              className="text-blue-600 hover:underline font-medium"
             >
               Logg inn
             </button>

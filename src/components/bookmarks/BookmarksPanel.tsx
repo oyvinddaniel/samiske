@@ -170,7 +170,10 @@ function ExpandedPostView({
   const postCardData = {
     ...post,
     posted_from_name: undefined,
-    posted_from_type: undefined as 'place' | 'municipality' | 'sapmi' | undefined,
+    posted_from_type: undefined as 'group' | 'community' | 'place' | 'municipality' | 'private' | undefined,
+    posted_from_id: undefined,
+    created_for_group_id: undefined,
+    created_for_community_id: undefined,
   }
 
   const {

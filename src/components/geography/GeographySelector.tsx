@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Globe, Building2, MapPin, ChevronDown, Check } from 'lucide-react'
+import { Globe, Building2, MapPin, Check, ChevronDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Command,
@@ -44,7 +44,6 @@ export function GeographySelector({
 }: GeographySelectorProps) {
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(true)
-  const [countries, setCountries] = useState<Country[]>([])
   const [groupedMunicipalities, setGroupedMunicipalities] = useState<GroupedMunicipalities[]>([])
   const [places, setPlaces] = useState<Place[]>([])
   const [selectedMunicipality, setSelectedMunicipality] = useState<Municipality | null>(null)
@@ -57,7 +56,7 @@ export function GeographySelector({
       setLoading(true)
       const supabase = createClient()
 
-      // Fetch countries
+      // Fetch countries (used for grouping, not stored in state)
       const { data: countriesData } = await supabase
         .from('countries')
         .select('*')
@@ -70,8 +69,6 @@ export function GeographySelector({
         .order('name')
 
       if (countriesData && municipalitiesData) {
-        setCountries(countriesData)
-
         // Group municipalities by country
         const grouped: GroupedMunicipalities[] = countriesData.map(country => ({
           country,

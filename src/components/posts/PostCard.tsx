@@ -12,7 +12,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
-import { Pencil, Trash2, MapPin, Share2, Bookmark, BookmarkCheck, Flag, Package, Briefcase, ExternalLink } from 'lucide-react'
+import { Pencil, Trash2, MapPin, Share2, Bookmark, BookmarkCheck, Flag, Package, Briefcase, ExternalLink, Users, Building2 } from 'lucide-react'
 import { ProfileOverlay } from '@/components/profile/ProfileOverlay'
 import { RSVPButton } from '@/components/events/RSVPButton'
 import { ReportDialog } from '@/components/reports'
@@ -153,11 +153,13 @@ export function PostCard({ post, currentUserId, onClick }: PostCardProps) {
             </button>
             <span className="text-xs text-gray-400">·</span>
             <span className="text-xs text-gray-500">{formatDate(postData.created_at)}</span>
-            {postData.posted_from_name && postData.posted_from_type !== 'sapmi' && (
+            {postData.posted_from_name && postData.posted_from_type !== 'private' && (
               <>
                 <span className="text-xs text-gray-400">·</span>
                 <span className="flex items-center gap-0.5 text-xs text-gray-500">
-                  <MapPin className="w-3 h-3" />
+                  {postData.posted_from_type === 'group' && <Users className="w-3 h-3" />}
+                  {postData.posted_from_type === 'community' && <Building2 className="w-3 h-3" />}
+                  {(postData.posted_from_type === 'place' || postData.posted_from_type === 'municipality') && <MapPin className="w-3 h-3" />}
                   {postData.posted_from_name}
                 </span>
               </>

@@ -314,7 +314,7 @@ export function InlineSearchBar({ placeholder = "Søk etter innlegg, brukere..."
               </div>
             ) : results.length === 0 ? (
               <div className="p-4 text-center text-gray-500">
-                <p className="text-sm">Ingen resultater for "{query}"</p>
+                <p className="text-sm">Ingen resultater for &quot;{query}&quot;</p>
               </div>
             ) : (
               <div className="divide-y divide-gray-50">

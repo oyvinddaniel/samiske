@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useParams, notFound } from 'next/navigation'
-import { Users, Settings, Clock, PenSquare } from 'lucide-react'
+import { Users, Settings, Clock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -72,17 +72,11 @@ export default function GroupPage() {
   }, [slug, supabase])
 
   useEffect(() => {
-    let mounted = true
-
     const loadData = async () => {
       await fetchData()
     }
 
     loadData()
-
-    return () => {
-      mounted = false
-    }
   }, [fetchData])
 
   const handleApprove = async (userId: string) => {
