@@ -150,9 +150,9 @@ export function HomeLayout({ children, currentCategory = '' }: HomeLayoutProps) 
 
         {/* Main content */}
         <div className="flex-1 flex flex-col min-w-0">
-          <div className="flex-1 flex gap-6 p-4 md:p-6 pb-20 lg:pb-6">
+          <div className="flex-1 flex gap-2 sm:gap-4 md:gap-6 p-2 sm:p-4 md:p-6 pb-20 lg:pb-6">
             {/* Feed/Calendar/Friends/Messages/Chat column */}
-            <main className="flex-1 max-w-2xl">
+            <main className="flex-1 max-w-2xl min-w-0">
               {activePanel === 'friends' ? (
                 <FriendsListPanel
                   onClose={() => setActivePanel('feed')}

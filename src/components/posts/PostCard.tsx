@@ -119,10 +119,10 @@ export function PostCard({ post, currentUserId, onClick }: PostCardProps) {
 
   return (
     <>
-      <Card id={`post-${postData.id}`} className={`overflow-hidden hover:shadow-md transition-shadow w-full ${isBlurred ? 'relative' : ''} !pt-0 !pb-0 !gap-0`}>
+      <Card id={`post-${postData.id}`} className={`overflow-hidden hover:shadow-md transition-shadow w-full max-w-full ${isBlurred ? 'relative' : ''} !pt-0 !pb-0 !gap-0`}>
         {/* Blue accent bar at top */}
         <div className="h-3" style={{ backgroundColor: '#1472E6' }} />
-        <CardContent className="p-4">
+        <CardContent className="!px-2 !py-2 sm:!px-4 sm:!py-4">
           {/* Blur overlay for members-only content */}
           {isBlurred && (
             <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/60 backdrop-blur-sm">
@@ -271,7 +271,7 @@ export function PostCard({ post, currentUserId, onClick }: PostCardProps) {
 
           {/* Title - opens dialog */}
           <button onClick={openDialog} className="text-left w-full">
-            <h3 className="font-semibold text-base md:text-lg text-gray-900 hover:text-blue-600 transition-colors mb-1">
+            <h3 className="font-semibold text-base md:text-lg text-gray-900 hover:text-blue-600 transition-colors mb-1 break-words">
               {postData.title}
             </h3>
           </button>
@@ -296,7 +296,7 @@ export function PostCard({ post, currentUserId, onClick }: PostCardProps) {
           )}
 
           {/* Content preview */}
-          <p className="text-gray-600 text-base line-clamp-2 mb-1.5">{postData.content}</p>
+          <p className="text-gray-600 text-base line-clamp-2 mb-1.5 break-words">{postData.content}</p>
 
           {/* Promoted Product */}
           {postData.product && postData.product_id && (
@@ -308,7 +308,7 @@ export function PostCard({ post, currentUserId, onClick }: PostCardProps) {
                     <img
                       src={postData.product.primary_image || postData.product.images[0]}
                       alt={postData.product.name}
-                      className="w-full h-full object-cover"
+                      className="w-full h-full object-cover max-w-full"
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">
@@ -356,7 +356,7 @@ export function PostCard({ post, currentUserId, onClick }: PostCardProps) {
                     <img
                       src={postData.service.images[0]}
                       alt={postData.service.name}
-                      className="w-full h-full object-cover"
+                      className="w-full h-full object-cover max-w-full"
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">
@@ -405,7 +405,7 @@ export function PostCard({ post, currentUserId, onClick }: PostCardProps) {
               <img
                 src={postData.image_url}
                 alt={postData.title}
-                className="w-full h-auto"
+                className="w-full h-auto max-w-full"
               />
             </button>
           )}

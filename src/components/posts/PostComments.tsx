@@ -226,18 +226,18 @@ export function PostComments({
 
             {/* Reply form */}
             {replyingTo === comment.id && (
-              <form onSubmit={(e) => onSubmitComment(e, comment.id)} className="mt-1.5 flex gap-1.5">
+              <form onSubmit={(e) => onSubmitComment(e, comment.id)} className="mt-1.5 flex flex-col sm:flex-row gap-1.5">
                 <Textarea
                   value={replyContent}
                   onChange={(e) => onReplyContentChange(e.target.value)}
                   placeholder={`Svar til ${comment.user.full_name || 'Ukjent'}...`}
                   rows={1}
-                  className="resize-none text-sm min-h-[28px] py-1 text-xs"
+                  className="flex-1 resize-none text-sm min-h-[28px] py-1 text-xs"
                 />
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="h-7 text-xs px-3 text-white rounded-md font-medium disabled:opacity-50 disabled:pointer-events-none hover:brightness-110 transition-all"
+                  className="w-full sm:w-auto h-7 text-xs px-3 text-white rounded-md font-medium disabled:opacity-50 disabled:pointer-events-none hover:brightness-110 transition-all"
                   style={{ backgroundColor: '#1472E6' }}
                 >
                   Svar

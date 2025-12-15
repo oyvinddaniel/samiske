@@ -729,7 +729,7 @@ export function Feed({ categorySlug, geography, geographyName, showFilters = fal
         />
       )}
 
-      <div className="space-y-[66px]">
+      <div className="space-y-[66px] overflow-x-hidden min-w-0">
         {posts.length === 0 ? (
           <div className="bg-white rounded-xl p-8 text-center">
             <p className="text-gray-500 mb-4">Ingen innlegg ennå</p>
