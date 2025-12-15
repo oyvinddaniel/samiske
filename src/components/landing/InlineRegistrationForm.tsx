@@ -8,11 +8,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
-import { Construction } from 'lucide-react'
-import { isMaintenanceMode } from '@/components/maintenance/MaintenanceBanner'
-
-// Check maintenance mode at module level (stable)
-const maintenanceMode = isMaintenanceMode()
+import { Construction, Loader2 } from 'lucide-react'
+import { useMaintenanceMode } from '@/components/maintenance/MaintenanceBanner'
 
 // Password validation function
 function validatePassword(password: string): { valid: boolean; errors: string[] } {
@@ -47,9 +44,21 @@ export function InlineRegistrationForm({ onLoginClick }: InlineRegistrationFormP
   const [success, setSuccess] = useState(false)
   const [loading, setLoading] = useState(false)
   const supabase = createClient()
+  const maintenance = useMaintenanceMode()
+
+  // Show loading while checking maintenance status
+  if (maintenance.loading) {
+    return (
+      <Card className="w-full">
+        <CardContent className="py-8 text-center">
+          <Loader2 className="w-6 h-6 animate-spin mx-auto text-gray-400" />
+        </CardContent>
+      </Card>
+    )
+  }
 
   // Show maintenance message if enabled
-  if (maintenanceMode) {
+  if (maintenance.enabled) {
     return (
       <Card className="w-full">
         <CardHeader className="text-center pb-4">
@@ -62,7 +71,7 @@ export function InlineRegistrationForm({ onLoginClick }: InlineRegistrationFormP
         </CardHeader>
         <CardContent className="text-center space-y-3">
           <p className="text-sm text-gray-600">
-            Vi jobber med en oppdatering av samiske.no. Registrering er midlertidig stengt.
+            {maintenance.message}
           </p>
           <p className="text-xs text-gray-500">
             Prøv igjen senere!

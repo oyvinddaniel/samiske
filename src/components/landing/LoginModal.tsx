@@ -7,11 +7,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Construction } from 'lucide-react'
-import { isMaintenanceMode } from '@/components/maintenance/MaintenanceBanner'
-
-// Check maintenance mode at module level (stable)
-const maintenanceMode = isMaintenanceMode()
+import { Construction, Loader2 } from 'lucide-react'
+import { useMaintenanceMode } from '@/components/maintenance/MaintenanceBanner'
 
 interface LoginModalProps {
   open: boolean
@@ -24,9 +21,10 @@ export function LoginModal({ open, onClose }: LoginModalProps) {
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const supabase = createClient()
+  const maintenance = useMaintenanceMode()
 
   // Show maintenance message if enabled
-  if (maintenanceMode) {
+  if (maintenance.enabled) {
     return (
       <Dialog open={open} onOpenChange={onClose}>
         <DialogContent className="max-w-md">
@@ -36,12 +34,25 @@ export function LoginModal({ open, onClose }: LoginModalProps) {
             </div>
             <DialogTitle className="text-2xl font-bold text-center">Vedlikehold pågår</DialogTitle>
             <DialogDescription className="text-center">
-              Vi jobber med en oppdatering av samiske.no. Innlogging er midlertidig stengt. Prøv igjen senere!
+              {maintenance.message}
             </DialogDescription>
           </DialogHeader>
           <Button variant="outline" onClick={onClose} className="w-full">
             Lukk
           </Button>
+        </DialogContent>
+      </Dialog>
+    )
+  }
+
+  // Show loading state while checking maintenance
+  if (maintenance.loading) {
+    return (
+      <Dialog open={open} onOpenChange={onClose}>
+        <DialogContent className="max-w-md">
+          <div className="py-8 text-center">
+            <Loader2 className="w-8 h-8 animate-spin mx-auto text-gray-400" />
+          </div>
         </DialogContent>
       </Dialog>
     )

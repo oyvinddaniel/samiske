@@ -7,10 +7,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
-import { MaintenanceBanner, isMaintenanceMode } from '@/components/maintenance/MaintenanceBanner'
-
-// Check maintenance mode at module level (stable)
-const maintenanceMode = isMaintenanceMode()
+import { MaintenanceBanner, useMaintenanceMode } from '@/components/maintenance/MaintenanceBanner'
+import { Loader2 } from 'lucide-react'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -18,13 +16,23 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const supabase = createClient()
+  const maintenance = useMaintenanceMode()
+
+  // Show loading while checking maintenance status
+  if (maintenance.loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+      </div>
+    )
+  }
 
   // Show maintenance banner if enabled
-  if (maintenanceMode) {
+  if (maintenance.enabled) {
     return (
       <MaintenanceBanner
         title="Innlogging stengt"
-        message="Vi jobber med en oppdatering av samiske.no. Innlogging er midlertidig stengt. Prøv igjen senere!"
+        message={maintenance.message}
       />
     )
   }

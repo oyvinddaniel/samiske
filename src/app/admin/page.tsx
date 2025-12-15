@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { RefreshCw } from 'lucide-react'
+import { RefreshCw, AlertTriangle } from 'lucide-react'
 import {
   UsersTab,
   PostsTab,
@@ -16,6 +16,7 @@ import {
   GeographyTab,
   StatsCards,
   StatisticsTab,
+  EmergencyTab,
 } from '@/components/admin'
 import type { User, Post, Stats, Feedback, Report, BugReportWithUser } from '@/components/admin'
 import type { BugReportPriority, BugReportStatus } from '@/lib/types/bug-reports'
@@ -407,7 +408,11 @@ export default function AdminPage() {
 
         {/* Tabs */}
         <Tabs defaultValue="users" className="space-y-4">
-          <TabsList>
+          <TabsList className="flex-wrap h-auto gap-1">
+            <TabsTrigger value="emergency" className="text-red-600 data-[state=active]:bg-red-100">
+              <AlertTriangle className="w-4 h-4 mr-1" />
+              Nødstopp
+            </TabsTrigger>
             <TabsTrigger value="users">Brukere ({users.length})</TabsTrigger>
             <TabsTrigger value="posts">Innlegg ({posts.length})</TabsTrigger>
             <TabsTrigger value="reports">
@@ -420,6 +425,10 @@ export default function AdminPage() {
             <TabsTrigger value="geography">Geografi</TabsTrigger>
             <TabsTrigger value="statistics">Statistikk</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="emergency">
+            <EmergencyTab />
+          </TabsContent>
 
           <TabsContent value="users">
             <UsersTab

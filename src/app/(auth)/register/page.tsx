@@ -8,10 +8,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
-import { MaintenanceBanner, isMaintenanceMode } from '@/components/maintenance/MaintenanceBanner'
-
-// Check maintenance mode at module level (stable)
-const maintenanceMode = isMaintenanceMode()
+import { MaintenanceBanner, useMaintenanceMode } from '@/components/maintenance/MaintenanceBanner'
+import { Loader2 } from 'lucide-react'
 
 // Password validation function
 function validatePassword(password: string): { valid: boolean; errors: string[] } {
@@ -42,13 +40,23 @@ export default function RegisterPage() {
   const [success, setSuccess] = useState(false)
   const [loading, setLoading] = useState(false)
   const supabase = createClient()
+  const maintenance = useMaintenanceMode()
+
+  // Show loading while checking maintenance status
+  if (maintenance.loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+      </div>
+    )
+  }
 
   // Show maintenance banner if enabled
-  if (maintenanceMode) {
+  if (maintenance.enabled) {
     return (
       <MaintenanceBanner
         title="Registrering stengt"
-        message="Vi jobber med en oppdatering av samiske.no. Registrering er midlertidig stengt. Prøv igjen senere!"
+        message={maintenance.message}
       />
     )
   }
