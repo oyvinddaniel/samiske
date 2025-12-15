@@ -8,6 +8,11 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
+import { Construction } from 'lucide-react'
+import { isMaintenanceMode } from '@/components/maintenance/MaintenanceBanner'
+
+// Check maintenance mode at module level (stable)
+const maintenanceMode = isMaintenanceMode()
 
 // Password validation function
 function validatePassword(password: string): { valid: boolean; errors: string[] } {
@@ -42,6 +47,30 @@ export function InlineRegistrationForm({ onLoginClick }: InlineRegistrationFormP
   const [success, setSuccess] = useState(false)
   const [loading, setLoading] = useState(false)
   const supabase = createClient()
+
+  // Show maintenance message if enabled
+  if (maintenanceMode) {
+    return (
+      <Card className="w-full">
+        <CardHeader className="text-center pb-4">
+          <div className="mx-auto w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center mb-3">
+            <Construction className="w-6 h-6 text-amber-600" />
+          </div>
+          <CardTitle className="text-xl font-bold text-gray-900">
+            Vedlikehold pågår
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="text-center space-y-3">
+          <p className="text-sm text-gray-600">
+            Vi jobber med en oppdatering av samiske.no. Registrering er midlertidig stengt.
+          </p>
+          <p className="text-xs text-gray-500">
+            Prøv igjen senere!
+          </p>
+        </CardContent>
+      </Card>
+    )
+  }
 
   const handlePasswordChange = (value: string) => {
     setPassword(value)
