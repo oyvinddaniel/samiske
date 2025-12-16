@@ -69,16 +69,49 @@ export function RealtimeProvider({
   // Debounced refresh to prevent excessive database queries (reduced from 1000ms to 300ms)
   const debouncedRefresh = useDebouncedCallback(refreshSocialNotifications, 300)
 
+  // Update last_seen_at when user is active
+  const updateLastSeen = useCallback(async (userId: string) => {
+    try {
+      await supabase
+        .from('profiles')
+        .update({ last_seen_at: new Date().toISOString() })
+        .eq('id', userId)
+    } catch (error) {
+      console.error('Error updating last_seen_at:', error)
+    }
+  }, [supabase])
+
   // Auth state listener
   useEffect(() => {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null)
+      // Update last_seen_at when user logs in or session refreshes
+      if (session?.user) {
+        updateLastSeen(session.user.id)
+      }
     })
 
     return () => subscription.unsubscribe()
-  }, [supabase])
+  }, [supabase, updateLastSeen])
+
+  // Periodic activity tracking (every 5 minutes while active)
+  useEffect(() => {
+    if (!user) return
+
+    // Update immediately when component mounts with user
+    updateLastSeen(user.id)
+
+    // Update every 5 minutes while user has tab open
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        updateLastSeen(user.id)
+      }
+    }, 5 * 60 * 1000)
+
+    return () => clearInterval(interval)
+  }, [user, updateLastSeen])
 
   // Refresh social notifications on user change
   useEffect(() => {
