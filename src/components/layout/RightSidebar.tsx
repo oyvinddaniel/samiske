@@ -7,8 +7,37 @@ import { createClient } from '@/lib/supabase/client'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
-import { Calendar, MapPin, MessageCircle, ChevronLeft, BarChart3, X } from 'lucide-react'
+import { Calendar, MapPin, MessageCircle, ChevronLeft, BarChart3, X, Building2, Users } from 'lucide-react'
 import { cn } from '@/lib/utils'
+
+interface PlacePost {
+  id: string
+  title: string
+  image_url: string | null
+  created_at: string
+  place: {
+    id: string
+    name: string
+  } | null
+}
+
+interface Community {
+  id: string
+  name: string
+  slug: string
+  logo_url: string | null
+  category: string
+  created_at: string
+}
+
+interface OpenGroup {
+  id: string
+  name: string
+  slug: string
+  image_url: string | null
+  member_count: number
+  created_at: string
+}
 
 interface UpcomingEvent {
   id: string
@@ -42,6 +71,9 @@ interface RecentComment {
 }
 
 export function RightSidebar() {
+  const [placePosts, setPlacePosts] = useState<PlacePost[]>([])
+  const [communities, setCommunities] = useState<Community[]>([])
+  const [openGroups, setOpenGroups] = useState<OpenGroup[]>([])
   const [upcomingEvents, setUpcomingEvents] = useState<UpcomingEvent[]>([])
   const [recentComments, setRecentComments] = useState<RecentComment[]>([])
   const [stats, setStats] = useState<Stats>({ totalMembers: 0, totalPosts: 0, totalComments: 0 })
@@ -231,6 +263,60 @@ export function RightSidebar() {
     })
   }, [supabase])
 
+  // Fetch place posts (can be called to refresh)
+  const fetchPlacePosts = useCallback(async () => {
+    const { data: posts } = await supabase
+      .from('posts')
+      .select(`
+        id,
+        title,
+        image_url,
+        created_at,
+        place:places!posts_place_id_fkey (
+          id,
+          name
+        )
+      `)
+      .not('place_id', 'is', null)
+      .order('created_at', { ascending: false })
+      .limit(5)
+
+    if (posts) {
+      const formattedPosts = posts.map((post) => {
+        const placeData = Array.isArray(post.place) ? post.place[0] : post.place
+        return {
+          ...post,
+          place: placeData as PlacePost['place'],
+        }
+      })
+      setPlacePosts(formattedPosts)
+    }
+  }, [supabase])
+
+  // Fetch communities (can be called to refresh)
+  const fetchCommunities = useCallback(async () => {
+    const { data: comms } = await supabase
+      .from('communities')
+      .select('id, name, slug, logo_url, category, created_at')
+      .eq('is_active', true)
+      .order('created_at', { ascending: false })
+      .limit(5)
+
+    if (comms) setCommunities(comms)
+  }, [supabase])
+
+  // Fetch open groups (can be called to refresh)
+  const fetchOpenGroups = useCallback(async () => {
+    const { data: groups } = await supabase
+      .from('groups')
+      .select('id, name, slug, image_url, member_count, created_at')
+      .eq('group_type', 'open')
+      .order('created_at', { ascending: false })
+      .limit(5)
+
+    if (groups) setOpenGroups(groups)
+  }, [supabase])
+
   // Fetch upcoming events (can be called to refresh)
   const fetchUpcomingEvents = useCallback(async () => {
     const today = new Date().toISOString().split('T')[0]
@@ -253,6 +339,9 @@ export function RightSidebar() {
 
       // Fetch all data in parallel
       await Promise.all([
+        fetchPlacePosts(),
+        fetchCommunities(),
+        fetchOpenGroups(),
         fetchUpcomingEvents(),
         fetchRecentComments(),
         fetchStats(),
@@ -262,7 +351,7 @@ export function RightSidebar() {
     }
 
     fetchData()
-  }, [supabase, fetchUpcomingEvents, fetchRecentComments, fetchStats])
+  }, [supabase, fetchPlacePosts, fetchCommunities, fetchOpenGroups, fetchUpcomingEvents, fetchRecentComments, fetchStats])
 
   // Real-time subscription for all relevant tables
   useEffect(() => {
@@ -280,8 +369,23 @@ export function RightSidebar() {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'posts' },
         () => {
+          fetchPlacePosts()
           fetchUpcomingEvents()
           fetchStats()
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'communities' },
+        () => {
+          fetchCommunities()
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'groups' },
+        () => {
+          fetchOpenGroups()
         }
       )
       .subscribe()
@@ -289,7 +393,7 @@ export function RightSidebar() {
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [supabase, fetchRecentComments, fetchStats, fetchUpcomingEvents])
+  }, [supabase, fetchRecentComments, fetchStats, fetchPlacePosts, fetchCommunities, fetchOpenGroups, fetchUpcomingEvents])
 
   const getInitials = (name: string | null) => {
     if (!name) return '?'
@@ -355,6 +459,128 @@ export function RightSidebar() {
           )}
         </CardContent>
       </Card>
+
+      {/* Place posts */}
+      {placePosts.length > 0 && (
+        <Card className="gap-0">
+          <CardHeader className="pb-0">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <MapPin className="w-4 h-4 text-blue-500" />
+              5 siste innlegg (sted)
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <div className="space-y-2">
+              {placePosts.map((post) => (
+                <Link key={post.id} href={`/innlegg/${post.id}`} onClick={() => isMobile && setMobileOpen(false)}>
+                  <div className="p-2 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer">
+                    <p className="text-sm font-medium text-gray-900 line-clamp-1">
+                      {post.title}
+                    </p>
+                    <div className="flex items-center gap-1 mt-0.5">
+                      <MapPin className="w-3 h-3 text-gray-400" />
+                      <span className="text-[10px] text-gray-500">
+                        {post.place?.name || 'Ukjent sted'}
+                      </span>
+                      <span className="text-[10px] text-gray-400 ml-auto">
+                        {getTimeAgo(post.created_at)}
+                      </span>
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Communities */}
+      {communities.length > 0 && (
+        <Card className="gap-0">
+          <CardHeader className="pb-0">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <Building2 className="w-4 h-4 text-purple-500" />
+              De 5 nyeste sidene (Samfunn)
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <div className="space-y-2">
+              {communities.map((community) => (
+                <Link key={community.id} href={`/samfunn/${community.slug}`} onClick={() => isMobile && setMobileOpen(false)}>
+                  <div className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-gray-50 transition-colors">
+                    {community.logo_url ? (
+                      <img
+                        src={community.logo_url}
+                        alt={community.name}
+                        className="w-8 h-8 rounded object-cover"
+                      />
+                    ) : (
+                      <div className="w-8 h-8 rounded bg-purple-100 flex items-center justify-center">
+                        <Building2 className="w-4 h-4 text-purple-600" />
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900 truncate">
+                        {community.name}
+                      </p>
+                      <p className="text-[10px] text-gray-400">
+                        {getTimeAgo(community.created_at)}
+                      </p>
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Open groups */}
+      {openGroups.length > 0 && (
+        <Card className="gap-0">
+          <CardHeader className="pb-0">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <Users className="w-4 h-4 text-green-500" />
+              De 5 nyeste gruppene (åpne)
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <div className="space-y-2">
+              {openGroups.map((group) => (
+                <Link key={group.id} href={`/grupper/${group.slug}`} onClick={() => isMobile && setMobileOpen(false)}>
+                  <div className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-gray-50 transition-colors">
+                    {group.image_url ? (
+                      <img
+                        src={group.image_url}
+                        alt={group.name}
+                        className="w-8 h-8 rounded object-cover"
+                      />
+                    ) : (
+                      <div className="w-8 h-8 rounded bg-green-100 flex items-center justify-center">
+                        <Users className="w-4 h-4 text-green-600" />
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900 truncate">
+                        {group.name}
+                      </p>
+                      <div className="flex items-center gap-1.5">
+                        <p className="text-[10px] text-gray-500">
+                          {group.member_count} {group.member_count === 1 ? 'medlem' : 'medlemmer'}
+                        </p>
+                        <span className="text-[10px] text-gray-300">•</span>
+                        <p className="text-[10px] text-gray-400">
+                          {getTimeAgo(group.created_at)}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Upcoming events */}
       {upcomingEvents.length > 0 && (
