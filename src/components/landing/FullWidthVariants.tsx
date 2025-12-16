@@ -184,10 +184,10 @@ export function FullWidthVariants({ variant, onLoginClick }: FullWidthVariantsPr
                   Velkommen!
                 </h1>
                 <p className="text-xl text-white/95 leading-relaxed drop-shadow-lg">
-                  Nå kan vi selv bestemme. Møt andre samiske. Og finn samiske tilbydere. Fordelt på byer, steder og grupper.
+                  Folk og bedrifter. Samiske områder og steder. Arrangementer. Helt uten algoritmer, støy og kaos.
                 </p>
                 <p className="text-xl text-white/95 leading-relaxed drop-shadow-lg">
-                  <span className="font-semibold">NB!</span> Du kan selv foreslå funksjoner som du savner og ønsker.
+                  Et helt nytt sted.
                 </p>
               </div>
 
