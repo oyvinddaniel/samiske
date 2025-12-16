@@ -49,18 +49,46 @@ export function Header({ currentCategory }: HeaderProps) {
     setMounted(true)
   }, [])
 
-  // Listen for search active state - only collapse on mobile when search is active
+  // Listen for search active state and handle scroll to top
   useEffect(() => {
+    const isMobile = () => window.innerWidth < 768
+
     const handleSearchActiveChange = (event: CustomEvent<{ active: boolean }>) => {
-      // Only collapse on mobile (< 768px)
-      const isMobile = window.innerWidth < 768
-      if (isMobile) {
+      if (isMobile()) {
         setIsCollapsed(event.detail.active)
       }
     }
 
+    const handleScroll = () => {
+      if (!isMobile()) return
+
+      // If scrolled to top, expand navbar
+      if (window.scrollY === 0) {
+        setIsCollapsed(false)
+      }
+    }
+
+    // Also check on touch end for better mobile support
+    const handleTouchEnd = () => {
+      if (!isMobile()) return
+
+      // Small delay to let scroll position settle
+      setTimeout(() => {
+        if (window.scrollY === 0) {
+          setIsCollapsed(false)
+        }
+      }, 100)
+    }
+
     window.addEventListener('search-active-change', handleSearchActiveChange as EventListener)
-    return () => window.removeEventListener('search-active-change', handleSearchActiveChange as EventListener)
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    window.addEventListener('touchend', handleTouchEnd, { passive: true })
+
+    return () => {
+      window.removeEventListener('search-active-change', handleSearchActiveChange as EventListener)
+      window.removeEventListener('scroll', handleScroll)
+      window.removeEventListener('touchend', handleTouchEnd)
+    }
   }, [])
 
   useEffect(() => {

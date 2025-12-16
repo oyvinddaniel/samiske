@@ -13,7 +13,7 @@ import type { SearchResult } from './searchTypes'
 
 export function UnifiedSearchBar() {
   const [query, setQuery] = useState('')
-  const [selectedCategory, setSelectedCategory] = useState<SearchCategory>('brukere')
+  const [selectedCategory, setSelectedCategory] = useState<SearchCategory>('alle')
   const [showResults, setShowResults] = useState(false)
   const [debouncedQuery, setDebouncedQuery] = useState('')
   const savedScrollPosition = useRef<number>(0)

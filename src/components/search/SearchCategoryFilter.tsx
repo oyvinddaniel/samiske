@@ -162,7 +162,6 @@ export function SearchCategoryFilter({
           <div className="flex flex-wrap gap-1.5 px-3 py-2">
             {allCategories.map((category) => {
               const Icon = CATEGORY_ICONS[category]
-              const count = getCategoryCount(category)
               const isSelected = selected === category
 
               return (
@@ -173,7 +172,7 @@ export function SearchCategoryFilter({
                     if (isExpanded) setIsExpanded(false)
                   }}
                   className={cn(
-                    'relative flex-shrink-0 p-2 rounded-lg transition-colors',
+                    'flex-shrink-0 p-2 rounded-lg transition-colors',
                     isSelected
                       ? 'bg-blue-500 text-white'
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -183,18 +182,6 @@ export function SearchCategoryFilter({
                   title={CATEGORY_NAMES[category]}
                 >
                   <Icon className="w-4 h-4" />
-                  {count > 0 && (
-                    <span
-                      className={cn(
-                        'absolute -top-1 -right-1 text-[10px] rounded-full w-4 h-4 flex items-center justify-center font-bold',
-                        isSelected
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-red-500 text-white'
-                      )}
-                    >
-                      {count > 9 ? '9+' : count}
-                    </span>
-                  )}
                 </button>
               )
             })}
