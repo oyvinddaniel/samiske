@@ -27,6 +27,7 @@ interface RegistrationTrend {
 export function UserAnalyticsTab() {
   const [users, setUsers] = useState<AuthUser[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [stats, setStats] = useState({
     totalUsers: 0,
     registeredToday: 0,
@@ -62,6 +63,7 @@ export function UserAnalyticsTab() {
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true)
+      setError(null)
 
       // Fetch all data in parallel
       const [usersResult, totalResult, todayResult, loginTodayResult, weekResult, monthResult, trendResult] = await Promise.all([
@@ -74,7 +76,14 @@ export function UserAnalyticsTab() {
         supabase.rpc('get_user_registration_trend'),
       ])
 
-      if (usersResult.data) {
+      console.log('👥 Admin - Users result:', usersResult)
+      console.log('👥 Admin - Users data:', usersResult.data)
+      console.log('👥 Admin - Users error:', usersResult.error)
+
+      if (usersResult.error) {
+        setError(`Feil ved henting av brukere: ${usersResult.error.message}`)
+        console.error('Error fetching users:', usersResult.error)
+      } else if (usersResult.data) {
         setUsers(usersResult.data as AuthUser[])
       }
 
@@ -101,6 +110,30 @@ export function UserAnalyticsTab() {
       <Card>
         <CardContent className="py-8 text-center">
           <div className="animate-pulse">Laster brukerdata...</div>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  if (error) {
+    return (
+      <Card className="border-red-200 bg-red-50">
+        <CardContent className="py-8">
+          <div className="text-center">
+            <h3 className="text-lg font-semibold text-red-900 mb-2">Feil ved lasting av brukerdata</h3>
+            <p className="text-sm text-red-700 mb-4">{error}</p>
+            <div className="text-left bg-white p-4 rounded border border-red-200">
+              <p className="text-xs font-semibold text-gray-900 mb-2">Sjekk følgende:</p>
+              <ol className="text-xs text-gray-700 space-y-1 list-decimal list-inside">
+                <li>Har du kjørt SQL-filen i Supabase? (docs/RUN_THIS_FOR_USER_STATS.sql)</li>
+                <li>Er din bruker satt til role = &apos;admin&apos; i profiles-tabellen?</li>
+                <li>Sjekk Supabase logs for detaljer</li>
+              </ol>
+              <p className="text-xs text-gray-600 mt-3">
+                Åpne developer console (F12) for mer detaljert feilmelding.
+              </p>
+            </div>
+          </div>
         </CardContent>
       </Card>
     )
