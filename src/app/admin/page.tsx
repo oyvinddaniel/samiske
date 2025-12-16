@@ -151,6 +151,7 @@ export default function AdminPage() {
   }, [supabase])
 
   const fetchBugReports = useCallback(async () => {
+    console.log('🐛 Fetching bug reports...')
     const { data, error } = await supabase
       .from('bug_reports')
       .select(`
@@ -164,8 +165,10 @@ export default function AdminPage() {
       `)
       .order('created_at', { ascending: false })
 
-    if (error && Object.keys(error).length > 0) {
-      console.error('Error fetching bug reports:', error)
+    console.log('🐛 Bug reports response:', { data, error, count: data?.length })
+
+    if (error) {
+      console.error('❌ Error fetching bug reports:', error)
       return
     }
 
@@ -174,6 +177,7 @@ export default function AdminPage() {
         ...br,
         user: Array.isArray(br.user) ? br.user[0] : br.user,
       }))
+      console.log('✅ Formatted bug reports:', formattedBugReports.length)
       setBugReports(formattedBugReports as BugReportWithUser[])
     }
   }, [supabase])

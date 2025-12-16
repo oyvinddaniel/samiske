@@ -5,6 +5,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { createClient } from '@/lib/supabase/client'
 import { PostCard } from '@/components/posts/PostCard'
 import { AllMyPosts } from '@/components/profile/AllMyPosts'
+import { AccountSettings } from '@/components/profile/AccountSettings'
+import { FileText, MapPin, Settings } from 'lucide-react'
 
 interface ProfileTabsProps {
   profileId: string
@@ -64,10 +66,25 @@ export function ProfileTabs({ profileId, isOwnProfile }: ProfileTabsProps) {
 
   return (
     <Tabs defaultValue="personal" className="w-full">
-      <TabsList className={`w-full mb-4 ${isOwnProfile ? 'grid grid-cols-2' : ''}`}>
-        <TabsTrigger value="personal">Mine private innlegg</TabsTrigger>
+      <TabsList className={`w-full mb-4 ${isOwnProfile ? 'grid grid-cols-3' : ''}`}>
+        <TabsTrigger value="personal" className="flex items-center gap-2">
+          <FileText className="w-4 h-4" />
+          <span className="hidden sm:inline">Mine private innlegg</span>
+          <span className="sm:hidden">Innlegg</span>
+        </TabsTrigger>
         {isOwnProfile && (
-          <TabsTrigger value="other-feeds">Mine innlegg andre steder</TabsTrigger>
+          <>
+            <TabsTrigger value="other-feeds" className="flex items-center gap-2">
+              <MapPin className="w-4 h-4" />
+              <span className="hidden sm:inline">Andre steder</span>
+              <span className="sm:hidden">Andre</span>
+            </TabsTrigger>
+            <TabsTrigger value="account" className="flex items-center gap-2">
+              <Settings className="w-4 h-4" />
+              <span className="hidden sm:inline">Innstillinger</span>
+              <span className="sm:hidden">Innst.</span>
+            </TabsTrigger>
+          </>
         )}
       </TabsList>
 
@@ -91,9 +108,15 @@ export function ProfileTabs({ profileId, isOwnProfile }: ProfileTabsProps) {
       </TabsContent>
 
       {isOwnProfile && (
-        <TabsContent value="other-feeds">
-          <AllMyPosts userId={profileId} showOnlyOtherFeeds={true} />
-        </TabsContent>
+        <>
+          <TabsContent value="other-feeds">
+            <AllMyPosts userId={profileId} showOnlyOtherFeeds={true} />
+          </TabsContent>
+
+          <TabsContent value="account">
+            <AccountSettings userId={profileId} />
+          </TabsContent>
+        </>
       )}
     </Tabs>
   )
