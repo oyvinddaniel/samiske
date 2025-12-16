@@ -30,6 +30,9 @@ COMMENT ON FUNCTION public.get_auth_users_count() IS 'Returns the total count of
 -- ============================================================================
 
 -- 2A. Hent alle brukere med detaljer
+-- Drop existing function first (required when changing return type)
+DROP FUNCTION IF EXISTS public.get_auth_users_list();
+
 CREATE OR REPLACE FUNCTION public.get_auth_users_list()
 RETURNS JSONB
 LANGUAGE plpgsql
