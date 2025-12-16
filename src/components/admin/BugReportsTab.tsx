@@ -22,7 +22,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { Bug, Lightbulb, HelpCircle, MoreHorizontal, ExternalLink, Image as ImageIcon } from 'lucide-react'
+import { Bug, Lightbulb, HelpCircle, MoreHorizontal, ExternalLink, Image as ImageIcon, MessageCircle, Send, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import type { BugReportWithUser } from '@/lib/types/bug-reports'
 import type { BugReportPriority, BugReportStatus, BugReportCategory } from '@/lib/types/bug-reports'
@@ -45,6 +45,8 @@ export function BugReportsTab({ bugReports, onUpdateBugReport }: BugReportsTabPr
   const [filterPriority, setFilterPriority] = useState<BugReportPriority | 'all'>('all')
   const [selectedReport, setSelectedReport] = useState<BugReportWithUser | null>(null)
   const [adminNotes, setAdminNotes] = useState('')
+  const [replyMessage, setReplyMessage] = useState('')
+  const [sendingReply, setSendingReply] = useState(false)
   const supabase = useMemo(() => createClient(), [])
 
   const getStatusBadge = (status: BugReportStatus) => {
@@ -103,11 +105,6 @@ export function BugReportsTab({ bugReports, onUpdateBugReport }: BugReportsTabPr
     return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
   })
 
-  const handleOpenDetails = (report: BugReportWithUser) => {
-    setSelectedReport(report)
-    setAdminNotes(report.admin_notes || '')
-  }
-
   const handleSaveNotes = async () => {
     if (!selectedReport) return
 
@@ -124,6 +121,105 @@ export function BugReportsTab({ bugReports, onUpdateBugReport }: BugReportsTabPr
     onUpdateBugReport(selectedReport.id, { admin_notes: adminNotes })
     toast.success('Notater lagret')
     setSelectedReport(null)
+  }
+
+  const handleOpenDetails = (report: BugReportWithUser) => {
+    setSelectedReport(report)
+    setAdminNotes(report.admin_notes || '')
+    // Pre-fill reply message
+    setReplyMessage(`Hei! Angående din rapport "${report.title}":\n\n`)
+  }
+
+  // Find or create conversation between admin and user
+  const findOrCreateConversation = async (adminId: string, userId: string): Promise<string | null> => {
+    // Check if conversation exists
+    const { data: existingConvs } = await supabase
+      .from('conversation_participants')
+      .select('conversation_id')
+      .eq('user_id', adminId)
+
+    if (existingConvs && existingConvs.length > 0) {
+      const convIds = existingConvs.map(c => c.conversation_id)
+
+      const { data: matchingConv } = await supabase
+        .from('conversation_participants')
+        .select('conversation_id')
+        .eq('user_id', userId)
+        .in('conversation_id', convIds)
+        .limit(1)
+        .single()
+
+      if (matchingConv) {
+        return matchingConv.conversation_id
+      }
+    }
+
+    // Create new conversation
+    const { data: newConv, error: convError } = await supabase
+      .from('conversations')
+      .insert({})
+      .select('id')
+      .single()
+
+    if (convError || !newConv) {
+      console.error('Failed to create conversation:', convError)
+      return null
+    }
+
+    // Add both participants
+    await supabase
+      .from('conversation_participants')
+      .insert([
+        { conversation_id: newConv.id, user_id: adminId },
+        { conversation_id: newConv.id, user_id: userId }
+      ])
+
+    return newConv.id
+  }
+
+  const handleSendReply = async () => {
+    if (!selectedReport?.user_id || !replyMessage.trim()) return
+
+    setSendingReply(true)
+    try {
+      // Get current admin user
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
+        toast.error('Du må være innlogget')
+        return
+      }
+
+      // Find or create conversation
+      const conversationId = await findOrCreateConversation(user.id, selectedReport.user_id)
+      if (!conversationId) {
+        toast.error('Kunne ikke opprette samtale')
+        return
+      }
+
+      // Send message
+      const { error: messageError } = await supabase
+        .from('messages')
+        .insert({
+          conversation_id: conversationId,
+          sender_id: user.id,
+          content: replyMessage.trim()
+        })
+
+      if (messageError) {
+        console.error('Failed to send message:', messageError)
+        toast.error('Kunne ikke sende melding')
+        return
+      }
+
+      toast.success('Melding sendt til bruker!')
+      setReplyMessage('')
+      setSelectedReport(null)
+    } catch (error) {
+      console.error('Error sending reply:', error)
+      toast.error('Noe gikk galt')
+    } finally {
+      setSendingReply(false)
+    }
   }
 
   return (
@@ -353,23 +449,64 @@ export function BugReportsTab({ bugReports, onUpdateBugReport }: BugReportsTabPr
               </div>
 
               <div>
-                <Label htmlFor="admin-notes">Admin-notater</Label>
+                <Label htmlFor="admin-notes">Admin-notater (kun synlig for admin)</Label>
                 <Textarea
                   id="admin-notes"
                   value={adminNotes}
                   onChange={(e) => setAdminNotes(e.target.value)}
                   placeholder="Legg til interne notater..."
-                  rows={4}
+                  rows={3}
                   className="mt-1"
                 />
               </div>
+
+              {/* Reply to user section */}
+              {selectedReport.user_id && (
+                <div className="border-t pt-4">
+                  <Label htmlFor="reply-message" className="flex items-center gap-2">
+                    <MessageCircle className="w-4 h-4" />
+                    Svar til bruker
+                  </Label>
+                  <Textarea
+                    id="reply-message"
+                    value={replyMessage}
+                    onChange={(e) => setReplyMessage(e.target.value)}
+                    placeholder="Skriv en melding til brukeren..."
+                    rows={4}
+                    className="mt-1"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Meldingen sendes direkte til brukerens innboks
+                  </p>
+                </div>
+              )}
             </div>
 
-            <DialogFooter>
+            <DialogFooter className="flex-col sm:flex-row gap-2">
               <Button variant="outline" onClick={() => setSelectedReport(null)}>
                 Lukk
               </Button>
-              <Button onClick={handleSaveNotes}>Lagre notater</Button>
+              <Button onClick={handleSaveNotes} variant="secondary">
+                Lagre notater
+              </Button>
+              {selectedReport.user_id && (
+                <Button
+                  onClick={handleSendReply}
+                  disabled={sendingReply || !replyMessage.trim()}
+                >
+                  {sendingReply ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Sender...
+                    </>
+                  ) : (
+                    <>
+                      <Send className="w-4 h-4 mr-2" />
+                      Send melding
+                    </>
+                  )}
+                </Button>
+              )}
             </DialogFooter>
           </DialogContent>
         </Dialog>

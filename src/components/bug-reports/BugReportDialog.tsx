@@ -56,6 +56,7 @@ export function BugReportDialog({
   const [screenshot, setScreenshot] = useState<File | null>(null)
   const [screenshotPreview, setScreenshotPreview] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const [sendAnonymously, setSendAnonymously] = useState(false)
   const supabase = useMemo(() => createClient(), [])
 
   const {
@@ -147,9 +148,9 @@ export function BugReportDialog({
     setSubmitting(true)
 
     try {
-      // Get current user
+      // Get current user (unless sending anonymously)
       const { data: { user } } = await supabase.auth.getUser()
-      const userId = user?.id || null
+      const userId = sendAnonymously ? null : (user?.id || null)
 
       // Capture context
       const context = captureContext()
@@ -182,6 +183,7 @@ export function BugReportDialog({
       reset()
       setScreenshot(null)
       setScreenshotPreview(null)
+      setSendAnonymously(false)
       onOpenChange(false)
     } catch (error) {
       console.error('Bug report submission error:', error)
@@ -196,6 +198,7 @@ export function BugReportDialog({
       reset()
       setScreenshot(null)
       setScreenshotPreview(null)
+      setSendAnonymously(false)
       onOpenChange(false)
     }
   }
@@ -317,11 +320,28 @@ export function BugReportDialog({
             )}
           </div>
 
+          {/* Anonymous option */}
+          {currentUserId && (
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="anonymous"
+                checked={sendAnonymously}
+                onChange={(e) => setSendAnonymously(e.target.checked)}
+                className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              />
+              <Label htmlFor="anonymous" className="text-sm font-normal cursor-pointer">
+                Send anonymt (vi kan ikke følge opp med deg)
+              </Label>
+            </div>
+          )}
+
           {/* Auto-captured info */}
           <div className="bg-blue-50 rounded-lg p-3 text-xs text-gray-600">
-            <p className="font-medium mb-1">Automatisk samlet info:</p>
+            <p className="font-medium mb-1">Følgende sendes med rapporten:</p>
             <p>• URL: {initialUrl || window.location.href}</p>
             <p>• Skjermstørrelse: {window.screen.width}x{window.screen.height}</p>
+            <p>• Bruker: {sendAnonymously ? 'Anonym' : (currentUserId ? 'Din innloggede konto' : 'Ikke innlogget')}</p>
           </div>
         </form>
 

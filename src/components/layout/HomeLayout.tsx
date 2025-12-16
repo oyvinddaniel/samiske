@@ -18,6 +18,7 @@ import { PostDetailPanel } from '@/components/posts/PostDetailPanel'
 import { CalendarView } from '@/components/calendar/CalendarView'
 import { GroupsContent } from '@/app/grupper/GroupsContent'
 import { FloatingChatBubble } from '@/components/social/FloatingChatBubble'
+import { SwipeHints } from '@/components/ui/swipe-hints'
 import { useLinkInterceptor } from '@/lib/navigation/useLinkInterceptor'
 import { getPanelFromPathname } from '@/lib/navigation/spa-utils'
 
@@ -299,6 +300,9 @@ export function HomeLayout({ children, currentCategory = '' }: HomeLayoutProps) 
     <div className="min-h-screen bg-gray-50">
       {/* Full-width Header */}
       <Header currentCategory={currentCategory} />
+
+      {/* Swipe discovery hints - kun på mobil */}
+      <SwipeHints />
 
       <div className="flex">
         {/* Left Sidebar */}
