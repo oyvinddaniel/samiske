@@ -152,7 +152,7 @@ export function ChangelogDropdown({ isAdmin, userId }: ChangelogDropdownProps) {
           {/* Rød notifikasjonsprikk */}
           {unreadCount > 0 && (
             <span
-              className="absolute -top-0.5 -right-0.5 flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-bold text-white bg-red-500 rounded-full animate-pulse"
+              className="absolute -top-0.5 -right-0.5 flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-bold text-white bg-red-500 rounded-full"
               aria-hidden="true"
             >
               {unreadCount > 9 ? '9+' : unreadCount}
