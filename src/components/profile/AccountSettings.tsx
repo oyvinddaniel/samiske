@@ -148,12 +148,17 @@ export function AccountSettings({ userId }: AccountSettingsProps) {
 
       // Fetch user locations
       const locations = await getUserLocations(userId)
+      console.log('👤 User locations loaded:', locations)
       if (locations) {
         setCurrentLocation({
           municipalityId: locations.currentMunicipalityId,
           placeId: locations.currentPlaceId
         })
         setHomeLocation({
+          municipalityId: locations.homeMunicipalityId,
+          placeId: locations.homePlaceId
+        })
+        console.log('👤 Home location set to:', {
           municipalityId: locations.homeMunicipalityId,
           placeId: locations.homePlaceId
         })

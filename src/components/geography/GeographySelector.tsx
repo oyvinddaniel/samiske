@@ -107,32 +107,50 @@ export function GeographySelector({
 
   // Load selected values on mount
   useEffect(() => {
-    if (!value?.municipalityId && !value?.placeId) return
+    console.log('🗺️ GeographySelector loading values:', {
+      municipalityId: value?.municipalityId,
+      placeId: value?.placeId
+    })
+
+    if (!value?.municipalityId && !value?.placeId) {
+      console.log('🗺️ No values to load, returning early')
+      return
+    }
 
     const loadSelected = async () => {
       const supabase = createClient()
 
       if (value.placeId) {
-        const { data: place } = await supabase
+        console.log('🗺️ Loading place with ID:', value.placeId)
+        const { data: place, error } = await supabase
           .from('places')
           .select('*, municipality:municipalities(*)')
           .eq('id', value.placeId)
           .single()
 
+        console.log('🗺️ Place query result:', { place, error })
+
         if (place) {
           setSelectedPlace(place as Place)
           setSelectedMunicipality(place.municipality as Municipality)
           setStep('place')
+          console.log('🗺️ Set place:', place.name)
+        } else {
+          console.error('🗺️ Place not found for ID:', value.placeId)
         }
       } else if (value.municipalityId) {
-        const { data: municipality } = await supabase
+        console.log('🗺️ Loading municipality with ID:', value.municipalityId)
+        const { data: municipality, error } = await supabase
           .from('municipalities')
           .select('*')
           .eq('id', value.municipalityId)
           .single()
 
+        console.log('🗺️ Municipality query result:', { municipality, error })
+
         if (municipality) {
           setSelectedMunicipality(municipality as Municipality)
+          console.log('🗺️ Set municipality:', municipality.name)
         }
       }
     }
