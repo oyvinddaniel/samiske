@@ -38,7 +38,7 @@ import {
   unsubscribeFromPush,
 } from '@/lib/push-notifications'
 import { CircleManager } from '@/components/circles'
-import { GeographySelector } from '@/components/geography/GeographySelector'
+import { GeographySelector } from '@/components/geography/GeographySelectorWithAdd'
 import { getUserLocations, setUserLocation } from '@/lib/geography'
 
 interface NotificationPreferences {
@@ -515,6 +515,9 @@ export function AccountSettings({ userId }: AccountSettingsProps) {
                 onChange={(e) => setLocation(e.target.value)}
                 placeholder="F.eks. Trondheim, Norge"
               />
+              <p className="text-xs text-amber-600">
+                ⚠️ Denne kommer til å forsvinne. Gå ned til Mine steder for å velge dine steder.
+              </p>
             </div>
 
             <div className="space-y-2">
@@ -648,7 +651,7 @@ export function AccountSettings({ userId }: AccountSettingsProps) {
             <MapPin className="w-5 h-5 text-emerald-600" />
             Mine steder
           </CardTitle>
-          <CardDescription>Fortell oss hvor du bor og hvor du kommer fra</CardDescription>
+          <CardDescription>Velg hvor du bor nå og hvor du kommer fra</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="space-y-3">

@@ -60,6 +60,7 @@ interface SuggestChangeModalProps {
   suggestionType: SuggestionType
   parentId?: string // For new items - which parent to attach to
   onSuccess?: () => void
+  onAddMunicipality?: () => void // Callback to open "add municipality" modal
 }
 
 interface GeographyImage {
@@ -77,6 +78,7 @@ export function SuggestChangeModal({
   suggestionType,
   parentId,
   onSuccess,
+  onAddMunicipality,
 }: SuggestChangeModalProps) {
   const supabase = useMemo(() => createClient(), [])
   const [loading, setLoading] = useState(false)
@@ -586,29 +588,37 @@ export function SuggestChangeModal({
             </div>
           )}
 
-          {/* Language area selection - for municipalities */}
+          {/* Language area selection - for municipalities (multi-select) */}
           {entityType === 'municipality' && (
             <div className="space-y-2">
-              <Label>Språkområde</Label>
+              <Label>Språkområder</Label>
               <p className="text-xs text-gray-500 mb-2">
-                Velg hvilket språkområde kommunen tilhører
+                Velg hvilke språkområder kommunen tilhører (kan velge flere)
               </p>
-              <Select
-                value={selectedLanguageAreas[0] || ''}
-                onValueChange={(value) => setSelectedLanguageAreas([value])}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Velg språkområde" />
-                </SelectTrigger>
-                <SelectContent>
-                  {languageAreas.map((area) => (
-                    <SelectItem key={area.id} value={area.id}>
+              <div className="space-y-2 border rounded-lg p-3 max-h-48 overflow-y-auto">
+                {languageAreas.map((area) => (
+                  <div key={area.id} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={`lang-${area.id}`}
+                      checked={selectedLanguageAreas.includes(area.id)}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          setSelectedLanguageAreas([...selectedLanguageAreas, area.id])
+                        } else {
+                          setSelectedLanguageAreas(selectedLanguageAreas.filter(id => id !== area.id))
+                        }
+                      }}
+                    />
+                    <label
+                      htmlFor={`lang-${area.id}`}
+                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                    >
                       {area.name}
                       {area.name_sami && ` (${area.name_sami})`}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                    </label>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 
@@ -629,6 +639,30 @@ export function SuggestChangeModal({
                   ))}
                 </SelectContent>
               </Select>
+              {onAddMunicipality && municipalities.length === 0 && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={onAddMunicipality}
+                  className="w-full mt-2"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Legg til kommunen din
+                </Button>
+              )}
+              {onAddMunicipality && municipalities.length > 0 && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={onAddMunicipality}
+                  className="w-full mt-2 text-blue-600"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Finner du ikke kommunen? Legg til ny kommune
+                </Button>
+              )}
             </div>
           )}
 
