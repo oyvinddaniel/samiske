@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, Suspense } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import { Header } from '@/components/layout/Header'
+import { HomeLayout } from '@/components/layout/HomeLayout'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { ChevronLeft, ChevronRight, Calendar, MapPin, Clock } from 'lucide-react'
@@ -28,7 +28,7 @@ const MONTHS = [
   'Juli', 'August', 'September', 'Oktober', 'November', 'Desember'
 ]
 
-export default function CalendarPage() {
+function CalendarContent() {
   const [currentDate, setCurrentDate] = useState(new Date())
   const [events, setEvents] = useState<Event[]>([])
   const [loading, setLoading] = useState(true)
@@ -168,10 +168,8 @@ export default function CalendarPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Header />
-
-      <main className="max-w-6xl mx-auto px-4 py-6">
+    <HomeLayout>
+      <div className="w-full max-w-full">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Calendar */}
           <Card className="lg:col-span-2">
@@ -328,7 +326,15 @@ export default function CalendarPage() {
             </Link>
           </div>
         </div>
-      </main>
-    </div>
+      </div>
+    </HomeLayout>
+  )
+}
+
+export default function CalendarPage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" /></div>}>
+      <CalendarContent />
+    </Suspense>
   )
 }

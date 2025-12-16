@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
@@ -19,7 +19,7 @@ import { NotificationBell } from '@/components/notifications/NotificationBell'
 import { BroadcastBadge } from '@/components/broadcast/BroadcastBadge'
 import { ChangelogDropdown } from '@/components/changelog/ChangelogDropdown'
 import { SocialPanel } from '@/components/social/SocialPanel'
-import { Users, X, Search } from 'lucide-react'
+import { Users, X, Search, LogOut, User as UserIcon, Bell, Settings } from 'lucide-react'
 import { UnifiedSearchBar } from '@/components/search/UnifiedSearchBar'
 import { cn } from '@/lib/utils'
 import { formatVersionString } from '@/lib/version'
@@ -40,7 +40,6 @@ export function Header({ currentCategory }: HeaderProps) {
   const [loading, setLoading] = useState(true)
   const [showSocialPanel, setShowSocialPanel] = useState(false)
   const [mounted, setMounted] = useState(false)
-  const [isCollapsed, setIsCollapsed] = useState(false)
 
   // Create stable supabase client reference
   const supabase = useMemo(() => createClient(), [])
@@ -49,57 +48,13 @@ export function Header({ currentCategory }: HeaderProps) {
     setMounted(true)
   }, [])
 
-  // Listen for search active state and handle scroll to top
-  useEffect(() => {
-    const isMobile = () => window.innerWidth < 768
-
-    const handleSearchActiveChange = (event: CustomEvent<{ active: boolean }>) => {
-      if (isMobile()) {
-        setIsCollapsed(event.detail.active)
-      }
-    }
-
-    const handleScroll = () => {
-      if (!isMobile()) return
-
-      // If scrolled to top, expand navbar
-      if (window.scrollY === 0) {
-        setIsCollapsed(false)
-      }
-    }
-
-    // Also check on touch end for better mobile support
-    const handleTouchEnd = () => {
-      if (!isMobile()) return
-
-      // Small delay to let scroll position settle
-      setTimeout(() => {
-        if (window.scrollY === 0) {
-          setIsCollapsed(false)
-        }
-      }, 100)
-    }
-
-    window.addEventListener('search-active-change', handleSearchActiveChange as EventListener)
-    window.addEventListener('scroll', handleScroll, { passive: true })
-    window.addEventListener('touchend', handleTouchEnd, { passive: true })
-
-    return () => {
-      window.removeEventListener('search-active-change', handleSearchActiveChange as EventListener)
-      window.removeEventListener('scroll', handleScroll)
-      window.removeEventListener('touchend', handleTouchEnd)
-    }
-  }, [])
-
   useEffect(() => {
     const getUser = async () => {
       try {
-        // First try getSession (faster, uses cached session)
         const { data: { session } } = await supabase.auth.getSession()
         const currentUser = session?.user
 
         if (!currentUser) {
-          // Fallback to getUser
           const { data: { user: fetchedUser } } = await supabase.auth.getUser()
           setUser(fetchedUser)
           if (fetchedUser) {
@@ -150,10 +105,8 @@ export function Header({ currentCategory }: HeaderProps) {
     }
   }, [showSocialPanel])
 
-
   const handleLogout = async () => {
     await supabase.auth.signOut()
-    // Use hard reload to clear all client-side auth state
     window.location.href = '/'
   }
 
@@ -168,76 +121,73 @@ export function Header({ currentCategory }: HeaderProps) {
   }
 
   return (
-    <header className="sticky top-0 z-50 shadow-md transition-all duration-300" style={{ backgroundColor: '#0143F5' }}>
-      {/* Top row - collapses when search is active on mobile */}
-      <div className={cn(
-        "flex items-center justify-between px-4 md:px-6 transition-all duration-300 overflow-hidden",
-        // Only collapse on mobile (md:h-16 and md:opacity-100 ensure desktop always shows full navbar)
-        isCollapsed ? "h-0 opacity-0 md:h-16 md:opacity-100" : "h-16 opacity-100"
-      )}>
-        {/* Mobile nav */}
-        <div className="flex items-center gap-3 md:hidden">
-          <MobileNav currentCategory={currentCategory} />
-          <Link href="/" className="flex items-center gap-2">
-            <div className="w-9 h-9 rounded-xl overflow-hidden shadow-md">
+    <header
+      className="sticky top-0 z-50 shadow-lg"
+      style={{
+        backgroundImage: 'url(/images/sami-flag-blur.jpg)',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center'
+      }}
+    >
+      {/* Main row - Logo and Icons (+ Search on larger screens) */}
+      <div className="flex items-center gap-4 px-4 md:px-6 h-14 min-[500px]:h-16">
+
+        {/* Left: Mobile nav + Logo */}
+        <div className="flex items-center gap-3 flex-shrink-0">
+          {/* Mobile hamburger */}
+          <div className="md:hidden">
+            <MobileNav currentCategory={currentCategory} />
+          </div>
+
+          {/* Logo */}
+          <Link href="/" className="flex items-center gap-2.5">
+            <div className="w-10 h-10 p-1.5 rounded-xl bg-white/20 flex items-center justify-center backdrop-blur-sm">
               <img
-                src="/images/sami.jpg"
+                src="/images/sami.png"
                 alt="Samisk flagg"
-                className="w-full h-full object-cover"
+                className="w-full h-full object-contain rounded-md"
               />
             </div>
-            <span className="font-bold text-white">samiske.no</span>
+            <span className="hidden sm:block font-bold text-white text-lg">samiske.no</span>
           </Link>
         </div>
 
-        {/* Desktop logo and title */}
-        <div className="hidden md:flex items-center gap-4">
-          <Link href="/" className="flex items-center gap-2">
-            <div className="w-9 h-9 rounded-xl overflow-hidden shadow-md">
-              <img
-                src="/images/sami.jpg"
-                alt="Samisk flagg"
-                className="w-full h-full object-cover"
-              />
-            </div>
-            <span className="font-bold text-white">samiske.no</span>
-          </Link>
-          <div className="h-6 w-px bg-white/30" />
-          <h1 className="text-base font-medium text-white/90">
-            {currentCategory
-              ? currentCategory === 'mote' ? 'Møte' : currentCategory.charAt(0).toUpperCase() + currentCategory.slice(1)
-              : 'Hjem'
-            }
-          </h1>
+        {/* Center: Integrated Search - hidden under 500px */}
+        <div className="hidden min-[500px]:flex flex-1 max-w-xl mr-auto ml-0 md:ml-32">
+          <UnifiedSearchBar />
         </div>
 
-        {/* Right side */}
-        <div className="flex items-center gap-3">
+        {/* Right: Icons */}
+        <div className="flex items-center gap-1 flex-shrink-0 ml-auto min-[500px]:ml-0">
           {loading ? (
             <div className="w-9 h-9 rounded-full bg-white/20 animate-pulse" />
           ) : user ? (
-            <div className="flex items-center gap-2">
-              {/* Social button - hidden on mobile as it's in BottomNav */}
+            <>
+              {/* Social button - desktop only */}
               <button
                 onClick={() => setShowSocialPanel(true)}
-                className="hidden lg:flex relative p-2 text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition-colors focus-visible:ring-2 focus-visible:ring-white"
+                className="hidden lg:flex p-2.5 text-white/80 hover:text-white hover:bg-white/20 rounded-xl transition-all"
                 title="Venner og meldinger"
-                aria-label="Venner og meldinger"
               >
                 <Users className="w-5 h-5" />
               </button>
+
+              {/* Notifications */}
               <NotificationBell userId={user.id} />
+
+              {/* Broadcast */}
               <BroadcastBadge />
+
+              {/* Changelog - admin only */}
               <ChangelogDropdown isAdmin={profile?.role === 'admin'} userId={user.id} />
+
+              {/* User avatar dropdown */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <button
-                    className="flex items-center gap-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-white rounded-full group"
-                    aria-label="Brukermeny"
-                  >
-                    <Avatar className="w-9 h-9 ring-2 ring-white/30 group-hover:ring-white/50 transition-all">
+                  <button className="ml-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-white rounded-full">
+                    <Avatar className="w-9 h-9 ring-2 ring-white/30 hover:ring-white/60 transition-all">
                       <AvatarImage src={profile?.avatar_url || undefined} />
-                      <AvatarFallback className="bg-white text-[#0143F5] text-sm font-medium">
+                      <AvatarFallback className="bg-white/90 text-gray-800 text-sm font-semibold">
                         {getInitials(profile?.full_name || user.email)}
                       </AvatarFallback>
                     </Avatar>
@@ -253,35 +203,26 @@ export function Header({ currentCategory }: HeaderProps) {
                     onClick={() => window.dispatchEvent(new CustomEvent('open-profile-panel'))}
                     className="cursor-pointer"
                   >
-                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                    </svg>
+                    <UserIcon className="w-4 h-4 mr-2" />
                     Min profil
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
                     <Link href="/innstillinger" className="cursor-pointer">
-                      <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                      </svg>
+                      <Bell className="w-4 h-4 mr-2" />
                       Varsler
                     </Link>
                   </DropdownMenuItem>
                   {profile?.role === 'admin' && (
                     <DropdownMenuItem asChild>
                       <Link href="/admin" className="cursor-pointer">
-                        <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                        </svg>
+                        <Settings className="w-4 h-4 mr-2" />
                         Admin
                       </Link>
                     </DropdownMenuItem>
                   )}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleLogout} className="text-red-600 cursor-pointer">
-                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                    </svg>
+                    <LogOut className="w-4 h-4 mr-2" />
                     Logg ut
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
@@ -290,21 +231,28 @@ export function Header({ currentCategory }: HeaderProps) {
                   </div>
                 </DropdownMenuContent>
               </DropdownMenu>
-            </div>
+            </>
           ) : (
             <div className="flex items-center gap-2">
               <Link href="/login">
-                <Button variant="ghost" size="sm" className="font-medium text-white hover:bg-white/10 hover:text-white">
+                <Button variant="ghost" size="sm" className="font-medium text-white hover:bg-white/20 hover:text-white">
                   Logg inn
                 </Button>
               </Link>
               <Link href="/register">
-                <Button size="sm" className="bg-white text-[#0143F5] hover:bg-white/90 font-medium shadow-sm">
+                <Button size="sm" className="bg-white text-gray-900 hover:bg-white/90 font-medium shadow-sm">
                   Registrer
                 </Button>
               </Link>
             </div>
           )}
+        </div>
+      </div>
+
+      {/* Mobile Search Row - visible under 500px */}
+      <div className="flex min-[500px]:hidden px-4 pb-3">
+        <div className="w-full">
+          <UnifiedSearchBar />
         </div>
       </div>
 
@@ -324,10 +272,7 @@ export function Header({ currentCategory }: HeaderProps) {
           <div
             className={cn(
               'hidden lg:flex fixed z-[9999] bg-white rounded-2xl shadow-2xl flex-col transition-all duration-300 ease-out overflow-hidden',
-              'w-96',
-              'right-4',
-              'bottom-20',
-              'h-[60vh]',
+              'w-96 right-4 bottom-20 h-[60vh]',
               showSocialPanel ? 'opacity-100 scale-100' : 'opacity-0 scale-95 pointer-events-none'
             )}
           >
@@ -340,7 +285,6 @@ export function Header({ currentCategory }: HeaderProps) {
               <button
                 onClick={() => setShowSocialPanel(false)}
                 className="p-1.5 text-gray-500 hover:text-gray-700 rounded-lg hover:bg-gray-100"
-                aria-label="Lukk"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -354,16 +298,6 @@ export function Header({ currentCategory }: HeaderProps) {
         </>,
         document.body
       )}
-
-      {/* Large Search Bar - always visible */}
-      <div className={cn(
-        "px-4 md:px-6 transition-all duration-300",
-        isCollapsed ? "pt-3 pb-3" : "pb-3"
-      )}>
-        <div className="max-w-2xl mx-auto">
-          <UnifiedSearchBar />
-        </div>
-      </div>
     </header>
   )
 }
