@@ -287,6 +287,7 @@ export async function searchGeography(
         name: item.name as string,
         name_sami: item.name_sami as string | null,
         location_type: 'language_area',
+        code: item.code as string,
         created_at: undefined,
       })
     })
@@ -316,6 +317,7 @@ export async function searchGeography(
       const municipality = Array.isArray(item.municipality)
         ? item.municipality[0]
         : item.municipality
+      const country = municipality?.country
       results.push({
         id: item.id as string,
         type: 'geografi' as const,
@@ -324,6 +326,8 @@ export async function searchGeography(
         slug: item.slug as string,
         location_type: 'place',
         parent: municipality?.name,
+        municipality_slug: municipality?.slug as string | undefined,
+        country_code: country?.code as string | undefined,
         created_at: undefined,
       })
     })

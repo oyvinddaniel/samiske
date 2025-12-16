@@ -68,8 +68,11 @@ export interface GeographySearchResult extends BaseSearchResult {
   name_sami: string | null
   location_type: 'language_area' | 'municipality' | 'place'
   slug?: string
+  code?: string // For language areas
   parent?: string // Parent location name
   country_code?: string
+  // For places - need municipality info for routing
+  municipality_slug?: string
 }
 
 // Community search result

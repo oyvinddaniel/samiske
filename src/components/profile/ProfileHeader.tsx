@@ -25,6 +25,8 @@ interface Profile {
 interface LocationInfo {
   currentLocation: string | null
   homeLocation: string | null
+  currentLocationData: { type: 'municipality' | 'place'; id: string; name: string } | null
+  homeLocationData: { type: 'municipality' | 'place'; id: string; name: string } | null
 }
 
 
@@ -51,7 +53,12 @@ export function ProfileHeader({
 }: ProfileHeaderProps) {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
-  const [locationInfo, setLocationInfo] = useState<LocationInfo>({ currentLocation: null, homeLocation: null })
+  const [locationInfo, setLocationInfo] = useState<LocationInfo>({
+    currentLocation: null,
+    homeLocation: null,
+    currentLocationData: null,
+    homeLocationData: null
+  })
   const supabase = useMemo(() => createClient(), [])
 
   // Edit form state
@@ -83,7 +90,12 @@ export function ProfileHeader({
       // Fetch geography locations
       const locations = await getUserLocations(userId)
       if (locations && profileData) {
-        const locationStrings: LocationInfo = { currentLocation: null, homeLocation: null }
+        const locationData: LocationInfo = {
+          currentLocation: null,
+          homeLocation: null,
+          currentLocationData: null,
+          homeLocationData: null
+        }
 
         // Fetch current location details (only if user wants to show it publicly)
         const showCurrentLocation = profileData.show_current_location ?? true
@@ -96,7 +108,12 @@ export function ProfileHeader({
 
           if (place) {
             const municipality = Array.isArray(place.municipality) ? place.municipality[0] : place.municipality
-            locationStrings.currentLocation = `${place.name}, ${municipality?.name}`
+            locationData.currentLocation = `${place.name}, ${municipality?.name}`
+            locationData.currentLocationData = {
+              type: 'place',
+              id: locations.currentPlaceId,
+              name: place.name
+            }
           }
         } else if (showCurrentLocation && locations.currentMunicipalityId) {
           const { data: municipality } = await supabase
@@ -106,7 +123,12 @@ export function ProfileHeader({
             .single()
 
           if (municipality) {
-            locationStrings.currentLocation = municipality.name
+            locationData.currentLocation = municipality.name
+            locationData.currentLocationData = {
+              type: 'municipality',
+              id: locations.currentMunicipalityId,
+              name: municipality.name
+            }
           }
         }
 
@@ -121,7 +143,12 @@ export function ProfileHeader({
 
           if (place) {
             const municipality = Array.isArray(place.municipality) ? place.municipality[0] : place.municipality
-            locationStrings.homeLocation = `${place.name}, ${municipality?.name}`
+            locationData.homeLocation = `${place.name}, ${municipality?.name}`
+            locationData.homeLocationData = {
+              type: 'place',
+              id: locations.homePlaceId,
+              name: place.name
+            }
           }
         } else if (showHomeLocation && locations.homeMunicipalityId) {
           const { data: municipality } = await supabase
@@ -131,11 +158,16 @@ export function ProfileHeader({
             .single()
 
           if (municipality) {
-            locationStrings.homeLocation = municipality.name
+            locationData.homeLocation = municipality.name
+            locationData.homeLocationData = {
+              type: 'municipality',
+              id: locations.homeMunicipalityId,
+              name: municipality.name
+            }
           }
         }
 
-        setLocationInfo(locationStrings)
+        setLocationInfo(locationData)
       }
 
       setLoading(false)
@@ -267,17 +299,31 @@ export function ProfileHeader({
 
                 {(locationInfo.currentLocation || locationInfo.homeLocation) && (
                   <div className="text-sm text-gray-500 mt-1 space-y-1">
-                    {locationInfo.currentLocation && (
-                      <p className="flex items-center gap-1">
+                    {locationInfo.currentLocation && locationInfo.currentLocationData && (
+                      <button
+                        onClick={() => {
+                          window.dispatchEvent(new CustomEvent('open-location-panel', {
+                            detail: locationInfo.currentLocationData
+                          }))
+                        }}
+                        className="flex items-center gap-1 hover:text-blue-600 transition-colors cursor-pointer"
+                      >
                         <MapPin className="w-4 h-4" />
-                        {locationInfo.currentLocation}
-                      </p>
+                        <span className="underline">{locationInfo.currentLocation}</span>
+                      </button>
                     )}
-                    {locationInfo.homeLocation && (
-                      <p className="flex items-center gap-1">
+                    {locationInfo.homeLocation && locationInfo.homeLocationData && (
+                      <button
+                        onClick={() => {
+                          window.dispatchEvent(new CustomEvent('open-location-panel', {
+                            detail: locationInfo.homeLocationData
+                          }))
+                        }}
+                        className="flex items-center gap-1 hover:text-blue-600 transition-colors cursor-pointer"
+                      >
                         <Home className="w-4 h-4" />
-                        {locationInfo.homeLocation}
-                      </p>
+                        <span className="underline">{locationInfo.homeLocation}</span>
+                      </button>
                     )}
                   </div>
                 )}

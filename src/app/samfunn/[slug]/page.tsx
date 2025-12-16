@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { useParams, notFound } from 'next/navigation'
+import { useParams, useSearchParams, notFound } from 'next/navigation'
 import { Building2, Users, Settings, Globe, Mail, Phone, MapPin, BadgeCheck, ExternalLink, Package, Briefcase, Plus, MessageCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -35,7 +35,17 @@ import { getIndustryDisplayName } from '@/lib/types/industries'
 
 export default function CommunityPage() {
   const params = useParams()
+  const searchParams = useSearchParams()
   const slug = params.slug as string
+
+  // Map URL tab param to internal tab values
+  const tabParam = searchParams.get('tab')
+  const getInitialTab = () => {
+    if (tabParam === 'produkter') return 'products'
+    if (tabParam === 'tjenester') return 'services'
+    if (tabParam === 'om') return 'about'
+    return 'posts'
+  }
 
   const [community, setCommunity] = useState<Community | null>(null)
   const [admins, setAdmins] = useState<CommunityAdmin[]>([])
@@ -267,7 +277,7 @@ export default function CommunityPage() {
       </div>
 
       {/* Content tabs */}
-      <Tabs defaultValue="posts" className="space-y-4">
+      <Tabs defaultValue={getInitialTab()} className="space-y-4">
         <TabsList>
           <TabsTrigger value="posts">Innlegg</TabsTrigger>
           <TabsTrigger value="products">

@@ -39,35 +39,44 @@ export function UnifiedSearchBar() {
       savedScrollPosition.current = scrollContainerRef.current.scrollTop
     }
 
-    // Navigate to result based on type - all open in feed area with hash anchors
+    // Navigate to result based on type
     switch (result.type) {
       case 'brukere':
-        // Will be handled by ProfileOverlay in the result component
+        // Handled by ProfileOverlay in SearchResultItem - just close search
         break
       case 'innlegg':
       case 'arrangementer':
-        window.location.href = `/#post-${result.id}`
+        window.location.href = `/innlegg/${result.id}`
         break
       case 'kommentarer':
         if (result.post?.id) {
-          window.location.href = `/#post-${result.post.id}`
+          window.location.href = `/innlegg/${result.post.id}`
         }
         break
       case 'geografi':
-        // Open in feed area with hash anchor
-        window.location.href = `/#geography-${result.id}`
+        // Navigate based on location type
+        if (result.location_type === 'language_area' && result.code) {
+          window.location.href = `/sapmi/sprak/${result.code}`
+        } else if (result.location_type === 'municipality' && result.country_code && result.slug) {
+          window.location.href = `/sapmi/${result.country_code}/${result.slug}`
+        } else if (result.location_type === 'place' && result.country_code && result.municipality_slug && result.slug) {
+          window.location.href = `/sapmi/${result.country_code}/${result.municipality_slug}/${result.slug}`
+        }
         break
       case 'samfunn':
-        // Open in feed area with hash anchor
-        window.location.href = `/#community-${result.id}`
+        window.location.href = `/samfunn/${result.slug}`
         break
       case 'tjenester':
-        // Open in feed area with hash anchor
-        window.location.href = `/#service-${result.id}`
+        // Navigate to community page with services tab
+        if (result.community?.slug) {
+          window.location.href = `/samfunn/${result.community.slug}?tab=tjenester`
+        }
         break
       case 'produkter':
-        // Open in feed area with hash anchor
-        window.location.href = `/#product-${result.id}`
+        // Navigate to community page with products tab
+        if (result.community?.slug) {
+          window.location.href = `/samfunn/${result.community.slug}?tab=produkter`
+        }
         break
     }
 
