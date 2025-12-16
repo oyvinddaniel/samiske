@@ -7,15 +7,8 @@ import { createClient } from '@/lib/supabase/client'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
-import { Calendar, MapPin, UserPlus, MessageCircle, ChevronLeft, BarChart3, X } from 'lucide-react'
+import { Calendar, MapPin, MessageCircle, ChevronLeft, BarChart3, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
-
-interface NewMember {
-  id: string
-  full_name: string | null
-  avatar_url: string | null
-  created_at: string
-}
 
 interface UpcomingEvent {
   id: string
@@ -49,7 +42,6 @@ interface RecentComment {
 }
 
 export function RightSidebar() {
-  const [newMembers, setNewMembers] = useState<NewMember[]>([])
   const [upcomingEvents, setUpcomingEvents] = useState<UpcomingEvent[]>([])
   const [recentComments, setRecentComments] = useState<RecentComment[]>([])
   const [stats, setStats] = useState<Stats>({ totalMembers: 0, totalPosts: 0, totalComments: 0 })
@@ -239,17 +231,6 @@ export function RightSidebar() {
     })
   }, [supabase])
 
-  // Fetch new members (can be called to refresh)
-  const fetchNewMembers = useCallback(async () => {
-    const { data: members } = await supabase
-      .from('profiles')
-      .select('id, full_name, avatar_url, created_at')
-      .order('created_at', { ascending: false })
-      .limit(5)
-
-    if (members) setNewMembers(members)
-  }, [supabase])
-
   // Fetch upcoming events (can be called to refresh)
   const fetchUpcomingEvents = useCallback(async () => {
     const today = new Date().toISOString().split('T')[0]
@@ -272,7 +253,6 @@ export function RightSidebar() {
 
       // Fetch all data in parallel
       await Promise.all([
-        fetchNewMembers(),
         fetchUpcomingEvents(),
         fetchRecentComments(),
         fetchStats(),
@@ -282,7 +262,7 @@ export function RightSidebar() {
     }
 
     fetchData()
-  }, [supabase, fetchNewMembers, fetchUpcomingEvents, fetchRecentComments, fetchStats])
+  }, [supabase, fetchUpcomingEvents, fetchRecentComments, fetchStats])
 
   // Real-time subscription for all relevant tables
   useEffect(() => {
@@ -304,20 +284,12 @@ export function RightSidebar() {
           fetchStats()
         }
       )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'profiles' },
-        () => {
-          fetchNewMembers()
-          fetchStats()
-        }
-      )
       .subscribe()
 
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [supabase, fetchRecentComments, fetchStats, fetchUpcomingEvents, fetchNewMembers])
+  }, [supabase, fetchRecentComments, fetchStats, fetchUpcomingEvents])
 
   const getInitials = (name: string | null) => {
     if (!name) return '?'
@@ -430,52 +402,6 @@ export function RightSidebar() {
           </CardContent>
         </Card>
       )}
-
-      {/* New members */}
-      <Card className="gap-0">
-        <CardHeader className="pb-0">
-          <CardTitle className="text-sm font-semibold flex items-center gap-2">
-            <UserPlus className="w-4 h-4 text-blue-500" />
-            Nye medlemmer
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="pt-0">
-          <div className={`space-y-2 ${!isLoggedIn ? 'blur-sm select-none' : ''}`}>
-            {newMembers.map((member) => (
-              <button
-                key={member.id}
-                onClick={() => {
-                  window.dispatchEvent(
-                    new CustomEvent('open-user-profile-panel', {
-                      detail: { userId: member.id }
-                    })
-                  );
-                  if (isMobile) setMobileOpen(false);
-                }}
-                className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-gray-50 transition-colors w-full text-left"
-              >
-                <Avatar className="w-8 h-8">
-                  <AvatarImage src={member.avatar_url || undefined} />
-                  <AvatarFallback className="bg-blue-100 text-blue-600 text-xs">
-                    {getInitials(member.full_name)}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-900 truncate">
-                    {member.full_name || 'Ukjent'}
-                  </p>
-                  <p className="text-[10px] text-gray-400">
-                    {getTimeAgo(member.created_at)}
-                  </p>
-                </div>
-              </button>
-            ))}
-          </div>
-          {!isLoggedIn && (
-            <p className="text-[10px] text-gray-400 text-center mt-2">Logg inn for å se medlemmer</p>
-          )}
-        </CardContent>
-      </Card>
 
       {/* Recent comments */}
       <Card className="gap-0">
