@@ -9,7 +9,8 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import { MapPin, Calendar, Settings, Save, X } from 'lucide-react'
+import { MapPin, Home, Calendar, Settings, Save, X } from 'lucide-react'
+import { getUserLocations } from '@/lib/geography'
 
 interface Profile {
   id: string
@@ -19,6 +20,11 @@ interface Profile {
   location: string | null
   role: string
   created_at: string
+}
+
+interface LocationInfo {
+  currentLocation: string | null
+  homeLocation: string | null
 }
 
 
@@ -45,6 +51,7 @@ export function ProfileHeader({
 }: ProfileHeaderProps) {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
+  const [locationInfo, setLocationInfo] = useState<LocationInfo>({ currentLocation: null, homeLocation: null })
   const supabase = useMemo(() => createClient(), [])
 
   // Edit form state
@@ -71,6 +78,62 @@ export function ProfileHeader({
           bio: profileData.bio || '',
           location: profileData.location || ''
         })
+      }
+
+      // Fetch geography locations
+      const locations = await getUserLocations(userId)
+      if (locations) {
+        const locationStrings: LocationInfo = { currentLocation: null, homeLocation: null }
+
+        // Fetch current location details
+        if (locations.currentPlaceId) {
+          const { data: place } = await supabase
+            .from('places')
+            .select('name, municipality:municipalities(name)')
+            .eq('id', locations.currentPlaceId)
+            .single()
+
+          if (place) {
+            const municipality = Array.isArray(place.municipality) ? place.municipality[0] : place.municipality
+            locationStrings.currentLocation = `${place.name}, ${municipality?.name}`
+          }
+        } else if (locations.currentMunicipalityId) {
+          const { data: municipality } = await supabase
+            .from('municipalities')
+            .select('name')
+            .eq('id', locations.currentMunicipalityId)
+            .single()
+
+          if (municipality) {
+            locationStrings.currentLocation = municipality.name
+          }
+        }
+
+        // Fetch home location details
+        if (locations.homePlaceId) {
+          const { data: place } = await supabase
+            .from('places')
+            .select('name, municipality:municipalities(name)')
+            .eq('id', locations.homePlaceId)
+            .single()
+
+          if (place) {
+            const municipality = Array.isArray(place.municipality) ? place.municipality[0] : place.municipality
+            locationStrings.homeLocation = `${place.name}, ${municipality?.name}`
+          }
+        } else if (locations.homeMunicipalityId) {
+          const { data: municipality } = await supabase
+            .from('municipalities')
+            .select('name')
+            .eq('id', locations.homeMunicipalityId)
+            .single()
+
+          if (municipality) {
+            locationStrings.homeLocation = municipality.name
+          }
+        }
+
+        setLocationInfo(locationStrings)
       }
 
       setLoading(false)
@@ -200,11 +263,21 @@ export function ProfileHeader({
                   {getRoleBadge(profile.role)}
                 </div>
 
-                {profile.location && (
-                  <p className="text-sm text-gray-500 flex items-center gap-1 mt-1">
-                    <MapPin className="w-4 h-4" />
-                    {profile.location}
-                  </p>
+                {(locationInfo.currentLocation || locationInfo.homeLocation) && (
+                  <div className="text-sm text-gray-500 mt-1 space-y-1">
+                    {locationInfo.currentLocation && (
+                      <p className="flex items-center gap-1">
+                        <MapPin className="w-4 h-4" />
+                        {locationInfo.currentLocation}
+                      </p>
+                    )}
+                    {locationInfo.homeLocation && (
+                      <p className="flex items-center gap-1">
+                        <Home className="w-4 h-4" />
+                        {locationInfo.homeLocation}
+                      </p>
+                    )}
+                  </div>
                 )}
 
                 {profile.bio && (
