@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect, useMemo, useRef, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { Header } from '@/components/layout/Header'
@@ -35,7 +35,7 @@ interface NotificationPreferences {
   push_enabled: boolean
 }
 
-export default function SettingsPage() {
+function SettingsPageContent() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [userId, setUserId] = useState<string | null>(null)
@@ -55,8 +55,11 @@ export default function SettingsPage() {
     placeId: string | null
   }>({ municipalityId: null, placeId: null })
   const [savingLocations, setSavingLocations] = useState(false)
+  const [isHighlighted, setIsHighlighted] = useState(false)
   const router = useRouter()
+  const searchParams = useSearchParams()
   const supabase = useMemo(() => createClient(), [])
+  const settingsRef = useRef<HTMLDivElement>(null)
 
   // Check auth and fetch preferences
   useEffect(() => {
@@ -114,6 +117,29 @@ export default function SettingsPage() {
 
     init()
   }, [supabase, router])
+
+  // Handle highlight animation when coming from profile
+  useEffect(() => {
+    const shouldHighlight = searchParams.get('highlight') === 'true'
+    if (shouldHighlight && !loading && settingsRef.current) {
+      // Wait a bit for page to render
+      setTimeout(() => {
+        // Scroll to settings section smoothly
+        settingsRef.current?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'center'
+        })
+
+        // Trigger highlight animation
+        setIsHighlighted(true)
+
+        // Remove highlight after animation
+        setTimeout(() => {
+          setIsHighlighted(false)
+        }, 3000)
+      }, 500)
+    }
+  }, [searchParams, loading])
 
   const handleSave = async () => {
     if (!userId) return
@@ -338,7 +364,14 @@ export default function SettingsPage() {
         </Card>
 
         {/* Mine steder */}
-        <Card>
+        <Card
+          ref={settingsRef}
+          className={`transition-all duration-1000 ${
+            isHighlighted
+              ? 'ring-4 ring-blue-400 ring-opacity-50 shadow-2xl'
+              : ''
+          }`}
+        >
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <MapPin className="w-5 h-5 text-emerald-600" />
@@ -418,5 +451,27 @@ export default function SettingsPage() {
         </div>
       </main>
     </div>
+  )
+}
+
+export default function SettingsPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-gray-50">
+          <Header />
+          <main className="max-w-2xl mx-auto px-4 py-6">
+            <Card>
+              <CardContent className="p-6">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto" />
+                <p className="text-center text-gray-500 mt-4">Laster innstillinger...</p>
+              </CardContent>
+            </Card>
+          </main>
+        </div>
+      }
+    >
+      <SettingsPageContent />
+    </Suspense>
   )
 }

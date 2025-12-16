@@ -8,7 +8,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
-import { MessageCircle } from 'lucide-react'
+import { MessageCircle, Heart } from 'lucide-react'
 import { LikeUser } from './types'
 import { getInitials } from './utils'
 
@@ -39,11 +39,14 @@ export function PostActions({
         <Button
           variant="ghost"
           size="sm"
-          className={`h-7 px-1.5 text-xs ${liked ? 'text-red-500' : 'text-gray-500'}`}
+          className={`h-7 px-1.5 text-xs ${
+            liked ? 'text-red-500' : likeCount > 0 ? 'text-pink-400' : 'text-gray-400'
+          }`}
           onClick={onLike}
           disabled={!currentUserId}
         >
-          {liked ? '❤️' : '🤍'} {likeCount}
+          <Heart className={`w-4 h-4 mr-1 ${liked ? 'fill-current' : likeCount > 0 ? 'fill-current' : ''}`} />
+          {likeCount}
         </Button>
 
         <Button

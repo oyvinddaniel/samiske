@@ -1,15 +1,12 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { Card, CardContent } from '@/components/ui/card'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
-import { MapPin, Home, Calendar, Settings, Save, X } from 'lucide-react'
+import { MapPin, Home, Calendar, Settings } from 'lucide-react'
 import { getUserLocations } from '@/lib/geography'
 
 interface Profile {
@@ -35,10 +32,7 @@ interface ProfileHeaderProps {
   showEditButton?: boolean
   showNewPostButton?: boolean
   onNewPost?: () => void
-  isEditing?: boolean
-  onEdit?: () => void
-  onSave?: (updates: Partial<Profile>) => Promise<void>
-  onCancel?: () => void
+  onOpenSettings?: () => void
 }
 
 export function ProfileHeader({
@@ -46,10 +40,7 @@ export function ProfileHeader({
   showEditButton = true,
   showNewPostButton = false,
   onNewPost,
-  isEditing = false,
-  onEdit,
-  onSave,
-  onCancel
+  onOpenSettings
 }: ProfileHeaderProps) {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
@@ -60,13 +51,6 @@ export function ProfileHeader({
     homeLocationData: null
   })
   const supabase = useMemo(() => createClient(), [])
-
-  // Edit form state
-  const [editForm, setEditForm] = useState({
-    full_name: '',
-    bio: '',
-    location: ''
-  })
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -79,12 +63,6 @@ export function ProfileHeader({
 
       if (profileData) {
         setProfile(profileData)
-        // Initialize edit form with current profile data
-        setEditForm({
-          full_name: profileData.full_name || '',
-          bio: profileData.bio || '',
-          location: profileData.location || ''
-        })
       }
 
       // Fetch geography locations
@@ -176,23 +154,6 @@ export function ProfileHeader({
     fetchProfile()
   }, [userId, supabase])
 
-  // Update edit form when entering edit mode
-  useEffect(() => {
-    if (isEditing && profile) {
-      setEditForm({
-        full_name: profile.full_name || '',
-        bio: profile.bio || '',
-        location: profile.location || ''
-      })
-    }
-  }, [isEditing, profile])
-
-  const handleSaveClick = async () => {
-    if (onSave) {
-      await onSave(editForm)
-    }
-  }
-
   const getInitials = (name: string | null) => {
     if (!name) return '?'
     return name
@@ -258,122 +219,63 @@ export function ProfileHeader({
 
           {/* Info */}
           <div className="flex-1 min-w-0">
-            {isEditing ? (
-              // Edit mode
-              <div className="space-y-3">
-                <div>
-                  <label className="text-xs text-gray-500 mb-1 block">Navn</label>
-                  <Input
-                    value={editForm.full_name}
-                    onChange={(e) => setEditForm({ ...editForm, full_name: e.target.value })}
-                    placeholder="Ditt fulle navn"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs text-gray-500 mb-1 block">Lokasjon</label>
-                  <Input
-                    value={editForm.location}
-                    onChange={(e) => setEditForm({ ...editForm, location: e.target.value })}
-                    placeholder="F.eks. Tromsø, Norge"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs text-gray-500 mb-1 block">Bio</label>
-                  <Textarea
-                    value={editForm.bio}
-                    onChange={(e) => setEditForm({ ...editForm, bio: e.target.value })}
-                    placeholder="Fortell litt om deg selv..."
-                    rows={3}
-                  />
-                </div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className="text-xl font-bold text-gray-900">
+                {profile.full_name || 'Ukjent bruker'}
+              </h1>
+              {getRoleBadge(profile.role)}
+            </div>
+
+            {(locationInfo.currentLocation || locationInfo.homeLocation) && (
+              <div className="text-sm text-gray-500 mt-1 space-y-1">
+                {locationInfo.currentLocation && locationInfo.currentLocationData && (
+                  <button
+                    onClick={() => {
+                      window.dispatchEvent(new CustomEvent('open-location-panel', {
+                        detail: locationInfo.currentLocationData
+                      }))
+                    }}
+                    className="flex items-center gap-1 hover:text-blue-600 transition-colors cursor-pointer"
+                  >
+                    <MapPin className="w-4 h-4" />
+                    <span className="underline">{locationInfo.currentLocation}</span>
+                  </button>
+                )}
+                {locationInfo.homeLocation && locationInfo.homeLocationData && (
+                  <button
+                    onClick={() => {
+                      window.dispatchEvent(new CustomEvent('open-location-panel', {
+                        detail: locationInfo.homeLocationData
+                      }))
+                    }}
+                    className="flex items-center gap-1 hover:text-blue-600 transition-colors cursor-pointer"
+                  >
+                    <Home className="w-4 h-4" />
+                    <span className="underline">{locationInfo.homeLocation}</span>
+                  </button>
+                )}
               </div>
-            ) : (
-              // View mode
-              <>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h1 className="text-xl font-bold text-gray-900">
-                    {profile.full_name || 'Ukjent bruker'}
-                  </h1>
-                  {getRoleBadge(profile.role)}
-                </div>
-
-                {(locationInfo.currentLocation || locationInfo.homeLocation) && (
-                  <div className="text-sm text-gray-500 mt-1 space-y-1">
-                    {locationInfo.currentLocation && locationInfo.currentLocationData && (
-                      <button
-                        onClick={() => {
-                          window.dispatchEvent(new CustomEvent('open-location-panel', {
-                            detail: locationInfo.currentLocationData
-                          }))
-                        }}
-                        className="flex items-center gap-1 hover:text-blue-600 transition-colors cursor-pointer"
-                      >
-                        <MapPin className="w-4 h-4" />
-                        <span className="underline">{locationInfo.currentLocation}</span>
-                      </button>
-                    )}
-                    {locationInfo.homeLocation && locationInfo.homeLocationData && (
-                      <button
-                        onClick={() => {
-                          window.dispatchEvent(new CustomEvent('open-location-panel', {
-                            detail: locationInfo.homeLocationData
-                          }))
-                        }}
-                        className="flex items-center gap-1 hover:text-blue-600 transition-colors cursor-pointer"
-                      >
-                        <Home className="w-4 h-4" />
-                        <span className="underline">{locationInfo.homeLocation}</span>
-                      </button>
-                    )}
-                  </div>
-                )}
-
-                {profile.bio && (
-                  <p className="text-sm text-gray-600 mt-2 whitespace-pre-line">
-                    {profile.bio}
-                  </p>
-                )}
-
-                <p className="text-xs text-gray-400 flex items-center gap-1 mt-2">
-                  <Calendar className="w-3 h-3" />
-                  Medlem siden {formatDate(profile.created_at)}
-                </p>
-              </>
             )}
+
+            {profile.bio && (
+              <p className="text-sm text-gray-600 mt-2 whitespace-pre-line">
+                {profile.bio}
+              </p>
+            )}
+
+            <p className="text-xs text-gray-400 flex items-center gap-1 mt-2">
+              <Calendar className="w-3 h-3" />
+              Medlem siden {formatDate(profile.created_at)}
+            </p>
           </div>
 
           {/* Actions */}
           <div className="flex flex-col gap-2 sm:items-end">
-            {isEditing ? (
-              // Edit mode buttons
-              <>
-                <Button onClick={handleSaveClick} size="sm">
-                  <Save className="w-4 h-4 mr-2" />
-                  Lagre
-                </Button>
-                <Button onClick={onCancel} variant="outline" size="sm">
-                  <X className="w-4 h-4 mr-2" />
-                  Avbryt
-                </Button>
-              </>
-            ) : (
-              // View mode buttons
-              <>
-                {showEditButton && onEdit && (
-                  <Button onClick={onEdit} variant="outline" size="sm">
-                    <Settings className="w-4 h-4 mr-2" />
-                    Rediger profil
-                  </Button>
-                )}
-                {showEditButton && !onEdit && (
-                  <Link href="/profil">
-                    <Button variant="outline" size="sm">
-                      <Settings className="w-4 h-4 mr-2" />
-                      Innstillinger
-                    </Button>
-                  </Link>
-                )}
-              </>
+            {showEditButton && onOpenSettings && (
+              <Button onClick={onOpenSettings} variant="outline" size="sm">
+                <Settings className="w-4 h-4 mr-2" />
+                Innstillinger
+              </Button>
             )}
           </div>
         </div>

@@ -383,9 +383,9 @@ export function PostDetailPanel({ postId, onClose }: PostDetailPanelProps) {
                 size="sm"
                 onClick={handleLike}
                 disabled={!currentUserId || isLiking}
-                className={liked ? 'text-red-500' : 'text-gray-500'}
+                className={liked ? 'text-red-500' : likeCount > 0 ? 'text-pink-400' : 'text-gray-400'}
               >
-                <Heart className={`w-4 h-4 mr-1 ${liked ? 'fill-current' : ''}`} />
+                <Heart className={`w-4 h-4 mr-1 ${liked || likeCount > 0 ? 'fill-current' : ''}`} />
                 {likeCount}
               </Button>
             </div>

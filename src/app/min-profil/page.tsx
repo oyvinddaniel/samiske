@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { ProfileHeader } from '@/components/profile/ProfileHeader'
@@ -8,21 +8,15 @@ import { ProfileTabs } from '@/components/profile/ProfileTabs'
 import { CreatePostSheet } from '@/components/posts/CreatePostSheet'
 import { ArrowLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { toast } from 'sonner'
-
-interface ProfileUpdate {
-  full_name?: string | null
-  avatar_url?: string | null
-  bio?: string | null
-  location?: string | null
-}
 
 export default function MinProfilPage() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const [showCreatePost, setShowCreatePost] = useState(false)
   const [refreshKey, setRefreshKey] = useState(0)
   const [loading, setLoading] = useState(true)
-  const [isEditingProfile, setIsEditingProfile] = useState(false)
+  const [activeTab, setActiveTab] = useState('personal')
+  const [highlightTab, setHighlightTab] = useState(false)
+  const tabsRef = useRef<HTMLDivElement>(null)
   const supabase = useMemo(() => createClient(), [])
   const router = useRouter()
 
@@ -43,22 +37,27 @@ export default function MinProfilPage() {
     setRefreshKey(prev => prev + 1)
   }, [])
 
-  const handleSaveProfile = useCallback(async (updates: ProfileUpdate) => {
-    if (!currentUserId) return
+  const handleOpenSettings = useCallback(() => {
+    // Switch to account tab
+    setActiveTab('account')
 
-    const { error } = await supabase
-      .from('profiles')
-      .update(updates)
-      .eq('id', currentUserId)
+    // Wait a bit for tab content to render
+    setTimeout(() => {
+      // Scroll to tabs section
+      tabsRef.current?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start'
+      })
 
-    if (error) {
-      toast.error('Kunne ikke oppdatere profil. Prøv igjen.')
-    } else {
-      setIsEditingProfile(false)
-      setRefreshKey(prev => prev + 1)
-      toast.success('Profilen din er oppdatert!')
-    }
-  }, [currentUserId, supabase])
+      // Trigger highlight animation
+      setHighlightTab(true)
+
+      // Remove highlight after 3 seconds
+      setTimeout(() => {
+        setHighlightTab(false)
+      }, 3000)
+    }, 100)
+  }, [])
 
   if (loading) {
     return (
@@ -86,25 +85,31 @@ export default function MinProfilPage() {
           Tilbake
         </Button>
 
-        {/* Profile header with inline editing */}
+        {/* Profile header */}
         <ProfileHeader
           key={refreshKey}
           userId={currentUserId}
           showEditButton={true}
           showNewPostButton={true}
           onNewPost={() => setShowCreatePost(true)}
-          isEditing={isEditingProfile}
-          onEdit={() => setIsEditingProfile(true)}
-          onSave={handleSaveProfile}
-          onCancel={() => setIsEditingProfile(false)}
+          onOpenSettings={handleOpenSettings}
         />
 
         {/* User's posts with tabs */}
-        <div className="mt-6">
+        <div
+          ref={tabsRef}
+          className={`mt-6 transition-all duration-1000 ${
+            highlightTab
+              ? 'ring-4 ring-blue-400 ring-opacity-50 shadow-2xl rounded-lg p-2'
+              : ''
+          }`}
+        >
           <ProfileTabs
             key={refreshKey}
             profileId={currentUserId}
             isOwnProfile={true}
+            value={activeTab}
+            onValueChange={setActiveTab}
           />
         </div>
 

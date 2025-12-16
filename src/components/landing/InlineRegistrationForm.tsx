@@ -149,9 +149,9 @@ export function InlineRegistrationForm({ onLoginClick }: InlineRegistrationFormP
   return (
     <Card className="w-full">
       <CardHeader className="pb-4">
-        <CardTitle className="text-xl font-bold">Opprett konto</CardTitle>
+        <CardTitle className="text-xl font-bold">Gå inn. Ta en titt.</CardTitle>
         <CardDescription>
-          Bli med i fellesskapet
+          Hvis du ikke er fornøyd kan du enkelt slette kontoen igjen.
         </CardDescription>
       </CardHeader>
       <form onSubmit={handleRegister}>

@@ -11,6 +11,8 @@ import { FileText, MapPin, Settings } from 'lucide-react'
 interface ProfileTabsProps {
   profileId: string
   isOwnProfile: boolean
+  value?: string
+  onValueChange?: (value: string) => void
 }
 
 interface PostData {
@@ -22,7 +24,7 @@ interface PostData {
   [key: string]: unknown
 }
 
-export function ProfileTabs({ profileId, isOwnProfile }: ProfileTabsProps) {
+export function ProfileTabs({ profileId, isOwnProfile, value, onValueChange }: ProfileTabsProps) {
   const [personalPosts, setPersonalPosts] = useState<PostData[]>([])
   const [loading, setLoading] = useState(true)
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
@@ -65,7 +67,12 @@ export function ProfileTabs({ profileId, isOwnProfile }: ProfileTabsProps) {
   }, [profileId, supabase])
 
   return (
-    <Tabs defaultValue="personal" className="w-full">
+    <Tabs
+      value={value}
+      onValueChange={onValueChange}
+      defaultValue="personal"
+      className="w-full"
+    >
       <TabsList className={`w-full mb-4 ${isOwnProfile ? 'grid grid-cols-3' : ''}`}>
         <TabsTrigger value="personal" className="flex items-center gap-2">
           <FileText className="w-4 h-4" />

@@ -5,7 +5,7 @@ import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { CommunityStats } from './CommunityStats'
 import { InlineRegistrationForm } from './InlineRegistrationForm'
-import { Users, BookOpen, MapPin, TrendingUp } from 'lucide-react'
+import { Users, BookOpen, MapPin, TrendingUp, Shield } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
 type FullWidthVariant =
@@ -191,32 +191,38 @@ export function FullWidthVariants({ variant, onLoginClick }: FullWidthVariantsPr
             <div className="space-y-8">
               <div className="space-y-6">
                 <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-white leading-tight drop-shadow-2xl">
-                  Møtested for det samiske
+                  Velkommen!
                 </h1>
                 <p className="text-xl text-white/95 leading-relaxed drop-shadow-lg">
                   Nå kan vi selv bestemme. Møt andre samiske. Og finn samiske tilbydere. Fordelt på byer, steder og grupper.
                 </p>
+                <p className="text-xl text-white/95 leading-relaxed drop-shadow-lg">
+                  <span className="font-semibold">NB!</span> Du kan selv foreslå funksjoner som du savner og ønsker.
+                </p>
               </div>
 
               {/* Feature pills */}
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-2" style={{ marginTop: '70px' }}>
                 <div className="px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-500 text-white rounded-full shadow-lg shadow-blue-500/30 text-sm font-medium flex items-center gap-2 hover:shadow-xl hover:shadow-blue-500/40 transition-shadow">
                   <TrendingUp className="w-4 h-4" />
                   <span>Live aktivitet</span>
                 </div>
                 <div className="px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-500 text-white rounded-full shadow-lg shadow-blue-500/30 text-sm font-medium flex items-center gap-2 hover:shadow-xl hover:shadow-blue-500/40 transition-shadow">
                   <MapPin className="w-4 h-4" />
-                  <span>150+ steder</span>
+                  <span>Hele Sápmi</span>
                 </div>
                 <div className="px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-500 text-white rounded-full shadow-lg shadow-blue-500/30 text-sm font-medium flex items-center gap-2 hover:shadow-xl hover:shadow-blue-500/40 transition-shadow">
-                  <Users className="w-4 h-4" />
-                  <span>Samisk fellesskap</span>
+                  <Shield className="w-4 h-4" />
+                  <span>GDPR-vennlig</span>
                 </div>
               </div>
 
               <div className="bg-white/20 backdrop-blur-md border border-white/30 rounded-2xl p-6">
                 <CommunityStats />
               </div>
+              <p className="text-xs text-white/70 mt-3">
+                Du eier din egen data. Enkelt å slette din egen konto.
+              </p>
             </div>
             <div className="lg:ml-auto max-w-md w-full">
               <div className="bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl p-1">
