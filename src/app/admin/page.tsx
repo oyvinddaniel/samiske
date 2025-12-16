@@ -15,9 +15,8 @@ import {
   BugReportsTab,
   GeographyTab,
   StatsCards,
-  StatisticsTab,
   EmergencyTab,
-  UserAnalyticsTab,
+  AdminDashboard,
 } from '@/components/admin'
 import { BroadcastMessagesTab } from '@/components/admin/BroadcastMessagesTab'
 import type { User, Post, Stats, Feedback, Report, BugReportWithUser } from '@/components/admin'
@@ -409,14 +408,14 @@ export default function AdminPage() {
         <StatsCards stats={stats} />
 
         {/* Tabs */}
-        <Tabs defaultValue="users" className="space-y-4">
+        <Tabs defaultValue="dashboard" className="space-y-4">
           <TabsList className="flex-wrap h-auto gap-1">
             <TabsTrigger value="emergency" className="text-red-600 data-[state=active]:bg-red-100">
               <AlertTriangle className="w-4 h-4 mr-1" />
               Nødstopp
             </TabsTrigger>
+            <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
             <TabsTrigger value="users">Brukere ({users.length})</TabsTrigger>
-            <TabsTrigger value="user-analytics">Brukerlogg & Statistikk</TabsTrigger>
             <TabsTrigger value="posts">Innlegg ({posts.length})</TabsTrigger>
             <TabsTrigger value="reports">
               Rapporter ({reports.filter(r => r.status === 'pending').length})
@@ -426,12 +425,15 @@ export default function AdminPage() {
               Bug-rapporter ({bugReports.filter(br => br.status === 'new').length})
             </TabsTrigger>
             <TabsTrigger value="geography">Geografi</TabsTrigger>
-            <TabsTrigger value="statistics">Statistikk</TabsTrigger>
             <TabsTrigger value="broadcasts">Meldinger</TabsTrigger>
           </TabsList>
 
           <TabsContent value="emergency">
             <EmergencyTab />
+          </TabsContent>
+
+          <TabsContent value="dashboard">
+            <AdminDashboard />
           </TabsContent>
 
           <TabsContent value="broadcasts">
@@ -444,10 +446,6 @@ export default function AdminPage() {
               currentUserId={currentUser?.id}
               onRoleChange={handleRoleChange}
             />
-          </TabsContent>
-
-          <TabsContent value="user-analytics">
-            <UserAnalyticsTab />
           </TabsContent>
 
           <TabsContent value="posts">
@@ -471,10 +469,6 @@ export default function AdminPage() {
 
           <TabsContent value="geography">
             <GeographyTab />
-          </TabsContent>
-
-          <TabsContent value="statistics">
-            <StatisticsTab />
           </TabsContent>
         </Tabs>
       </div>
