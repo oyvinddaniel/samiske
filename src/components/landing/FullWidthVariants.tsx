@@ -68,12 +68,7 @@ function Header({ dark = true, onLoginClick }: { dark?: boolean; onLoginClick: (
   return (
     <header className={`relative z-20 border-b ${dark ? 'border-white/10 bg-black/20' : 'border-gray-200 bg-white/80'} backdrop-blur-md`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className={`w-10 h-10 rounded-lg overflow-hidden shadow-sm ${dark ? 'ring-2 ring-white/20' : 'ring-2 ring-gray-200'}`}>
-            <Image src="/images/sami.jpg" alt="Samisk flagg" width={40} height={40} className="w-full h-full object-cover" />
-          </div>
-          <span className={`font-bold text-lg ${dark ? 'text-white' : 'text-gray-900'}`}>samiske.no</span>
-        </div>
+        <span className={`font-bold text-[22px] ${dark ? 'text-white' : 'text-gray-900'}`} style={{ fontFamily: 'var(--font-comme)' }}>samiske.no</span>
         <Button
           onClick={onLoginClick}
           className="bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white shadow-lg shadow-blue-500/25 hover:shadow-blue-500/30 border-0"
