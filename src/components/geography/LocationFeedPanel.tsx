@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Feed } from '@/components/feed/Feed'
 import { CalendarView } from '@/components/calendar/CalendarView'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Loader2, FileText, Calendar, MapPin, Building2, Languages, Star } from 'lucide-react'
+import { Loader2, FileText, Calendar, MapPin, Star } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 
@@ -160,6 +160,8 @@ export function LocationFeedPanel({ locationType, locationId, locationName, onCl
 
         setIsStarred(false)
         toast.success('Fjernet fra mine steder')
+        // Dispatch event for real-time sidebar update
+        window.dispatchEvent(new CustomEvent('starred-locations-changed'))
       } else {
         // Add star
         const table = locationType === 'language_area'
@@ -180,6 +182,8 @@ export function LocationFeedPanel({ locationType, locationId, locationName, onCl
 
         setIsStarred(true)
         toast.success('Lagt til i mine steder')
+        // Dispatch event for real-time sidebar update
+        window.dispatchEvent(new CustomEvent('starred-locations-changed'))
       }
     } catch (error) {
       console.error('Error toggling star:', error)
@@ -187,16 +191,8 @@ export function LocationFeedPanel({ locationType, locationId, locationName, onCl
     }
   }
 
-  // Get color based on location type
-  const getColor = () => {
-    switch (locationType) {
-      case 'language_area': return 'bg-blue-100 text-blue-600'
-      case 'municipality': return 'bg-orange-100 text-orange-600'
-      case 'place': return 'bg-purple-100 text-purple-600'
-    }
-  }
-
-  const colorClass = getColor()
+  // Standard green color for all location types
+  const colorClass = 'bg-green-100 text-green-600'
 
   // Build geography filter for Feed
   const geographyFilter = useMemo(() => {
@@ -220,9 +216,7 @@ export function LocationFeedPanel({ locationType, locationId, locationName, onCl
       <div className="flex items-center justify-between mb-4 bg-white rounded-lg border border-gray-200 p-4">
         <div className="flex items-center gap-3">
           <div className={cn('p-2.5 rounded-lg', colorClass)}>
-            {locationType === 'language_area' && <Languages className="w-6 h-6" />}
-            {locationType === 'municipality' && <Building2 className="w-6 h-6" />}
-            {locationType === 'place' && <MapPin className="w-6 h-6" />}
+            <MapPin className="w-6 h-6" />
           </div>
           <div>
             <h1 className="text-xl font-bold text-gray-900">

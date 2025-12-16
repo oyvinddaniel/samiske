@@ -82,6 +82,8 @@ export function GeographySearchResult({
         if (success) {
           setIsStarred(false)
           toast.success('Stjerne fjernet')
+          // Dispatch event for real-time sidebar update
+          window.dispatchEvent(new CustomEvent('starred-locations-changed'))
         }
       } else {
         // Star
@@ -96,6 +98,8 @@ export function GeographySearchResult({
         if (success) {
           setIsStarred(true)
           toast.success('Stjernemerket')
+          // Dispatch event for real-time sidebar update
+          window.dispatchEvent(new CustomEvent('starred-locations-changed'))
         }
       }
 

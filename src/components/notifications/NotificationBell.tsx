@@ -30,6 +30,10 @@ interface NotificationItem {
   actorAvatar?: string
   createdAt: string
   isRead: boolean
+  // For grouped notifications
+  groupedIds?: string[]
+  count?: number
+  actorId?: string
 }
 
 interface NotificationBellProps {
@@ -87,11 +91,59 @@ export function NotificationBell({ userId }: NotificationBellProps) {
         postTitle: n.post_title,
         actorName: n.actor_name,
         actorAvatar: n.actor_avatar,
+        actorId: n.actor_id,
         createdAt: n.created_at,
         isRead: n.is_read,
       }))
 
-      setNotifications(transformedNotifications)
+      // Group message notifications by actor
+      const groupedNotifications: NotificationItem[] = []
+      const messageGroups = new Map<string, NotificationItem[]>()
+
+      transformedNotifications.forEach(notif => {
+        if (notif.type === 'new_message' && notif.actorId) {
+          // Group messages by actor
+          const key = notif.actorId
+          if (!messageGroups.has(key)) {
+            messageGroups.set(key, [])
+          }
+          messageGroups.get(key)!.push(notif)
+        } else {
+          // Non-message notifications go directly to the list
+          groupedNotifications.push(notif)
+        }
+      })
+
+      // Add grouped message notifications
+      messageGroups.forEach((group) => {
+        if (group.length === 1) {
+          // Single message, no grouping needed
+          groupedNotifications.push(group[0])
+        } else {
+          // Multiple messages from same person - create grouped notification
+          const allRead = group.every(n => n.isRead)
+          const mostRecent = group.sort((a, b) =>
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          )[0]
+
+          groupedNotifications.push({
+            ...mostRecent,
+            count: group.length,
+            groupedIds: group.map(n => n.id),
+            message: group.length === 1
+              ? 'sendte deg en melding'
+              : `sendte deg ${group.length} meldinger`,
+            isRead: allRead,
+          })
+        }
+      })
+
+      // Sort by createdAt
+      groupedNotifications.sort((a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      )
+
+      setNotifications(groupedNotifications)
 
       // Calculate counts from unread notifications
       const unreadNotifications = transformedNotifications.filter((n) => !n.isRead)
@@ -218,10 +270,16 @@ export function NotificationBell({ userId }: NotificationBellProps) {
     setIsOpen(open)
   }
 
-  // Mark single notification as read
+  // Mark single notification as read (or all grouped notifications)
   const markAsRead = async (notificationId: string) => {
-    // Optimistic update
-    setNotifications((prev) => prev.map((n) => (n.id === notificationId ? { ...n, isRead: true } : n)))
+    // Find the notification to check if it's grouped
+    const notification = notifications.find((n) => n.id === notificationId)
+    const idsToMark = notification?.groupedIds || [notificationId]
+
+    // Optimistic update - mark all grouped IDs as read
+    setNotifications((prev) =>
+      prev.map((n) => (idsToMark.includes(n.id) ? { ...n, isRead: true } : n))
+    )
 
     // Recalculate counts optimistically
     setNotifications((prev) => {
@@ -239,13 +297,25 @@ export function NotificationBell({ userId }: NotificationBellProps) {
       return prev
     })
 
-    // Sync with backend
-    const { error } = await supabase.rpc('mark_notification_as_read', {
-      p_notification_id: notificationId,
-    })
+    // Sync with backend - mark all grouped IDs
+    try {
+      for (const id of idsToMark) {
+        const { error } = await supabase.rpc('mark_notification_as_read', {
+          p_notification_id: id,
+        })
 
-    if (error) {
-      console.error('Error marking notification as read:', error)
+        if (error) {
+          console.error('Error marking notification as read:', error)
+          throw error
+        }
+      }
+
+      // Trigger messages-read event for message notifications
+      if (notification?.type === 'new_message') {
+        window.dispatchEvent(new CustomEvent('messages-read'))
+      }
+    } catch (error) {
+      console.error('Error marking notifications as read:', error)
       // Revert optimistic update on error
       fetchNotifications()
     }

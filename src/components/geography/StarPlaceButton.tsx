@@ -65,6 +65,8 @@ export function StarPlaceButton({
         if (success) {
           setIsStarred(false)
           toast.success(`${locationName} fjernet fra mine steder`)
+          // Dispatch event for real-time sidebar update
+          window.dispatchEvent(new CustomEvent('starred-locations-changed'))
         }
       } else {
         // Star
@@ -75,6 +77,8 @@ export function StarPlaceButton({
         if (success) {
           setIsStarred(true)
           toast.success(`${locationName} lagt til i mine steder`)
+          // Dispatch event for real-time sidebar update
+          window.dispatchEvent(new CustomEvent('starred-locations-changed'))
         }
       }
 

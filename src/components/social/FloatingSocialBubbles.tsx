@@ -12,6 +12,8 @@ export function FloatingSocialBubbles() {
   const [activeTab, setActiveTab] = useState<'friends' | 'messages'>('messages')
   const [mounted, setMounted] = useState(false)
   const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const [unreadCount, setUnreadCount] = useState(0)
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const supabase = useMemo(() => createClient(), [])
 
   useEffect(() => {
@@ -23,15 +25,61 @@ export function FloatingSocialBubbles() {
     const checkAuth = async () => {
       const { data: { session } } = await supabase.auth.getSession()
       setIsLoggedIn(!!session?.user)
+      setCurrentUserId(session?.user?.id || null)
     }
     checkAuth()
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setIsLoggedIn(!!session?.user)
+      setCurrentUserId(session?.user?.id || null)
     })
 
     return () => subscription.unsubscribe()
   }, [supabase])
+
+  // Fetch unread message count
+  useEffect(() => {
+    const fetchUnreadCount = async () => {
+      if (!currentUserId) {
+        setUnreadCount(0)
+        return
+      }
+
+      const { data } = await supabase.rpc('get_unread_message_count', {
+        user_id_param: currentUserId
+      })
+      setUnreadCount(data || 0)
+    }
+
+    fetchUnreadCount()
+
+    // Listen for messages-read event
+    const handleMessagesRead = () => {
+      fetchUnreadCount()
+    }
+    window.addEventListener('messages-read', handleMessagesRead)
+
+    // Subscribe to new messages
+    if (currentUserId) {
+      const channel = supabase
+        .channel('floating-bubble-messages')
+        .on('postgres_changes', {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'messages'
+        }, () => fetchUnreadCount())
+        .subscribe()
+
+      return () => {
+        window.removeEventListener('messages-read', handleMessagesRead)
+        supabase.removeChannel(channel)
+      }
+    }
+
+    return () => {
+      window.removeEventListener('messages-read', handleMessagesRead)
+    }
+  }, [currentUserId, supabase])
 
 
   const togglePanel = (tab: 'friends' | 'messages') => {
@@ -103,7 +151,7 @@ export function FloatingSocialBubbles() {
         <button
           onClick={() => togglePanel('messages')}
           className={cn(
-            'w-12 h-12 rounded-full shadow-lg flex items-center justify-center transition-all duration-300 hover:scale-105',
+            'relative w-12 h-12 rounded-full shadow-lg flex items-center justify-center transition-all duration-300 hover:scale-105',
             showSocialPanel
               ? 'bg-blue-700 text-white ring-2 ring-blue-400'
               : 'bg-blue-600 text-white hover:bg-blue-700'
@@ -111,6 +159,11 @@ export function FloatingSocialBubbles() {
           aria-label="Chat"
         >
           <MessageCircle className="w-5 h-5" />
+          {unreadCount > 0 && (
+            <span className="absolute -top-1 -right-1 flex items-center justify-center min-w-[20px] h-5 px-1.5 text-[11px] font-bold text-white bg-red-500 rounded-full border-2 border-white">
+              {unreadCount > 99 ? '99+' : unreadCount}
+            </span>
+          )}
         </button>
       </div>
     </>,

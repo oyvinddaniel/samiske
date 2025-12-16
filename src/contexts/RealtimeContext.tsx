@@ -1,6 +1,7 @@
 'use client'
 
 import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react'
+import { usePathname } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import type { SupabaseClient, User } from '@supabase/supabase-js'
 import { useDebouncedCallback } from '@/hooks/useDebounce'
@@ -112,6 +113,27 @@ export function RealtimeProvider({
 
     return () => clearInterval(interval)
   }, [user, updateLastSeen])
+
+  // Activity logging - log each page view
+  const pathname = usePathname()
+  useEffect(() => {
+    if (!user) return
+
+    const logActivity = async () => {
+      try {
+        await supabase.rpc('log_user_activity', {
+          p_page_path: pathname,
+          p_page_title: typeof document !== 'undefined' ? document.title : null,
+          p_user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : null,
+        })
+      } catch (error) {
+        // Ignorer feil - aktivitetslogging skal ikke påvirke brukeropplevelsen
+        console.debug('Activity log error:', error)
+      }
+    }
+
+    logActivity()
+  }, [pathname, user, supabase])
 
   // Refresh social notifications on user change
   useEffect(() => {

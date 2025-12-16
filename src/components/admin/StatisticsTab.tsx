@@ -13,6 +13,7 @@ import {
   Activity,
   Calendar
 } from 'lucide-react'
+import { UserActivityLog } from './UserActivityLog'
 
 interface TimeStats {
   today: number
@@ -515,6 +516,9 @@ export function StatisticsTab() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Detaljert brukerlogg - sidevisninger */}
+      <UserActivityLog />
     </div>
   )
 }

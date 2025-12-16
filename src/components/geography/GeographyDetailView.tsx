@@ -207,10 +207,14 @@ export function GeographyDetailView({
       await supabase.from(table).delete().eq('user_id', currentUserId).eq(column, entityId)
       setIsStarred(false)
       toast.success('Fjernet fra favoritter')
+      // Dispatch event for real-time sidebar update
+      window.dispatchEvent(new CustomEvent('starred-locations-changed'))
     } else {
       await supabase.from(table).insert({ user_id: currentUserId, [column]: entityId })
       setIsStarred(true)
       toast.success('Lagt til i favoritter')
+      // Dispatch event for real-time sidebar update
+      window.dispatchEvent(new CustomEvent('starred-locations-changed'))
     }
   }
 
@@ -265,13 +269,11 @@ export function GeographyDetailView({
     }
   }
 
-  // Get entity icon and color
+  // Get entity icon and color - all use green MapPin for consistency
   const getEntityStyle = () => {
-    switch (entityType) {
-      case 'language_area': return { icon: MapPin, color: 'text-blue-600', bg: 'bg-blue-100', label: 'Språkområde' }
-      case 'municipality': return { icon: MapPin, color: 'text-orange-600', bg: 'bg-orange-100', label: 'Kommune' }
-      case 'place': return { icon: MapPin, color: 'text-purple-600', bg: 'bg-purple-100', label: 'By/sted' }
-    }
+    const label = entityType === 'language_area' ? 'Språkområde' :
+                  entityType === 'municipality' ? 'Kommune' : 'By/sted'
+    return { icon: MapPin, color: 'text-green-600', bg: 'bg-green-100', label }
   }
 
   const style = getEntityStyle()

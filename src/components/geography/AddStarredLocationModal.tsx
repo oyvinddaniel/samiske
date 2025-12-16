@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { X, Star, Building2, MapPin } from 'lucide-react'
+import { Star, MapPin } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -68,6 +68,8 @@ export function AddStarredLocationModal({
       if (success) {
         onOpenChange(false)
         onLocationAdded?.()
+        // Dispatch event for real-time sidebar update
+        window.dispatchEvent(new CustomEvent('starred-locations-changed'))
       } else {
         toast.error('Kunne ikke legge til stedet. Kanskje det allerede er lagt til?')
       }
@@ -117,11 +119,7 @@ export function AddStarredLocationModal({
 
           {getSelectedText() && (
             <div className="flex items-center gap-2 text-sm text-muted-foreground bg-gray-50 p-3 rounded-lg">
-              {selectedLocation.placeId ? (
-                <MapPin className="h-4 w-4" />
-              ) : (
-                <Building2 className="h-4 w-4" />
-              )}
+              <MapPin className="h-4 w-4 text-green-500" />
               <span>{getSelectedText()}</span>
             </div>
           )}

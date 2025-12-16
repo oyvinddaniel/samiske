@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Star, Loader2, MapPin, Globe, Languages, Pencil, Plus, Search, X, Building2, ArrowRight } from 'lucide-react'
+import { Star, Loader2, MapPin, Globe, Pencil, Plus, Search, X, ArrowRight } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -257,6 +257,7 @@ export function GeographyExplorerView({ onClose }: GeographyExplorerViewProps) {
         return next
       })
       toast.success(`${name} fjernet fra Mine steder`)
+      window.dispatchEvent(new CustomEvent('starred-locations-changed'))
     } else {
       await supabase
         .from('user_starred_language_areas')
@@ -264,6 +265,7 @@ export function GeographyExplorerView({ onClose }: GeographyExplorerViewProps) {
 
       setStarredLanguageAreas(prev => new Set([...prev, id]))
       toast.success(`${name} lagt til i Mine steder`)
+      window.dispatchEvent(new CustomEvent('starred-locations-changed'))
     }
   }
 
@@ -288,6 +290,7 @@ export function GeographyExplorerView({ onClose }: GeographyExplorerViewProps) {
         return next
       })
       toast.success(`${name} fjernet fra Mine steder`)
+      window.dispatchEvent(new CustomEvent('starred-locations-changed'))
     } else {
       await supabase
         .from('user_starred_municipalities')
@@ -295,6 +298,7 @@ export function GeographyExplorerView({ onClose }: GeographyExplorerViewProps) {
 
       setStarredMunicipalities(prev => new Set([...prev, id]))
       toast.success(`${name} lagt til i Mine steder`)
+      window.dispatchEvent(new CustomEvent('starred-locations-changed'))
     }
   }
 
@@ -319,6 +323,7 @@ export function GeographyExplorerView({ onClose }: GeographyExplorerViewProps) {
         return next
       })
       toast.success(`${name} fjernet fra Mine steder`)
+      window.dispatchEvent(new CustomEvent('starred-locations-changed'))
     } else {
       await supabase
         .from('user_starred_places')
@@ -326,6 +331,7 @@ export function GeographyExplorerView({ onClose }: GeographyExplorerViewProps) {
 
       setStarredPlaces(prev => new Set([...prev, id]))
       toast.success(`${name} lagt til i Mine steder`)
+      window.dispatchEvent(new CustomEvent('starred-locations-changed'))
     }
   }
 
@@ -346,13 +352,9 @@ export function GeographyExplorerView({ onClose }: GeographyExplorerViewProps) {
     }
   }
 
-  // Helper to get type icon and color
-  const getTypeStyle = (type: 'language_area' | 'municipality' | 'place') => {
-    switch (type) {
-      case 'language_area': return { icon: MapPin, color: 'text-blue-600', bg: 'bg-blue-100' }
-      case 'municipality': return { icon: MapPin, color: 'text-orange-600', bg: 'bg-orange-100' }
-      case 'place': return { icon: MapPin, color: 'text-purple-600', bg: 'bg-purple-100' }
-    }
+  // Helper to get type icon and color - all use MapPin with green color
+  const getTypeStyle = () => {
+    return { icon: MapPin, color: 'text-green-600', bg: 'bg-green-100' }
   }
 
   // Navigate to detail view
@@ -425,7 +427,7 @@ export function GeographyExplorerView({ onClose }: GeographyExplorerViewProps) {
           {searchResults.length > 0 && (
             <div className="mt-4 max-w-xl mx-auto bg-white rounded-lg border border-gray-200 shadow-lg max-h-80 overflow-y-auto">
               {searchResults.map((result, idx) => {
-                const style = getTypeStyle(result.type)
+                const style = getTypeStyle()
                 const Icon = style.icon
                 return (
                   <div
@@ -499,7 +501,7 @@ export function GeographyExplorerView({ onClose }: GeographyExplorerViewProps) {
         <div>
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
-              <Languages className="w-5 h-5 text-blue-600" />
+              <MapPin className="w-5 h-5 text-green-600" />
               <h2 className="font-semibold text-lg text-gray-900">Språkområder</h2>
             </div>
             <button
@@ -527,7 +529,7 @@ export function GeographyExplorerView({ onClose }: GeographyExplorerViewProps) {
                   <div className="flex items-start justify-between gap-1">
                     <MapPin className={cn(
                       'w-5 h-5 flex-shrink-0',
-                      selectedLanguageArea === area.id ? 'text-blue-600' : 'text-gray-400'
+                      selectedLanguageArea === area.id ? 'text-green-600' : 'text-gray-400'
                     )} />
                     <div className="flex items-center gap-0.5">
                       <button
@@ -594,7 +596,7 @@ export function GeographyExplorerView({ onClose }: GeographyExplorerViewProps) {
           <div>
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
-                <Building2 className="w-5 h-5 text-orange-600" />
+                <MapPin className="w-5 h-5 text-green-600" />
                 <h2 className="font-semibold text-lg text-gray-900">Kommuner</h2>
               </div>
               <button
@@ -608,7 +610,7 @@ export function GeographyExplorerView({ onClose }: GeographyExplorerViewProps) {
 
             {municipalities.length === 0 ? (
               <div className="p-8 text-center bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
-                <Building2 className="w-12 h-12 mx-auto mb-2 text-gray-300" />
+                <MapPin className="w-12 h-12 mx-auto mb-2 text-gray-300" />
                 <p className="text-gray-500 mb-3">Ingen kommuner funnet</p>
                 <button
                   onClick={() => openSuggestionModal('municipality', 'new_item', undefined, selectedLanguageArea)}
@@ -634,7 +636,7 @@ export function GeographyExplorerView({ onClose }: GeographyExplorerViewProps) {
                       <div className="flex items-start justify-between gap-1">
                         <MapPin className={cn(
                           'w-5 h-5 flex-shrink-0',
-                          selectedMunicipality === municipality.id ? 'text-orange-600' : 'text-gray-400'
+                          selectedMunicipality === municipality.id ? 'text-green-600' : 'text-gray-400'
                         )} />
                         <div className="flex items-center gap-0.5">
                           <button
@@ -703,7 +705,7 @@ export function GeographyExplorerView({ onClose }: GeographyExplorerViewProps) {
           <div>
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
-                <MapPin className="w-5 h-5 text-purple-600" />
+                <MapPin className="w-5 h-5 text-green-600" />
                 <h2 className="font-semibold text-lg text-gray-900">Byer & steder</h2>
               </div>
               <button

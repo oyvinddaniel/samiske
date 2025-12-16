@@ -47,17 +47,27 @@ export function ConversationView({ conversationId, currentUserId }: Conversation
   // Mark as read when viewing
   useEffect(() => {
     const markAsRead = async () => {
+      const timestamp = new Date().toISOString()
+      console.log('🔄 Attempting to update last_read_at:', {
+        conversationId,
+        currentUserId,
+        timestamp
+      })
+
       // Marker meldinger som lest i conversation_participants
-      const { error: updateError } = await supabase
+      const { data, error: updateError, count } = await supabase
         .from('conversation_participants')
-        .update({ last_read_at: new Date().toISOString() })
+        .update({ last_read_at: timestamp })
         .eq('conversation_id', conversationId)
         .eq('user_id', currentUserId)
+        .select()
 
       if (updateError) {
         console.error('❌ Error updating last_read_at:', updateError)
       } else {
         console.log('✅ Updated last_read_at for conversation:', conversationId)
+        console.log('   Rows affected:', data?.length ?? 0)
+        console.log('   Updated data:', data)
       }
 
       // Marker meldingsnotifikasjoner som lest i notifications-tabellen
@@ -150,7 +160,13 @@ export function ConversationView({ conversationId, currentUserId }: Conversation
     }
 
     setSending(false)
-    inputRef.current?.focus()
+
+    // Double RAF to ensure focus is set after all rendering and scrolling is complete
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        inputRef.current?.focus()
+      })
+    })
   }
 
   const formatTime = (dateString: string) => {

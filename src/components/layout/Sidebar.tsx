@@ -1,16 +1,33 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import Link from 'next/link'
 import { usePathname, useSearchParams } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
-import { Users, MessageCircle, ChevronRight, Calendar, Home, Building2, MapPin, Plus, Settings2, Landmark, Bookmark, User, Languages, Briefcase } from 'lucide-react'
+import { Users, MessageCircle, ChevronRight, Calendar, Home, MapPin, GripVertical, Landmark, Bookmark, User, Briefcase } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { AddStarredLocationModal } from '@/components/geography'
 import { sidebarConfig, buildLocationUrl } from '@/lib/config/sidebar'
 import { getAdminCommunities } from '@/lib/communities'
 import type { Community } from '@/lib/types/communities'
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core'
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 
 interface StarredLocationItem {
   type: 'language_area' | 'municipality' | 'place'
@@ -28,6 +45,76 @@ interface SidebarProps {
   currentCategory?: string
   activePanel?: 'feed' | 'friends' | 'messages' | 'chat' | 'group' | 'groups' | 'community' | 'profile' | 'geography' | 'bookmarks' | 'location' | 'post' | 'calendar'
   selectedLocationId?: string
+}
+
+// Sortable location item component
+function SortableLocationItem({
+  location,
+  isActive
+}: {
+  location: StarredLocationItem
+  isActive: boolean
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: `${location.type}-${location.id}` })
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  }
+
+  const getIcon = () => {
+    // All geographic elements use MapPin as standard icon
+    return <MapPin className="w-4 h-4 text-green-500 flex-shrink-0" />
+  }
+
+  return (
+    <li
+      ref={setNodeRef}
+      style={style}
+      className={cn(
+        'group',
+        isDragging && 'opacity-50'
+      )}
+    >
+      <div className="flex items-center">
+        <button
+          {...attributes}
+          {...listeners}
+          className="p-1 cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity touch-none"
+          aria-label="Dra for å sortere"
+        >
+          <GripVertical className="w-3 h-3 text-gray-400" />
+        </button>
+        <button
+          onClick={() => {
+            window.dispatchEvent(new CustomEvent('open-location-panel', {
+              detail: {
+                type: location.type,
+                id: location.id,
+                name: location.name
+              }
+            }))
+          }}
+          className={cn(
+            'flex-1 flex items-center gap-3 px-2 py-1.5 rounded-lg text-sm font-medium transition-colors text-left',
+            isActive
+              ? 'bg-blue-50 text-blue-700'
+              : 'text-gray-600 hover:bg-blue-50/50 hover:text-gray-700'
+          )}
+        >
+          {getIcon()}
+          <span className="truncate">{location.name}</span>
+        </button>
+      </div>
+    </li>
+  )
 }
 
 export function Sidebar({ currentCategory = '', activePanel = 'feed', selectedLocationId }: SidebarProps) {
@@ -172,6 +259,23 @@ export function Sidebar({ currentCategory = '', activePanel = 'feed', selectedLo
     }
   }, [currentUserId, supabase, fetchCounts])
 
+  // Listen for messages-read event from ConversationView
+  useEffect(() => {
+    if (!currentUserId) return
+
+    const handleMessagesRead = () => {
+      console.log('📭 Messages marked as read, refreshing Sidebar counts')
+      fetchCounts()
+    }
+
+    window.addEventListener('messages-read', handleMessagesRead)
+
+    return () => {
+      window.removeEventListener('messages-read', handleMessagesRead)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUserId]) // Intentionally not including fetchCounts to avoid re-subscribing
+
   // Fetch starred locations
   const fetchStarredLocations = useCallback(async () => {
     if (!currentUserId) {
@@ -281,6 +385,87 @@ export function Sidebar({ currentCategory = '', activePanel = 'feed', selectedLo
     fetchStarredLocations()
   }, [fetchStarredLocations])
 
+  // Listen for starred-locations-changed event for real-time updates
+  useEffect(() => {
+    if (!currentUserId) return
+
+    const handleStarredLocationsChanged = async () => {
+      console.log('📍 Starred locations changed, refreshing sidebar')
+      // Re-fetch directly from database to ensure fresh data
+      try {
+        const { data: starredLangAreas } = await supabase
+          .from('user_starred_language_areas')
+          .select(`language_area:language_areas(id, name, code)`)
+          .eq('user_id', currentUserId)
+
+        const { data: starredMunis } = await supabase
+          .from('user_starred_municipalities')
+          .select(`municipality:municipalities(id, name, slug, country:countries(code))`)
+          .eq('user_id', currentUserId)
+
+        const { data: starredPlcs } = await supabase
+          .from('user_starred_places')
+          .select(`place:places(id, name, slug, municipality:municipalities(slug, country:countries(code)))`)
+          .eq('user_id', currentUserId)
+
+        const locations: StarredLocationItem[] = []
+
+        if (starredLangAreas) {
+          for (const item of starredLangAreas) {
+            const la = item.language_area as unknown as { id: string; name: string; code: string } | null
+            if (la) {
+              locations.push({
+                type: 'language_area',
+                id: la.id,
+                name: la.name,
+                href: `/sapmi/sprak/${la.code}`
+              })
+            }
+          }
+        }
+
+        if (starredMunis) {
+          for (const item of starredMunis) {
+            const m = item.municipality as unknown as { id: string; name: string; slug: string; country: { code: string } | null } | null
+            if (m && m.country) {
+              locations.push({
+                type: 'municipality',
+                id: m.id,
+                name: m.name,
+                href: buildLocationUrl('municipality', m.country.code, m.slug)
+              })
+            }
+          }
+        }
+
+        if (starredPlcs) {
+          for (const item of starredPlcs) {
+            const p = item.place as unknown as { id: string; name: string; slug: string; municipality: { slug: string; country: { code: string } | null } | null } | null
+            if (p && p.municipality && p.municipality.country) {
+              locations.push({
+                type: 'place',
+                id: p.id,
+                name: p.name,
+                href: buildLocationUrl('place', p.municipality.country.code, p.municipality.slug, p.slug)
+              })
+            }
+          }
+        }
+
+        setStarredLocations(locations)
+        console.log('📍 Sidebar updated with', locations.length, 'locations')
+      } catch (error) {
+        console.error('Error refreshing starred locations:', error)
+      }
+    }
+
+    window.addEventListener('starred-locations-changed', handleStarredLocationsChanged)
+
+    return () => {
+      window.removeEventListener('starred-locations-changed', handleStarredLocationsChanged)
+    }
+  }, [currentUserId, supabase])
+
   // Load max visible locations preference from localStorage
   useEffect(() => {
     const saved = localStorage.getItem(sidebarConfig.storageKeys.maxLocations)
@@ -289,8 +474,84 @@ export function Sidebar({ currentCategory = '', activePanel = 'feed', selectedLo
     }
   }, [])
 
-  const visibleLocations = starredLocations.slice(0, maxVisibleLocations)
-  const hasMoreLocations = starredLocations.length > maxVisibleLocations
+  // Sortert rekkefølge fra localStorage
+  const [locationOrder, setLocationOrder] = useState<string[]>([])
+
+  // Last inn brukerens rekkefølge fra localStorage
+  useEffect(() => {
+    if (!currentUserId) return
+    const saved = localStorage.getItem(`starred-locations-order-${currentUserId}`)
+    if (saved) {
+      try {
+        setLocationOrder(JSON.parse(saved))
+      } catch {
+        setLocationOrder([])
+      }
+    }
+  }, [currentUserId])
+
+  // Sorter stedene basert på brukerens rekkefølge
+  const sortedLocations = useMemo(() => {
+    if (locationOrder.length === 0) {
+      // Ingen lagret rekkefølge - sorter alfabetisk
+      return [...starredLocations].sort((a, b) => a.name.localeCompare(b.name, 'nb'))
+    }
+
+    // Sorter basert på lagret rekkefølge
+    const orderMap = new Map(locationOrder.map((id, index) => [id, index]))
+    return [...starredLocations].sort((a, b) => {
+      const keyA = `${a.type}-${a.id}`
+      const keyB = `${b.type}-${b.id}`
+      const orderA = orderMap.get(keyA) ?? Infinity
+      const orderB = orderMap.get(keyB) ?? Infinity
+      if (orderA === orderB) {
+        return a.name.localeCompare(b.name, 'nb')
+      }
+      return orderA - orderB
+    })
+  }, [starredLocations, locationOrder])
+
+  // Drag-and-drop sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 5,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  )
+
+  // Handle drag end - oppdater rekkefølge
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
+    const { active, over } = event
+
+    if (over && active.id !== over.id) {
+      const oldIndex = sortedLocations.findIndex(
+        loc => `${loc.type}-${loc.id}` === active.id
+      )
+      const newIndex = sortedLocations.findIndex(
+        loc => `${loc.type}-${loc.id}` === over.id
+      )
+
+      const newOrder = arrayMove(sortedLocations, oldIndex, newIndex)
+      const newOrderIds = newOrder.map(loc => `${loc.type}-${loc.id}`)
+
+      setLocationOrder(newOrderIds)
+
+      // Lagre til localStorage
+      if (currentUserId) {
+        localStorage.setItem(
+          `starred-locations-order-${currentUserId}`,
+          JSON.stringify(newOrderIds)
+        )
+      }
+    }
+  }, [sortedLocations, currentUserId])
+
+  const visibleLocations = sortedLocations.slice(0, maxVisibleLocations)
+  const hasMoreLocations = sortedLocations.length > maxVisibleLocations
 
   return (
     <aside className="hidden md:flex md:flex-col md:w-64 bg-white border-r border-gray-200 min-h-[calc(100vh-4rem)]">
@@ -485,56 +746,49 @@ export function Sidebar({ currentCategory = '', activePanel = 'feed', selectedLo
               <ChevronRight className="w-4 h-4 text-gray-400" />
             </button>
 
-            {/* Child locations */}
-            <ul className="space-y-1 ml-4">
-              {visibleLocations.map((location) => (
-                <li key={`${location.type}-${location.id}`}>
-                  <button
-                    onClick={() => {
-                      window.dispatchEvent(new CustomEvent('open-location-panel', {
-                        detail: {
-                          type: location.type,
-                          id: location.id,
-                          name: location.name
-                        }
-                      }))
-                    }}
-                    className={cn(
-                      'w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors text-left',
-                      activePanel === 'location' && selectedLocationId === location.id
-                        ? 'bg-blue-50 text-blue-700'
-                        : 'text-gray-600 hover:bg-blue-50/50 hover:text-gray-700'
-                    )}
+            {/* Drag-and-drop sortable locations */}
+            <div className="ml-2">
+              {sortedLocations.length > 0 ? (
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragEnd={handleDragEnd}
+                >
+                  <SortableContext
+                    items={visibleLocations.map(loc => `${loc.type}-${loc.id}`)}
+                    strategy={verticalListSortingStrategy}
                   >
-                    {location.type === 'language_area' ? (
-                      <MapPin className="w-4 h-4 text-blue-500" />
-                    ) : location.type === 'municipality' ? (
-                      <MapPin className="w-4 h-4 text-orange-500" />
-                    ) : (
-                      <MapPin className="w-4 h-4 text-purple-500" />
-                    )}
-                    <span className="truncate">{location.name}</span>
-                  </button>
-                </li>
-              ))}
-
-              {/* Vis flere button if more locations */}
-              {hasMoreLocations && (
-                <li>
-                  <button
-                    onClick={() => {
-                      const newMax = maxVisibleLocations + 5
-                      setMaxVisibleLocations(newMax)
-                      localStorage.setItem(sidebarConfig.storageKeys.maxLocations, newMax.toString())
-                    }}
-                    className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-500 hover:bg-blue-50/50 hover:text-gray-700 transition-colors"
-                  >
-                    <Plus className="w-4 h-4" />
-                    <span>{sidebarConfig.labels.showMore} ({starredLocations.length - maxVisibleLocations} til)</span>
-                  </button>
-                </li>
+                    <ul className="space-y-0.5">
+                      {visibleLocations.map((location) => (
+                        <SortableLocationItem
+                          key={`${location.type}-${location.id}`}
+                          location={location}
+                          isActive={activePanel === 'location' && selectedLocationId === location.id}
+                        />
+                      ))}
+                    </ul>
+                  </SortableContext>
+                </DndContext>
+              ) : (
+                <p className="px-3 py-2 text-xs text-gray-400">
+                  Ingen steder lagt til ennå
+                </p>
               )}
-            </ul>
+
+              {/* Vis flere button */}
+              {hasMoreLocations && (
+                <button
+                  onClick={() => {
+                    const newMax = maxVisibleLocations + 5
+                    setMaxVisibleLocations(newMax)
+                    localStorage.setItem(sidebarConfig.storageKeys.maxLocations, newMax.toString())
+                  }}
+                  className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-500 hover:bg-blue-50/50 hover:text-gray-700 transition-colors mt-1"
+                >
+                  <span className="text-xs">Vis {sortedLocations.length - maxVisibleLocations} flere</span>
+                </button>
+              )}
+            </div>
           </div>
         )}
 
