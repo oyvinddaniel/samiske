@@ -18,6 +18,8 @@ import { PostDetailPanel } from '@/components/posts/PostDetailPanel'
 import { CalendarView } from '@/components/calendar/CalendarView'
 import { GroupsContent } from '@/app/grupper/GroupsContent'
 import { FloatingChatBubble } from '@/components/social/FloatingChatBubble'
+import { useLinkInterceptor } from '@/lib/navigation/useLinkInterceptor'
+import { getPanelFromPathname } from '@/lib/navigation/spa-utils'
 
 interface HomeLayoutProps {
   children: React.ReactNode
@@ -52,6 +54,9 @@ export function HomeLayout({ children, currentCategory = '' }: HomeLayoutProps) 
   const [selectedPostId, setSelectedPostId] = useState<string | null>(null)
   const [initialConversationUserId, setInitialConversationUserId] = useState<string | null>(null)
   const [floatingChatUserId, setFloatingChatUserId] = useState<string | null>(null)
+
+  // Enable SPA-style link interception
+  useLinkInterceptor()
 
   // Helper to update URL with panel state
   const updateURL = (panel: ActivePanel, params: Record<string, string> = {}) => {
@@ -109,6 +114,48 @@ export function HomeLayout({ children, currentCategory = '' }: HomeLayoutProps) 
         break
     }
   }, [searchParams])
+
+  // NEW: Detect pathname changes and update active panel (SPA navigation)
+  useEffect(() => {
+    const panelInfo = getPanelFromPathname(pathname)
+
+    // Only update if pathname indicates a specific panel (not feed)
+    // This allows query param-based navigation to still work for friends/messages/chat
+    if (panelInfo.type !== 'feed') {
+      setActivePanel(panelInfo.type)
+
+      // Update panel-specific state based on pathname params
+      switch (panelInfo.type) {
+        case 'community-page':
+          setSelectedCommunitySlug(panelInfo.params.slug || null)
+          break
+        case 'profile':
+          setSelectedProfileUserId(panelInfo.params.username || null)
+          break
+        case 'post':
+          setSelectedPostId(panelInfo.params.postId || null)
+          break
+        case 'group':
+          setSelectedGroupId(panelInfo.params.slug || null)
+          break
+        case 'location':
+          // Reconstruct location object from params
+          if (panelInfo.params.level) {
+            const type = panelInfo.params.level === 'language_area'
+              ? 'language_area'
+              : panelInfo.params.level === 'municipality'
+                ? 'municipality'
+                : 'place'
+            setSelectedLocation({
+              type,
+              id: panelInfo.params.id || panelInfo.params.languageCode || panelInfo.params.countryCode || '',
+              name: panelInfo.params.name || ''
+            })
+          }
+          break
+      }
+    }
+  }, [pathname])
 
   useEffect(() => {
     // Listen for mobile sidebar events
