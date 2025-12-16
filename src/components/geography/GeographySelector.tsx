@@ -93,11 +93,20 @@ export function GeographySelector({
 
     const loadPlaces = async () => {
       const supabase = createClient()
-      const { data: placesData } = await supabase
+      console.log('🗺️ Loading places for municipality:', selectedMunicipality.name, selectedMunicipality.id)
+
+      const { data: placesData, error } = await supabase
         .from('places')
         .select('*')
         .eq('municipality_id', selectedMunicipality.id)
         .order('name')
+
+      console.log('🗺️ Places loaded:', {
+        municipality: selectedMunicipality.name,
+        count: placesData?.length || 0,
+        places: placesData,
+        error
+      })
 
       setPlaces(placesData || [])
     }
