@@ -1,10 +1,8 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import Link from 'next/link'
-import Image from 'next/image'
-import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -43,7 +41,6 @@ export function Header({ currentCategory }: HeaderProps) {
   const [mounted, setMounted] = useState(false)
   const [socialNotifications, setSocialNotifications] = useState(0)
   const [isCollapsed, setIsCollapsed] = useState(false)
-  const lastScrollY = useRef(0)
 
   // Create stable supabase client reference
   const supabase = useMemo(() => createClient(), [])
@@ -52,25 +49,18 @@ export function Header({ currentCategory }: HeaderProps) {
     setMounted(true)
   }, [])
 
-  // Scroll detection for collapsing navbar
+  // Listen for search active state - only collapse on mobile when search is active
   useEffect(() => {
-    const handleScroll = () => {
-      const currentScrollY = window.scrollY
-
-      // Scrolling down - collapse to show only search
-      if (currentScrollY > lastScrollY.current && currentScrollY > 50) {
-        setIsCollapsed(true)
+    const handleSearchActiveChange = (event: CustomEvent<{ active: boolean }>) => {
+      // Only collapse on mobile (< 768px)
+      const isMobile = window.innerWidth < 768
+      if (isMobile) {
+        setIsCollapsed(event.detail.active)
       }
-      // Scrolling up - expand to show full navbar
-      else if (currentScrollY < lastScrollY.current) {
-        setIsCollapsed(false)
-      }
-
-      lastScrollY.current = currentScrollY
     }
 
-    window.addEventListener('scroll', handleScroll, { passive: true })
-    return () => window.removeEventListener('scroll', handleScroll)
+    window.addEventListener('search-active-change', handleSearchActiveChange as EventListener)
+    return () => window.removeEventListener('search-active-change', handleSearchActiveChange as EventListener)
   }, [])
 
   useEffect(() => {
@@ -192,10 +182,11 @@ export function Header({ currentCategory }: HeaderProps) {
 
   return (
     <header className="sticky top-0 z-50 shadow-md transition-all duration-300" style={{ backgroundColor: '#0143F5' }}>
-      {/* Top row - collapses when scrolling down on mobile */}
+      {/* Top row - collapses when search is active on mobile */}
       <div className={cn(
         "flex items-center justify-between px-4 md:px-6 transition-all duration-300 overflow-hidden",
-        isCollapsed ? "h-0 opacity-0" : "h-16 opacity-100"
+        // Only collapse on mobile (md:h-16 and md:opacity-100 ensure desktop always shows full navbar)
+        isCollapsed ? "h-0 opacity-0 md:h-16 md:opacity-100" : "h-16 opacity-100"
       )}>
         {/* Mobile nav */}
         <div className="flex items-center gap-3 md:hidden">

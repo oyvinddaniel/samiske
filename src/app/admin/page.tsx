@@ -17,6 +17,7 @@ import {
   StatsCards,
   StatisticsTab,
   EmergencyTab,
+  UserAnalyticsTab,
 } from '@/components/admin'
 import { BroadcastMessagesTab } from '@/components/admin/BroadcastMessagesTab'
 import type { User, Post, Stats, Feedback, Report, BugReportWithUser } from '@/components/admin'
@@ -151,12 +152,11 @@ export default function AdminPage() {
   }, [supabase])
 
   const fetchBugReports = useCallback(async () => {
-    console.log('🐛 Fetching bug reports...')
     const { data, error } = await supabase
       .from('bug_reports')
       .select(`
         *,
-        user:profiles (
+        user:profiles!bug_reports_user_id_fkey (
           id,
           full_name,
           email,
@@ -165,10 +165,8 @@ export default function AdminPage() {
       `)
       .order('created_at', { ascending: false })
 
-    console.log('🐛 Bug reports response:', { data, error, count: data?.length })
-
     if (error) {
-      console.error('❌ Error fetching bug reports:', error)
+      console.error('Error fetching bug reports:', error)
       return
     }
 
@@ -177,14 +175,13 @@ export default function AdminPage() {
         ...br,
         user: Array.isArray(br.user) ? br.user[0] : br.user,
       }))
-      console.log('✅ Formatted bug reports:', formattedBugReports.length)
       setBugReports(formattedBugReports as BugReportWithUser[])
     }
   }, [supabase])
 
   const fetchStats = useCallback(async () => {
     const [usersResult, postsResult, commentsResult, likesResult, feedbackResult, bugReportsResult] = await Promise.all([
-      supabase.from('profiles').select('*', { count: 'exact', head: true }),
+      supabase.rpc('get_auth_users_count'),
       supabase.from('posts').select('*', { count: 'exact', head: true }),
       supabase.from('comments').select('*', { count: 'exact', head: true }),
       supabase.from('likes').select('*', { count: 'exact', head: true }),
@@ -193,7 +190,7 @@ export default function AdminPage() {
     ])
 
     setStats({
-      totalUsers: usersResult.count || 0,
+      totalUsers: usersResult.data || 0,
       totalPosts: postsResult.count || 0,
       totalComments: commentsResult.count || 0,
       totalLikes: likesResult.count || 0,
@@ -419,6 +416,7 @@ export default function AdminPage() {
               Nødstopp
             </TabsTrigger>
             <TabsTrigger value="users">Brukere ({users.length})</TabsTrigger>
+            <TabsTrigger value="user-analytics">Brukerlogg & Statistikk</TabsTrigger>
             <TabsTrigger value="posts">Innlegg ({posts.length})</TabsTrigger>
             <TabsTrigger value="reports">
               Rapporter ({reports.filter(r => r.status === 'pending').length})
@@ -446,6 +444,10 @@ export default function AdminPage() {
               currentUserId={currentUser?.id}
               onRoleChange={handleRoleChange}
             />
+          </TabsContent>
+
+          <TabsContent value="user-analytics">
+            <UserAnalyticsTab />
           </TabsContent>
 
           <TabsContent value="posts">

@@ -116,6 +116,11 @@ export function UnifiedSearchBar() {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
+  // Emit event when search is active/inactive for Header to listen
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent('search-active-change', { detail: { active: showResults } }))
+  }, [showResults])
+
   // Handle focus - load recent items if no query
   const handleFocus = () => {
     setShowResults(true)
