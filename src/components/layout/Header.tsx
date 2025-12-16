@@ -228,7 +228,7 @@ export function Header({ currentCategory }: HeaderProps) {
               </button>
               <NotificationBell userId={user.id} />
               <BroadcastBadge />
-              <ChangelogDropdown isAdmin={profile?.role === 'admin'} />
+              <ChangelogDropdown isAdmin={profile?.role === 'admin'} userId={user.id} />
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button

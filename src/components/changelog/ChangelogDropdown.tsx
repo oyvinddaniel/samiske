@@ -7,7 +7,7 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { ListChecks, Plus, Trash2, X, ChevronDown } from 'lucide-react'
+import { ListChecks, Plus, Trash2, ChevronDown } from 'lucide-react'
 import { toast } from 'sonner'
 
 interface ChangelogEntry {
@@ -18,9 +18,10 @@ interface ChangelogEntry {
 
 interface ChangelogDropdownProps {
   isAdmin: boolean
+  userId?: string | null
 }
 
-export function ChangelogDropdown({ isAdmin }: ChangelogDropdownProps) {
+export function ChangelogDropdown({ isAdmin, userId }: ChangelogDropdownProps) {
   const [entries, setEntries] = useState<ChangelogEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [isOpen, setIsOpen] = useState(false)
@@ -28,6 +29,7 @@ export function ChangelogDropdown({ isAdmin }: ChangelogDropdownProps) {
   const [isAdding, setIsAdding] = useState(false)
   const [newContent, setNewContent] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [unreadCount, setUnreadCount] = useState(0)
   const supabase = createClient()
 
   const fetchEntries = useCallback(async () => {
@@ -46,11 +48,45 @@ export function ChangelogDropdown({ isAdmin }: ChangelogDropdownProps) {
     }
   }, [supabase])
 
+  // Hent antall uleste changelog-entries
+  const fetchUnreadCount = useCallback(async () => {
+    if (!userId) return
+    try {
+      const { data, error } = await supabase.rpc('get_unread_changelog_count')
+      if (error) throw error
+      setUnreadCount(data || 0)
+    } catch (error) {
+      console.error('Feil ved henting av uleste:', error)
+    }
+  }, [supabase, userId])
+
+  // Marker changelog som sett
+  const markAsSeen = useCallback(async () => {
+    if (!userId) return
+    try {
+      await supabase.rpc('mark_changelog_seen')
+      setUnreadCount(0)
+    } catch (error) {
+      console.error('Feil ved markering som sett:', error)
+    }
+  }, [supabase, userId])
+
+  // Hent uleste ved mount
+  useEffect(() => {
+    fetchUnreadCount()
+  }, [fetchUnreadCount])
+
+  // Hent entries og marker som sett når dropdown åpnes
   useEffect(() => {
     if (isOpen) {
       fetchEntries()
+      // Marker som sett etter kort forsinkelse
+      const timer = setTimeout(() => {
+        markAsSeen()
+      }, 1000)
+      return () => clearTimeout(timer)
     }
-  }, [isOpen, fetchEntries])
+  }, [isOpen, fetchEntries, markAsSeen])
 
   const handleAdd = async () => {
     if (!newContent.trim()) return
@@ -109,9 +145,19 @@ export function ChangelogDropdown({ isAdmin }: ChangelogDropdownProps) {
       <DropdownMenuTrigger asChild>
         <button
           className="relative p-2 rounded-full hover:bg-white/10 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
-          aria-label="Hva er nytt?"
+          aria-label={`Hva er nytt?${unreadCount > 0 ? ` (${unreadCount} uleste)` : ''}`}
         >
           <ListChecks className="w-5 h-5 text-white/80 hover:text-white" />
+
+          {/* Rød notifikasjonsprikk */}
+          {unreadCount > 0 && (
+            <span
+              className="absolute -top-0.5 -right-0.5 flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-bold text-white bg-red-500 rounded-full animate-pulse"
+              aria-hidden="true"
+            >
+              {unreadCount > 9 ? '9+' : unreadCount}
+            </span>
+          )}
         </button>
       </DropdownMenuTrigger>
 

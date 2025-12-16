@@ -3,8 +3,9 @@
 import { useEffect, useState, useMemo, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { createClient } from '@/lib/supabase/client'
-import { UserPlus, UserCheck, Clock, MessageCircle, UserX, X, ArrowRight } from 'lucide-react'
+import { X, ArrowRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { FriendActionButtons } from '@/components/friends/FriendActionButtons'
 
 interface Profile {
   id: string
@@ -17,8 +18,6 @@ interface Profile {
   created_at: string
 }
 
-type FriendshipStatus = 'none' | 'pending_sent' | 'pending_received' | 'accepted' | 'blocked'
-
 interface ProfileOverlayProps {
   userId: string
   onClose: () => void
@@ -30,8 +29,6 @@ export function ProfileOverlay({ userId, onClose, onStartConversation, onMouseEn
   const [profile, setProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
-  const [friendshipStatus, setFriendshipStatus] = useState<FriendshipStatus>('none')
-  const [friendshipLoading, setFriendshipLoading] = useState(false)
   const [mounted, setMounted] = useState(false)
   const [isClosing, setIsClosing] = useState(false)
   const sheetRef = useRef<HTMLDivElement>(null)
@@ -80,47 +77,6 @@ export function ProfileOverlay({ userId, onClose, onStartConversation, onMouseEn
     fetchProfile()
   }, [userId, supabase])
 
-  // Fetch friendship status
-  useEffect(() => {
-    const fetchFriendshipStatus = async () => {
-      if (!currentUserId || currentUserId === userId) return
-
-      try {
-        const { data: friendships, error } = await supabase
-          .from('friendships')
-          .select('*')
-          .or(`and(requester_id.eq.${currentUserId},addressee_id.eq.${userId}),and(requester_id.eq.${userId},addressee_id.eq.${currentUserId})`)
-
-        if (error) {
-          console.error('Error fetching friendship status:', error)
-          setFriendshipStatus('none')
-          return
-        }
-
-        if (friendships && friendships.length > 0) {
-          const friendship = friendships[0]
-          if (friendship.status === 'blocked') {
-            setFriendshipStatus('blocked')
-          } else if (friendship.status === 'accepted') {
-            setFriendshipStatus('accepted')
-          } else if (friendship.status === 'pending') {
-            if (friendship.requester_id === currentUserId) {
-              setFriendshipStatus('pending_sent')
-            } else {
-              setFriendshipStatus('pending_received')
-            }
-          }
-        } else {
-          setFriendshipStatus('none')
-        }
-      } catch (err) {
-        console.error('Unexpected error in friendship status:', err)
-        setFriendshipStatus('none')
-      }
-    }
-
-    fetchFriendshipStatus()
-  }, [currentUserId, userId, supabase])
 
   // Prevent body scroll when open
   useEffect(() => {
@@ -129,58 +85,6 @@ export function ProfileOverlay({ userId, onClose, onStartConversation, onMouseEn
       document.body.style.overflow = ''
     }
   }, [])
-
-  // Send friend request
-  const sendFriendRequest = async () => {
-    if (!currentUserId) return
-    setFriendshipLoading(true)
-
-    const { error } = await supabase
-      .from('friendships')
-      .insert({
-        requester_id: currentUserId,
-        addressee_id: userId,
-        status: 'pending'
-      })
-
-    if (!error) {
-      setFriendshipStatus('pending_sent')
-    }
-    setFriendshipLoading(false)
-  }
-
-  // Accept friend request
-  const acceptFriendRequest = async () => {
-    if (!currentUserId) return
-    setFriendshipLoading(true)
-
-    const { error } = await supabase
-      .from('friendships')
-      .update({ status: 'accepted' })
-      .eq('requester_id', userId)
-      .eq('addressee_id', currentUserId)
-
-    if (!error) {
-      setFriendshipStatus('accepted')
-    }
-    setFriendshipLoading(false)
-  }
-
-  // Cancel friend request or remove friend
-  const removeFriendship = async () => {
-    if (!currentUserId) return
-    setFriendshipLoading(true)
-
-    const { error } = await supabase
-      .from('friendships')
-      .delete()
-      .or(`and(requester_id.eq.${currentUserId},addressee_id.eq.${userId}),and(requester_id.eq.${userId},addressee_id.eq.${currentUserId})`)
-
-    if (!error) {
-      setFriendshipStatus('none')
-    }
-    setFriendshipLoading(false)
-  }
 
   // Start conversation with this user
   const handleStartConversation = () => {
@@ -370,72 +274,14 @@ export function ProfileOverlay({ userId, onClose, onStartConversation, onMouseEn
 
               {/* Friend and message buttons - only show for other users */}
               {currentUserId && currentUserId !== userId && (
-                <div className="flex flex-wrap justify-center gap-2 mt-6">
-                  {/* Friend button based on status */}
-                  {friendshipStatus === 'none' && (
-                    <button
-                      onClick={sendFriendRequest}
-                      disabled={friendshipLoading}
-                      className="flex items-center gap-1.5 px-4 py-2 text-sm bg-blue-600 text-white rounded-full hover:bg-blue-700 disabled:opacity-50 transition-colors"
-                    >
-                      <UserPlus className="w-4 h-4" />
-                      Legg til venn
-                    </button>
-                  )}
-
-                  {friendshipStatus === 'pending_sent' && (
-                    <button
-                      onClick={removeFriendship}
-                      disabled={friendshipLoading}
-                      className="flex items-center gap-1.5 px-4 py-2 text-sm bg-gray-100 text-gray-600 rounded-full hover:bg-gray-200 disabled:opacity-50 transition-colors"
-                    >
-                      <Clock className="w-4 h-4" />
-                      Forespørsel sendt
-                    </button>
-                  )}
-
-                  {friendshipStatus === 'pending_received' && (
-                    <div className="flex gap-2">
-                      <button
-                        onClick={acceptFriendRequest}
-                        disabled={friendshipLoading}
-                        className="flex items-center gap-1.5 px-4 py-2 text-sm bg-green-600 text-white rounded-full hover:bg-green-700 disabled:opacity-50 transition-colors"
-                      >
-                        <UserCheck className="w-4 h-4" />
-                        Godta
-                      </button>
-                      <button
-                        onClick={removeFriendship}
-                        disabled={friendshipLoading}
-                        className="flex items-center gap-1.5 px-4 py-2 text-sm bg-gray-100 text-gray-600 rounded-full hover:bg-gray-200 disabled:opacity-50 transition-colors"
-                      >
-                        <UserX className="w-4 h-4" />
-                        Avslå
-                      </button>
-                    </div>
-                  )}
-
-                  {friendshipStatus === 'accepted' && (
-                    <button
-                      onClick={removeFriendship}
-                      disabled={friendshipLoading}
-                      className="flex items-center gap-1.5 px-4 py-2 text-sm bg-green-100 text-green-700 rounded-full hover:bg-green-200 disabled:opacity-50 transition-colors"
-                    >
-                      <UserCheck className="w-4 h-4" />
-                      Venner
-                    </button>
-                  )}
-
-                  {/* Message button - show for friends */}
-                  {friendshipStatus === 'accepted' && onStartConversation && (
-                    <button
-                      onClick={handleStartConversation}
-                      className="flex items-center gap-1.5 px-4 py-2 text-sm bg-gray-100 text-gray-700 rounded-full hover:bg-gray-200 transition-colors"
-                    >
-                      <MessageCircle className="w-4 h-4" />
-                      Send melding
-                    </button>
-                  )}
+                <div className="mt-6">
+                  <FriendActionButtons
+                    targetUserId={userId}
+                    currentUserId={currentUserId}
+                    onStartConversation={onStartConversation}
+                    showMessageButton={!!onStartConversation}
+                    className="justify-center"
+                  />
                 </div>
               )}
             </div>

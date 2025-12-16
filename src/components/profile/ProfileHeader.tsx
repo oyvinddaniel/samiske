@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { MapPin, Home, Calendar, Settings } from 'lucide-react'
 import { getUserLocations } from '@/lib/geography'
+import { FriendActionButtons } from '@/components/friends/FriendActionButtons'
 
 interface Profile {
   id: string
@@ -44,6 +45,7 @@ export function ProfileHeader({
 }: ProfileHeaderProps) {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const [locationInfo, setLocationInfo] = useState<LocationInfo>({
     currentLocation: null,
     homeLocation: null,
@@ -51,6 +53,24 @@ export function ProfileHeader({
     homeLocationData: null
   })
   const supabase = useMemo(() => createClient(), [])
+
+  // Fetch current user
+  useEffect(() => {
+    const getCurrentUser = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (session?.user) {
+          setCurrentUserId(session.user.id)
+          return
+        }
+        const { data: { user } } = await supabase.auth.getUser()
+        setCurrentUserId(user?.id || null)
+      } catch {
+        setCurrentUserId(null)
+      }
+    }
+    getCurrentUser()
+  }, [supabase])
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -271,11 +291,22 @@ export function ProfileHeader({
 
           {/* Actions */}
           <div className="flex flex-col gap-2 sm:items-end">
-            {showEditButton && onOpenSettings && (
+            {/* Show settings button for own profile */}
+            {showEditButton && onOpenSettings && currentUserId === userId && (
               <Button onClick={onOpenSettings} variant="outline" size="sm">
                 <Settings className="w-4 h-4 mr-2" />
                 Innstillinger
               </Button>
+            )}
+
+            {/* Show friend actions for other users' profiles */}
+            {currentUserId && currentUserId !== userId && (
+              <FriendActionButtons
+                targetUserId={userId}
+                currentUserId={currentUserId}
+                variant="outline"
+                showMessageButton={false}
+              />
             )}
           </div>
         </div>
