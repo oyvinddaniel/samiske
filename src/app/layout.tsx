@@ -8,6 +8,7 @@ import { BroadcastMessageModal } from "@/components/broadcast/BroadcastMessageMo
 import { Toaster } from "@/components/ui/sonner";
 import { ResponsivePreview } from "@/components/dev/ResponsivePreview";
 import { Footer } from "@/components/layout/Footer";
+import { ActivityTracker } from "@/components/tracking/ActivityTracker";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -59,6 +60,7 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-gray-50`}
       >
         <ServiceWorkerRegistration />
+        <ActivityTracker />
         <ResponsivePreview>
           <div className="flex flex-col min-h-screen">
             <div className="flex-1">

@@ -42,6 +42,11 @@ interface AuthUser {
   raw_user_meta_data: { full_name?: string }
 }
 
+interface RegistrationTrend {
+  date: string
+  count: number
+}
+
 // Constants
 const PAGE_SIZE = 30
 
@@ -85,6 +90,9 @@ export function AdminDashboard() {
 
   // Recent registrations
   const [recentUsers, setRecentUsers] = useState<AuthUser[]>([])
+
+  // Registration trend (last 30 days)
+  const [registrationTrend, setRegistrationTrend] = useState<RegistrationTrend[]>([])
 
   // Activity log
   const [activities, setActivities] = useState<ActivityEntry[]>([])
@@ -130,6 +138,8 @@ export function AdminDashboard() {
         commentsTodayResult,
         // Recent users
         recentUsersResult,
+        // Registration trend
+        trendResult,
         // Activity log
         activityCountResult,
         activityResult,
@@ -153,6 +163,8 @@ export function AdminDashboard() {
         supabase.from('comments').select('*', { count: 'exact', head: true }).gte('created_at', todayStart),
         // Recent users (last 10)
         supabase.rpc('get_auth_users_list'),
+        // Registration trend (last 30 days)
+        supabase.rpc('get_user_registration_trend'),
         // Activity log
         supabase.from('user_activity_log').select('*', { count: 'exact', head: true }),
         supabase.from('user_activity_log')
@@ -205,6 +217,11 @@ export function AdminDashboard() {
           .sort((a: AuthUser, b: AuthUser) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
           .slice(0, 10)
         setRecentUsers(sorted)
+      }
+
+      // Set registration trend
+      if (trendResult.data) {
+        setRegistrationTrend(trendResult.data as RegistrationTrend[])
       }
 
       // Set activity log
@@ -527,7 +544,54 @@ export function AdminDashboard() {
         </Card>
       </div>
 
-      {/* === SEKSJON 4: DETALJERT AKTIVITETSLOGG === */}
+      {/* === SEKSJON 4: REGISTRERINGSTREND === */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <TrendingUp className="w-5 h-5 text-green-600" />
+            Registreringer per dag
+            <Badge variant="outline" className="ml-2">Siste 30 dager</Badge>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {registrationTrend.length === 0 ? (
+            <p className="text-sm text-gray-500 text-center py-4">Ingen data tilgjengelig</p>
+          ) : (
+            <div className="space-y-1 max-h-[400px] overflow-y-auto">
+              {registrationTrend.map((day) => (
+                <div
+                  key={day.date}
+                  className="flex items-center justify-between py-2 px-3 hover:bg-gray-50 rounded transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm font-medium text-gray-900 w-28">
+                      {new Date(day.date).toLocaleDateString('no-NO', {
+                        weekday: 'short',
+                        day: 'numeric',
+                        month: 'short',
+                      })}
+                    </span>
+                    {/* Visual bar */}
+                    <div className="h-4 bg-green-100 rounded-full overflow-hidden w-32">
+                      <div
+                        className="h-full bg-green-500 rounded-full transition-all"
+                        style={{
+                          width: `${Math.min(100, (day.count / Math.max(...registrationTrend.map(d => d.count), 1)) * 100)}%`,
+                        }}
+                      />
+                    </div>
+                  </div>
+                  <Badge variant={day.count > 0 ? 'default' : 'outline'} className={day.count > 0 ? 'bg-green-600' : ''}>
+                    {day.count} {day.count === 1 ? 'bruker' : 'brukere'}
+                  </Badge>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* === SEKSJON 5: DETALJERT AKTIVITETSLOGG === */}
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
