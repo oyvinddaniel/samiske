@@ -15,11 +15,11 @@ export function SwipeHints() {
       return
     }
 
-    // Skjul hintene etter 10 sekunder eller ved interaksjon
+    // Skjul hintene etter 4 sekunder eller ved interaksjon
     const timer = setTimeout(() => {
       setShowHints(false)
       localStorage.setItem('swipe-hints-seen', 'true')
-    }, 10000)
+    }, 4000)
 
     // Lytt til sveip-events
     const handleSwipe = () => {
@@ -45,7 +45,7 @@ export function SwipeHints() {
   return (
     <>
       {/* Venstre hint */}
-      <div className="md:hidden fixed left-0 top-[30%] z-30 pointer-events-none">
+      <div className="md:hidden fixed left-0 top-[20%] z-30 pointer-events-none">
         <div className="flex items-center gap-1 drop-shadow-lg">
           <ChevronRight className="w-10 h-10 text-blue-600 stroke-[3] animate-slide-right" strokeWidth={3} />
           <ChevronRight className="w-10 h-10 text-blue-600/80 stroke-[3] animate-slide-right animation-delay-75" strokeWidth={3} />
@@ -54,7 +54,7 @@ export function SwipeHints() {
       </div>
 
       {/* Høyre hint */}
-      <div className="md:hidden fixed right-0 top-[30%] z-30 pointer-events-none">
+      <div className="md:hidden fixed right-0 top-[20%] z-30 pointer-events-none">
         <div className="flex items-center gap-1 drop-shadow-lg">
           <ChevronLeft className="w-10 h-10 text-blue-600/60 stroke-[3] animate-slide-left animation-delay-150" strokeWidth={3} />
           <ChevronLeft className="w-10 h-10 text-blue-600/80 stroke-[3] animate-slide-left animation-delay-75" strokeWidth={3} />
