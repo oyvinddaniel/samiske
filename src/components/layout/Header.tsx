@@ -17,6 +17,7 @@ import type { User } from '@supabase/supabase-js'
 import { MobileNav } from './MobileNav'
 import { NotificationBell } from '@/components/notifications/NotificationBell'
 import { BroadcastBadge } from '@/components/broadcast/BroadcastBadge'
+import { ChangelogDropdown } from '@/components/changelog/ChangelogDropdown'
 import { SocialPanel } from '@/components/social/SocialPanel'
 import { Users, X, Search } from 'lucide-react'
 import { UnifiedSearchBar } from '@/components/search/UnifiedSearchBar'
@@ -274,6 +275,7 @@ export function Header({ currentCategory }: HeaderProps) {
               </button>
               <NotificationBell userId={user.id} />
               <BroadcastBadge />
+              <ChangelogDropdown isAdmin={profile?.role === 'admin'} />
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button

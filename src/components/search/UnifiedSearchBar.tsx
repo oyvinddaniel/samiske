@@ -32,50 +32,66 @@ export function UnifiedSearchBar() {
     return results[selectedCategory].items
   }, [results, selectedCategory])
 
-  // Handle result selection
+  // Handle result selection - open in feed area via custom events
   const handleSelectResult = (result: SearchResult) => {
     // Save scroll position before closing
     if (scrollContainerRef.current) {
       savedScrollPosition.current = scrollContainerRef.current.scrollTop
     }
 
-    // Navigate to result based on type
+    // Dispatch events to open in feed area
     switch (result.type) {
       case 'brukere':
         // Handled by ProfileOverlay in SearchResultItem - just close search
         break
       case 'innlegg':
       case 'arrangementer':
-        window.location.href = `/innlegg/${result.id}`
+        window.dispatchEvent(
+          new CustomEvent('open-post-panel', { detail: { postId: result.id } })
+        )
         break
       case 'kommentarer':
         if (result.post?.id) {
-          window.location.href = `/innlegg/${result.post.id}`
+          window.dispatchEvent(
+            new CustomEvent('open-post-panel', { detail: { postId: result.post.id } })
+          )
         }
         break
       case 'geografi':
-        // Navigate based on location type
-        if (result.location_type === 'language_area' && result.code) {
-          window.location.href = `/sapmi/sprak/${result.code}`
-        } else if (result.location_type === 'municipality' && result.country_code && result.slug) {
-          window.location.href = `/sapmi/${result.country_code}/${result.slug}`
-        } else if (result.location_type === 'place' && result.country_code && result.municipality_slug && result.slug) {
-          window.location.href = `/sapmi/${result.country_code}/${result.municipality_slug}/${result.slug}`
-        }
+        // Open location in feed area
+        window.dispatchEvent(
+          new CustomEvent('open-location-panel', {
+            detail: {
+              type: result.location_type,
+              id: result.id,
+              name: result.name
+            }
+          })
+        )
         break
       case 'samfunn':
-        window.location.href = `/samfunn/${result.slug}`
+        window.dispatchEvent(
+          new CustomEvent('open-community-page', { detail: { slug: result.slug } })
+        )
         break
       case 'tjenester':
-        // Navigate to community page with services tab
+        // Open community page with services tab
         if (result.community?.slug) {
-          window.location.href = `/samfunn/${result.community.slug}?tab=tjenester`
+          window.dispatchEvent(
+            new CustomEvent('open-community-page', {
+              detail: { slug: result.community.slug, tab: 'tjenester' }
+            })
+          )
         }
         break
       case 'produkter':
-        // Navigate to community page with products tab
+        // Open community page with products tab
         if (result.community?.slug) {
-          window.location.href = `/samfunn/${result.community.slug}?tab=produkter`
+          window.dispatchEvent(
+            new CustomEvent('open-community-page', {
+              detail: { slug: result.community.slug, tab: 'produkter' }
+            })
+          )
         }
         break
     }

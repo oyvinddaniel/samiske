@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { usePathname, useSearchParams } from 'next/navigation'
+import { usePathname, useSearchParams, useRouter } from 'next/navigation'
 import { Sidebar } from '@/components/layout/Sidebar'
 import { Header } from '@/components/layout/Header'
 import { RightSidebar } from '@/components/layout/RightSidebar'
@@ -14,13 +14,14 @@ import { CommunityFeedView, CommunityPageView } from '@/components/communities'
 import { ProfileFeedView } from '@/components/profile/ProfileFeedView'
 import { GeographyExplorerView, GeographyDetailView } from '@/components/geography'
 import { BookmarksPanel } from '@/components/bookmarks/BookmarksPanel'
+import { PostDetailPanel } from '@/components/posts/PostDetailPanel'
 
 interface HomeLayoutProps {
   children: React.ReactNode
   currentCategory?: string
 }
 
-type ActivePanel = 'feed' | 'friends' | 'messages' | 'chat' | 'group' | 'community' | 'community-page' | 'profile' | 'geography' | 'bookmarks' | 'location'
+type ActivePanel = 'feed' | 'friends' | 'messages' | 'chat' | 'group' | 'community' | 'community-page' | 'profile' | 'geography' | 'bookmarks' | 'location' | 'post'
 
 interface ChatTarget {
   id: string
@@ -36,6 +37,7 @@ interface LocationTarget {
 export function HomeLayout({ children, currentCategory = '' }: HomeLayoutProps) {
   const pathname = usePathname()
   const searchParams = useSearchParams()
+  const router = useRouter()
   const [showMobileSidebar, setShowMobileSidebar] = useState(false)
   const [activePanel, setActivePanel] = useState<ActivePanel>('feed')
   const [chatTarget, setChatTarget] = useState<ChatTarget | null>(null)
@@ -43,12 +45,58 @@ export function HomeLayout({ children, currentCategory = '' }: HomeLayoutProps) 
   const [selectedLocation, setSelectedLocation] = useState<LocationTarget | null>(null)
   const [selectedProfileUserId, setSelectedProfileUserId] = useState<string | null>(null)
   const [selectedCommunitySlug, setSelectedCommunitySlug] = useState<string | null>(null)
+  const [selectedCommunityTab, setSelectedCommunityTab] = useState<string | null>(null)
+  const [selectedPostId, setSelectedPostId] = useState<string | null>(null)
 
-  // Reset to feed when navigating via sidebar links
+  // Helper to update URL with panel state
+  const updateURL = (panel: ActivePanel, params: Record<string, string> = {}) => {
+    const query = new URLSearchParams()
+    if (panel !== 'feed') {
+      query.set('panel', panel)
+      Object.entries(params).forEach(([key, value]) => {
+        if (value) query.set(key, value)
+      })
+    }
+    const queryString = query.toString()
+    router.push(pathname + (queryString ? '?' + queryString : ''), { scroll: false })
+  }
+
+  // Restore state from URL on mount and when URL changes
   useEffect(() => {
-    setActivePanel('feed')
-    setChatTarget(null)
-  }, [pathname, searchParams])
+    const panel = searchParams.get('panel') as ActivePanel | null
+
+    if (!panel || panel === 'feed') {
+      setActivePanel('feed')
+      return
+    }
+
+    setActivePanel(panel)
+
+    // Restore panel-specific state from URL
+    switch (panel) {
+      case 'profile':
+        setSelectedProfileUserId(searchParams.get('userId'))
+        break
+      case 'location':
+        const type = searchParams.get('type') as 'language_area' | 'municipality' | 'place' | null
+        const id = searchParams.get('id')
+        const name = searchParams.get('name')
+        if (type && id && name) {
+          setSelectedLocation({ type, id, name })
+        }
+        break
+      case 'group':
+        setSelectedGroupId(searchParams.get('groupId'))
+        break
+      case 'community-page':
+        setSelectedCommunitySlug(searchParams.get('slug'))
+        setSelectedCommunityTab(searchParams.get('tab'))
+        break
+      case 'post':
+        setSelectedPostId(searchParams.get('postId'))
+        break
+    }
+  }, [searchParams])
 
   useEffect(() => {
     // Listen for mobile sidebar events
@@ -57,50 +105,72 @@ export function HomeLayout({ children, currentCategory = '' }: HomeLayoutProps) 
 
     // Listen for friends/messages panel events
     const handleOpenFriendsPanel = () => {
+      updateURL('friends')
       setActivePanel('friends')
-      // Close mobile sidebar if open
       window.dispatchEvent(new CustomEvent('close-left-sidebar'))
     }
     const handleOpenMessagesPanel = () => {
+      updateURL('messages')
       setActivePanel('messages')
-      // Close mobile sidebar if open
       window.dispatchEvent(new CustomEvent('close-left-sidebar'))
     }
 
     // Listen for group/community panel events
     const handleOpenGroupPanel = (e: CustomEvent<{ groupId: string }>) => {
+      updateURL('group', { groupId: e.detail.groupId })
       setSelectedGroupId(e.detail.groupId)
       setActivePanel('group')
       window.dispatchEvent(new CustomEvent('close-left-sidebar'))
     }
     const handleOpenCommunityPanel = () => {
+      updateURL('community')
       setActivePanel('community')
       window.dispatchEvent(new CustomEvent('close-left-sidebar'))
     }
-    const handleOpenCommunityPage = (e: CustomEvent<{ slug: string }>) => {
+    const handleOpenCommunityPage = (e: CustomEvent<{ slug: string; tab?: string }>) => {
+      updateURL('community-page', {
+        slug: e.detail.slug,
+        ...(e.detail.tab && { tab: e.detail.tab })
+      })
       setSelectedCommunitySlug(e.detail.slug)
+      setSelectedCommunityTab(e.detail.tab || null)
       setActivePanel('community-page')
       window.dispatchEvent(new CustomEvent('close-left-sidebar'))
     }
+    const handleOpenPostPanel = (e: CustomEvent<{ postId: string }>) => {
+      updateURL('post', { postId: e.detail.postId })
+      setSelectedPostId(e.detail.postId)
+      setActivePanel('post')
+      window.dispatchEvent(new CustomEvent('close-left-sidebar'))
+    }
     const handleOpenProfilePanel = () => {
+      updateURL('profile')
       setSelectedProfileUserId(null) // View own profile
       setActivePanel('profile')
       window.dispatchEvent(new CustomEvent('close-left-sidebar'))
     }
     const handleOpenUserProfilePanel = (e: CustomEvent<{ userId: string }>) => {
+      updateURL('profile', { userId: e.detail.userId })
       setSelectedProfileUserId(e.detail.userId)
       setActivePanel('profile')
       window.dispatchEvent(new CustomEvent('close-left-sidebar'))
     }
     const handleOpenGeographyPanel = () => {
+      updateURL('geography')
       setActivePanel('geography')
       window.dispatchEvent(new CustomEvent('close-left-sidebar'))
     }
     const handleOpenBookmarksPanel = () => {
+      updateURL('bookmarks')
       setActivePanel('bookmarks')
       window.dispatchEvent(new CustomEvent('close-left-sidebar'))
     }
     const handleOpenLocationPanel = (e: CustomEvent<LocationTarget>) => {
+      updateURL('location', {
+        type: e.detail.type,
+        id: e.detail.id,
+        name: e.detail.name
+      })
       setSelectedLocation(e.detail)
       setActivePanel('location')
       window.dispatchEvent(new CustomEvent('close-left-sidebar'))
@@ -113,6 +183,7 @@ export function HomeLayout({ children, currentCategory = '' }: HomeLayoutProps) 
     window.addEventListener('open-group-panel', handleOpenGroupPanel as EventListener)
     window.addEventListener('open-community-panel', handleOpenCommunityPanel)
     window.addEventListener('open-community-page', handleOpenCommunityPage as EventListener)
+    window.addEventListener('open-post-panel', handleOpenPostPanel as EventListener)
     window.addEventListener('open-profile-panel', handleOpenProfilePanel)
     window.addEventListener('open-user-profile-panel', handleOpenUserProfilePanel as EventListener)
     window.addEventListener('open-geography-panel', handleOpenGeographyPanel)
@@ -127,6 +198,7 @@ export function HomeLayout({ children, currentCategory = '' }: HomeLayoutProps) 
       window.removeEventListener('open-group-panel', handleOpenGroupPanel as EventListener)
       window.removeEventListener('open-community-panel', handleOpenCommunityPanel)
       window.removeEventListener('open-community-page', handleOpenCommunityPage as EventListener)
+      window.removeEventListener('open-post-panel', handleOpenPostPanel as EventListener)
       window.removeEventListener('open-profile-panel', handleOpenProfilePanel)
       window.removeEventListener('open-user-profile-panel', handleOpenUserProfilePanel as EventListener)
       window.removeEventListener('open-geography-panel', handleOpenGeographyPanel)
@@ -144,7 +216,7 @@ export function HomeLayout({ children, currentCategory = '' }: HomeLayoutProps) 
         {/* Left Sidebar */}
         <Sidebar
           currentCategory={currentCategory}
-          activePanel={activePanel === 'community-page' ? 'community' : activePanel}
+          activePanel={activePanel === 'community-page' ? 'community' : activePanel === 'post' ? 'feed' : activePanel}
           selectedLocationId={selectedLocation?.id}
         />
 
@@ -189,9 +261,19 @@ export function HomeLayout({ children, currentCategory = '' }: HomeLayoutProps) 
               ) : activePanel === 'community-page' && selectedCommunitySlug ? (
                 <CommunityPageView
                   slug={selectedCommunitySlug}
+                  initialTab={selectedCommunityTab}
                   onClose={() => {
                     setActivePanel('feed')
                     setSelectedCommunitySlug(null)
+                    setSelectedCommunityTab(null)
+                  }}
+                />
+              ) : activePanel === 'post' && selectedPostId ? (
+                <PostDetailPanel
+                  postId={selectedPostId}
+                  onClose={() => {
+                    setActivePanel('feed')
+                    setSelectedPostId(null)
                   }}
                 />
               ) : activePanel === 'profile' ? (

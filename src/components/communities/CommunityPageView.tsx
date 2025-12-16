@@ -34,10 +34,11 @@ import { getIndustryDisplayName } from '@/lib/types/industries'
 
 interface CommunityPageViewProps {
   slug: string
+  initialTab?: string | null
   onClose: () => void
 }
 
-export function CommunityPageView({ slug, onClose }: CommunityPageViewProps) {
+export function CommunityPageView({ slug, initialTab, onClose }: CommunityPageViewProps) {
   const [community, setCommunity] = useState<Community | null>(null)
   const [admins, setAdmins] = useState<CommunityAdmin[]>([])
   const [products, setProducts] = useState<Product[]>([])
@@ -297,7 +298,7 @@ export function CommunityPageView({ slug, onClose }: CommunityPageViewProps) {
       )}
 
       {/* Tabs */}
-      <Tabs defaultValue="innlegg" className="space-y-4">
+      <Tabs defaultValue={initialTab || 'innlegg'} className="space-y-4">
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="innlegg">Innlegg</TabsTrigger>
           <TabsTrigger value="produkter">

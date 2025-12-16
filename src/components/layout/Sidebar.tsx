@@ -26,7 +26,7 @@ interface UserProfile {
 
 interface SidebarProps {
   currentCategory?: string
-  activePanel?: 'feed' | 'friends' | 'messages' | 'chat' | 'group' | 'community' | 'profile' | 'geography' | 'bookmarks' | 'location'
+  activePanel?: 'feed' | 'friends' | 'messages' | 'chat' | 'group' | 'community' | 'profile' | 'geography' | 'bookmarks' | 'location' | 'post'
   selectedLocationId?: string
 }
 
