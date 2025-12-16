@@ -124,9 +124,7 @@ export function Header({ currentCategory }: HeaderProps) {
     <header
       className="sticky top-0 z-50 shadow-lg"
       style={{
-        backgroundImage: 'url(/images/sami-flag-blur.jpg)',
-        backgroundSize: 'cover',
-        backgroundPosition: 'center'
+        background: 'radial-gradient(circle at 30% 50%, #DC2626 0%, transparent 40%), radial-gradient(circle at 35% 50%, #1942EA 0%, transparent 35%), linear-gradient(90deg, #1942EA 0%, #1942EA 100%)'
       }}
     >
       {/* Main row - Logo and Icons (+ Search on larger screens) */}
@@ -140,15 +138,8 @@ export function Header({ currentCategory }: HeaderProps) {
           </div>
 
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-2.5">
-            <div className="w-10 h-10 p-1.5 rounded-xl bg-white/20 flex items-center justify-center backdrop-blur-sm">
-              <img
-                src="/images/sami.png"
-                alt="Samisk flagg"
-                className="w-full h-full object-contain rounded-md"
-              />
-            </div>
-            <span className="hidden sm:block font-bold text-white text-lg">samiske.no</span>
+          <Link href="/" className="flex items-center">
+            <span className="font-bold text-white text-[22px]" style={{ fontFamily: 'var(--font-comme)' }}>samiske.no</span>
           </Link>
         </div>
 

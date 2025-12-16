@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist, Geist_Mono, Comme } from "next/font/google";
 import "./globals.css";
 import { ServiceWorkerRegistration, InstallPrompt } from "@/components/pwa";
 import { FloatingSocialBubbles } from "@/components/social/FloatingSocialBubbles";
@@ -17,6 +17,11 @@ const geistSans = Geist({
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
+  subsets: ["latin"],
+});
+
+const comme = Comme({
+  variable: "--font-comme",
   subsets: ["latin"],
 });
 
@@ -57,7 +62,7 @@ export default function RootLayout({
         <meta name="mobile-web-app-capable" content="yes" />
       </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-gray-50`}
+        className={`${geistSans.variable} ${geistMono.variable} ${comme.variable} antialiased bg-gray-50`}
       >
         <ServiceWorkerRegistration />
         <ActivityTracker />
