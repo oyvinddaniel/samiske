@@ -12,6 +12,8 @@ interface FriendActionButtonsProps {
   variant?: 'default' | 'compact' | 'outline'
   className?: string
   showMessageButton?: boolean
+  /** If true, shows message button only for friends. If false, shows for everyone. Default: false */
+  messageButtonFriendsOnly?: boolean
 }
 
 /**
@@ -35,12 +37,23 @@ interface FriendActionButtonsProps {
  * />
  * ```
  *
- * @example With message button
+ * @example With message button (for everyone)
  * ```tsx
  * <FriendActionButtons
  *   targetUserId="user-123"
  *   currentUserId={currentUser?.id}
  *   showMessageButton
+ *   onStartConversation={(userId) => console.log('Start conversation with', userId)}
+ * />
+ * ```
+ *
+ * @example With message button (friends only)
+ * ```tsx
+ * <FriendActionButtons
+ *   targetUserId="user-123"
+ *   currentUserId={currentUser?.id}
+ *   showMessageButton
+ *   messageButtonFriendsOnly
  *   onStartConversation={(userId) => console.log('Start conversation with', userId)}
  * />
  * ```
@@ -51,7 +64,8 @@ export function FriendActionButtons({
   onStartConversation,
   variant = 'default',
   className,
-  showMessageButton = true
+  showMessageButton = true,
+  messageButtonFriendsOnly = false
 }: FriendActionButtonsProps) {
   const {
     friendshipStatus,
@@ -108,30 +122,63 @@ export function FriendActionButtons({
     }
   }
 
+  // Determine if message button should be shown
+  const shouldShowMessageButton = showMessageButton && onStartConversation && (
+    !messageButtonFriendsOnly || friendshipStatus === 'accepted'
+  )
+
   return (
     <div className={cn('flex flex-wrap gap-2', className)}>
       {/* None - Show "Legg til venn" */}
       {friendshipStatus === 'none' && (
-        <Button
-          onClick={sendFriendRequest}
-          disabled={isDisabled}
-          {...getButtonClasses('blue')}
-        >
-          <UserPlus className="w-4 h-4 mr-2" />
-          Legg til venn
-        </Button>
+        <>
+          <Button
+            onClick={sendFriendRequest}
+            disabled={isDisabled}
+            {...getButtonClasses('blue')}
+          >
+            <UserPlus className="w-4 h-4 mr-2" />
+            Legg til venn
+          </Button>
+
+          {/* Message button - for non-friends (if messageButtonFriendsOnly is false) */}
+          {shouldShowMessageButton && (
+            <Button
+              onClick={() => onStartConversation(targetUserId)}
+              disabled={isDisabled}
+              {...getButtonClasses('gray', true)}
+            >
+              <MessageCircle className="w-4 h-4 mr-2" />
+              Send melding
+            </Button>
+          )}
+        </>
       )}
 
       {/* Pending Sent - Show "Forespørsel sendt" (can cancel) */}
       {friendshipStatus === 'pending_sent' && (
-        <Button
-          onClick={removeFriendship}
-          disabled={isDisabled}
-          {...getButtonClasses('gray', true)}
-        >
-          <Clock className="w-4 h-4 mr-2" />
-          Forespørsel sendt
-        </Button>
+        <>
+          <Button
+            onClick={removeFriendship}
+            disabled={isDisabled}
+            {...getButtonClasses('gray', true)}
+          >
+            <Clock className="w-4 h-4 mr-2" />
+            Forespørsel sendt
+          </Button>
+
+          {/* Message button - for non-friends (if messageButtonFriendsOnly is false) */}
+          {shouldShowMessageButton && (
+            <Button
+              onClick={() => onStartConversation(targetUserId)}
+              disabled={isDisabled}
+              {...getButtonClasses('gray', true)}
+            >
+              <MessageCircle className="w-4 h-4 mr-2" />
+              Send melding
+            </Button>
+          )}
+        </>
       )}
 
       {/* Pending Received - Show "Godta" and "Avslå" */}
@@ -153,6 +200,18 @@ export function FriendActionButtons({
             <UserX className="w-4 h-4 mr-2" />
             Avslå
           </Button>
+
+          {/* Message button - for non-friends (if messageButtonFriendsOnly is false) */}
+          {shouldShowMessageButton && (
+            <Button
+              onClick={() => onStartConversation(targetUserId)}
+              disabled={isDisabled}
+              {...getButtonClasses('gray', true)}
+            >
+              <MessageCircle className="w-4 h-4 mr-2" />
+              Send melding
+            </Button>
+          )}
         </>
       )}
 
@@ -168,8 +227,8 @@ export function FriendActionButtons({
             Venner
           </Button>
 
-          {/* Message button - only for friends */}
-          {showMessageButton && onStartConversation && (
+          {/* Message button - always shown for friends */}
+          {shouldShowMessageButton && (
             <Button
               onClick={() => onStartConversation(targetUserId)}
               disabled={isDisabled}

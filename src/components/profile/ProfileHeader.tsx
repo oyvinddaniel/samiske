@@ -191,6 +191,14 @@ export function ProfileHeader({
     })
   }
 
+  const handleStartConversation = (userId: string) => {
+    window.dispatchEvent(
+      new CustomEvent('start-conversation-with-user', {
+        detail: { userId }
+      })
+    )
+  }
+
   const getRoleBadge = (role: string) => {
     switch (role) {
       case 'admin':
@@ -305,7 +313,8 @@ export function ProfileHeader({
                 targetUserId={userId}
                 currentUserId={currentUserId}
                 variant="outline"
-                showMessageButton={false}
+                showMessageButton={true}
+                onStartConversation={handleStartConversation}
               />
             )}
           </div>

@@ -323,28 +323,23 @@ export function Header({ currentCategory }: HeaderProps) {
           {/* Bottom Sheet */}
           <div
             className={cn(
-              'hidden lg:flex fixed z-[9999] bg-white rounded-2xl shadow-2xl flex-col transition-all duration-300 ease-out',
+              'hidden lg:flex fixed z-[9999] bg-white rounded-2xl shadow-2xl flex-col transition-all duration-300 ease-out overflow-hidden',
               'w-96',
               'right-4',
               'bottom-20',
-              'max-h-[60vh]',
+              'h-[60vh]',
               showSocialPanel ? 'opacity-100 scale-100' : 'opacity-0 scale-95 pointer-events-none'
             )}
           >
-            {/* Drag handle */}
-            <div className="flex justify-center pt-3 pb-2">
-              <div className="w-10 h-1 bg-gray-300 rounded-full" />
-            </div>
-
             {/* Header */}
-            <div className="flex items-center justify-between px-4 pb-3 border-b border-gray-100">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 flex-shrink-0">
               <h2 className="font-semibold text-gray-900 flex items-center gap-2">
                 <Users className="w-5 h-5 text-blue-600" />
                 Sosial
               </h2>
               <button
                 onClick={() => setShowSocialPanel(false)}
-                className="p-2 -mr-2 text-gray-500 hover:text-gray-700 rounded-lg hover:bg-gray-100"
+                className="p-1.5 text-gray-500 hover:text-gray-700 rounded-lg hover:bg-gray-100"
                 aria-label="Lukk"
               >
                 <X className="w-5 h-5" />
@@ -352,7 +347,7 @@ export function Header({ currentCategory }: HeaderProps) {
             </div>
 
             {/* Content */}
-            <div className="flex-1 overflow-hidden" style={{ height: 'calc(100vh - 14rem)' }}>
+            <div className="flex-1 overflow-hidden">
               {showSocialPanel && <SocialPanel />}
             </div>
           </div>

@@ -24,9 +24,10 @@ interface Conversation {
 
 interface MessagesListPanelProps {
   onClose: () => void
+  initialConversationUserId?: string
 }
 
-export function MessagesListPanel({ onClose }: MessagesListPanelProps) {
+export function MessagesListPanel({ onClose, initialConversationUserId }: MessagesListPanelProps) {
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [loading, setLoading] = useState(true)
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
@@ -41,6 +42,7 @@ export function MessagesListPanel({ onClose }: MessagesListPanelProps) {
     }
     getUser()
   }, [supabase])
+
 
   // Fetch conversations
   const fetchData = useCallback(async () => {
@@ -133,6 +135,31 @@ export function MessagesListPanel({ onClose }: MessagesListPanelProps) {
   useEffect(() => {
     fetchData()
   }, [fetchData])
+
+  // Handle initial conversation with specific user
+  useEffect(() => {
+    const startConversation = async () => {
+      if (!initialConversationUserId || !currentUserId) return
+
+      // Call the get_or_create_conversation function
+      const { data: convId, error } = await supabase
+        .rpc('get_or_create_conversation', { other_user_id: initialConversationUserId })
+
+      if (error) {
+        console.error('Error creating conversation:', error)
+        return
+      }
+
+      // Open this conversation
+      setSelectedConversationId(convId)
+
+      // Refresh conversations list
+      fetchData()
+    }
+
+    startConversation()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialConversationUserId, currentUserId, supabase]) // fetchData called directly, not in deps
 
   // Listen for messages-read event from ConversationView
   useEffect(() => {

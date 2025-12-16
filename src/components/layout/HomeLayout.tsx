@@ -49,6 +49,7 @@ export function HomeLayout({ children, currentCategory = '' }: HomeLayoutProps) 
   const [selectedCommunitySlug, setSelectedCommunitySlug] = useState<string | null>(null)
   const [selectedCommunityTab, setSelectedCommunityTab] = useState<string | null>(null)
   const [selectedPostId, setSelectedPostId] = useState<string | null>(null)
+  const [initialConversationUserId, setInitialConversationUserId] = useState<string | null>(null)
 
   // Helper to update URL with panel state
   const updateURL = (panel: ActivePanel, params: Record<string, string> = {}) => {
@@ -78,6 +79,9 @@ export function HomeLayout({ children, currentCategory = '' }: HomeLayoutProps) 
     switch (panel) {
       case 'profile':
         setSelectedProfileUserId(searchParams.get('userId'))
+        break
+      case 'messages':
+        setInitialConversationUserId(searchParams.get('userId'))
         break
       case 'location':
         const type = searchParams.get('type') as 'language_area' | 'municipality' | 'place' | null
@@ -117,6 +121,13 @@ export function HomeLayout({ children, currentCategory = '' }: HomeLayoutProps) 
     }
     const handleOpenMessagesPanel = () => {
       updateURL('messages')
+      setActivePanel('messages')
+      setInitialConversationUserId(null) // Clear any previous user
+      window.dispatchEvent(new CustomEvent('close-left-sidebar'))
+    }
+    const handleStartConversation = (e: CustomEvent<{ userId: string }>) => {
+      updateURL('messages', { userId: e.detail.userId })
+      setInitialConversationUserId(e.detail.userId)
       setActivePanel('messages')
       window.dispatchEvent(new CustomEvent('close-left-sidebar'))
     }
@@ -196,6 +207,7 @@ export function HomeLayout({ children, currentCategory = '' }: HomeLayoutProps) 
     window.addEventListener('close-left-sidebar', handleCloseLeftSidebar)
     window.addEventListener('open-friends-panel', handleOpenFriendsPanel)
     window.addEventListener('open-messages-panel', handleOpenMessagesPanel)
+    window.addEventListener('start-conversation-with-user', handleStartConversation as EventListener)
     window.addEventListener('open-group-panel', handleOpenGroupPanel as EventListener)
     window.addEventListener('open-community-panel', handleOpenCommunityPanel)
     window.addEventListener('open-community-page', handleOpenCommunityPage as EventListener)
@@ -213,6 +225,7 @@ export function HomeLayout({ children, currentCategory = '' }: HomeLayoutProps) 
       window.removeEventListener('close-left-sidebar', handleCloseLeftSidebar)
       window.removeEventListener('open-friends-panel', handleOpenFriendsPanel)
       window.removeEventListener('open-messages-panel', handleOpenMessagesPanel)
+      window.removeEventListener('start-conversation-with-user', handleStartConversation as EventListener)
       window.removeEventListener('open-group-panel', handleOpenGroupPanel as EventListener)
       window.removeEventListener('open-community-panel', handleOpenCommunityPanel)
       window.removeEventListener('open-community-page', handleOpenCommunityPage as EventListener)
@@ -255,7 +268,11 @@ export function HomeLayout({ children, currentCategory = '' }: HomeLayoutProps) 
                 />
               ) : activePanel === 'messages' ? (
                 <MessagesListPanel
-                  onClose={() => setActivePanel('feed')}
+                  onClose={() => {
+                    setActivePanel('feed')
+                    setInitialConversationUserId(null)
+                  }}
+                  initialConversationUserId={initialConversationUserId || undefined}
                 />
               ) : activePanel === 'chat' && chatTarget ? (
                 <ChatPanel
