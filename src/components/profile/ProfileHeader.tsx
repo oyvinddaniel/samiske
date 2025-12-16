@@ -63,10 +63,10 @@ export function ProfileHeader({
 
   useEffect(() => {
     const fetchProfile = async () => {
-      // Fetch profile
+      // Fetch profile with location privacy settings
       const { data: profileData } = await supabase
         .from('profiles')
-        .select('id, full_name, avatar_url, bio, location, role, created_at')
+        .select('id, full_name, avatar_url, bio, location, role, created_at, show_current_location, show_home_location')
         .eq('id', userId)
         .single()
 
@@ -82,11 +82,12 @@ export function ProfileHeader({
 
       // Fetch geography locations
       const locations = await getUserLocations(userId)
-      if (locations) {
+      if (locations && profileData) {
         const locationStrings: LocationInfo = { currentLocation: null, homeLocation: null }
 
-        // Fetch current location details
-        if (locations.currentPlaceId) {
+        // Fetch current location details (only if user wants to show it publicly)
+        const showCurrentLocation = profileData.show_current_location ?? true
+        if (showCurrentLocation && locations.currentPlaceId) {
           const { data: place } = await supabase
             .from('places')
             .select('name, municipality:municipalities(name)')
@@ -97,7 +98,7 @@ export function ProfileHeader({
             const municipality = Array.isArray(place.municipality) ? place.municipality[0] : place.municipality
             locationStrings.currentLocation = `${place.name}, ${municipality?.name}`
           }
-        } else if (locations.currentMunicipalityId) {
+        } else if (showCurrentLocation && locations.currentMunicipalityId) {
           const { data: municipality } = await supabase
             .from('municipalities')
             .select('name')
@@ -109,8 +110,9 @@ export function ProfileHeader({
           }
         }
 
-        // Fetch home location details
-        if (locations.homePlaceId) {
+        // Fetch home location details (only if user wants to show it publicly)
+        const showHomeLocation = profileData.show_home_location ?? true
+        if (showHomeLocation && locations.homePlaceId) {
           const { data: place } = await supabase
             .from('places')
             .select('name, municipality:municipalities(name)')
@@ -121,7 +123,7 @@ export function ProfileHeader({
             const municipality = Array.isArray(place.municipality) ? place.municipality[0] : place.municipality
             locationStrings.homeLocation = `${place.name}, ${municipality?.name}`
           }
-        } else if (locations.homeMunicipalityId) {
+        } else if (showHomeLocation && locations.homeMunicipalityId) {
           const { data: municipality } = await supabase
             .from('municipalities')
             .select('name')

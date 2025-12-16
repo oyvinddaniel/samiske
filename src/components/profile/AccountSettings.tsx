@@ -235,6 +235,8 @@ export function AccountSettings({ userId }: AccountSettingsProps) {
           phone: phone.trim() || null,
           phone_public: phonePublic,
           avatar_url: avatarUrl || null,
+          show_current_location: showCurrentLocation,
+          show_home_location: showHomeLocation,
         })
         .eq('id', profile.id)
 
@@ -645,30 +647,58 @@ export function AccountSettings({ userId }: AccountSettingsProps) {
           <CardDescription>Fortell oss hvor du bor og hvor du kommer fra</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="space-y-2">
-            <Label>Nåværende sted</Label>
-            <GeographySelector
-              value={{
-                municipalityId: currentLocation.municipalityId,
-                placeId: currentLocation.placeId
-              }}
-              onChange={handleCurrentLocationChange}
-              placeholder="Velg nåværende sted"
-              disabled={savingLocations}
-            />
+          <div className="space-y-3">
+            <div className="space-y-2">
+              <Label>Nåværende sted</Label>
+              <GeographySelector
+                value={{
+                  municipalityId: currentLocation.municipalityId,
+                  placeId: currentLocation.placeId
+                }}
+                onChange={handleCurrentLocationChange}
+                placeholder="Velg nåværende sted"
+                disabled={savingLocations}
+              />
+            </div>
+            <div className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                id="show-current-location"
+                checked={showCurrentLocation}
+                onChange={(e) => setShowCurrentLocation(e.target.checked)}
+                className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+              />
+              <label htmlFor="show-current-location" className="text-sm text-gray-700 cursor-pointer">
+                Vis nåværende sted offentlig på profilen
+              </label>
+            </div>
           </div>
 
-          <div className="space-y-2">
-            <Label>Hjemsted</Label>
-            <GeographySelector
-              value={{
-                municipalityId: homeLocation.municipalityId,
-                placeId: homeLocation.placeId
-              }}
-              onChange={handleHomeLocationChange}
-              placeholder="Velg hjemsted"
-              disabled={savingLocations}
-            />
+          <div className="space-y-3">
+            <div className="space-y-2">
+              <Label>Hjemsted</Label>
+              <GeographySelector
+                value={{
+                  municipalityId: homeLocation.municipalityId,
+                  placeId: homeLocation.placeId
+                }}
+                onChange={handleHomeLocationChange}
+                placeholder="Velg hjemsted"
+                disabled={savingLocations}
+              />
+            </div>
+            <div className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                id="show-home-location"
+                checked={showHomeLocation}
+                onChange={(e) => setShowHomeLocation(e.target.checked)}
+                className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+              />
+              <label htmlFor="show-home-location" className="text-sm text-gray-700 cursor-pointer">
+                Vis hjemsted offentlig på profilen
+              </label>
+            </div>
           </div>
         </CardContent>
       </Card>
