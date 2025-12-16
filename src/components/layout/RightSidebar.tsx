@@ -227,13 +227,13 @@ export function RightSidebar() {
   // Fetch stats (can be called to refresh)
   const fetchStats = useCallback(async () => {
     const [membersCount, postsCount, commentsCount] = await Promise.all([
-      supabase.from('profiles').select('*', { count: 'exact', head: true }),
+      supabase.rpc('get_auth_users_count'),
       supabase.from('posts').select('*', { count: 'exact', head: true }),
       supabase.from('comments').select('*', { count: 'exact', head: true }),
     ])
 
     setStats({
-      totalMembers: membersCount.count || 0,
+      totalMembers: membersCount.data || 0,
       totalPosts: postsCount.count || 0,
       totalComments: commentsCount.count || 0,
     })
