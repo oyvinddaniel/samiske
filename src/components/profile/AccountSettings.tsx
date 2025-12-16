@@ -329,20 +329,12 @@ export function AccountSettings({ userId }: AccountSettingsProps) {
     toast.success('Push-varsler deaktivert')
   }
 
-  const handleSaveCurrentLocation = async (municipalityId: string | null, placeId: string | null) => {
-    setSavingLocations(true)
-    await setUserLocation(userId, 'current', municipalityId, placeId)
-    setCurrentLocation({ municipalityId, placeId })
-    setSavingLocations(false)
-    toast.success('Nåværende sted lagret!')
+  const handleCurrentLocationChange = (value: { municipalityId: string | null; placeId: string | null }) => {
+    setCurrentLocation(value)
   }
 
-  const handleSaveHomeLocation = async (municipalityId: string | null, placeId: string | null) => {
-    setSavingLocations(true)
-    await setUserLocation(userId, 'home', municipalityId, placeId)
-    setHomeLocation({ municipalityId, placeId })
-    setSavingLocations(false)
-    toast.success('Hjemsted lagret!')
+  const handleHomeLocationChange = (value: { municipalityId: string | null; placeId: string | null }) => {
+    setHomeLocation(value)
   }
 
   const handleDeleteAccount = async () => {
@@ -651,9 +643,12 @@ export function AccountSettings({ userId }: AccountSettingsProps) {
           <div className="space-y-2">
             <Label>Nåværende sted</Label>
             <GeographySelector
-              selectedMunicipalityId={currentLocation.municipalityId}
-              selectedPlaceId={currentLocation.placeId}
-              onSave={handleSaveCurrentLocation}
+              value={{
+                municipalityId: currentLocation.municipalityId,
+                placeId: currentLocation.placeId
+              }}
+              onChange={handleCurrentLocationChange}
+              placeholder="Velg nåværende sted"
               disabled={savingLocations}
             />
           </div>
@@ -661,9 +656,12 @@ export function AccountSettings({ userId }: AccountSettingsProps) {
           <div className="space-y-2">
             <Label>Hjemsted</Label>
             <GeographySelector
-              selectedMunicipalityId={homeLocation.municipalityId}
-              selectedPlaceId={homeLocation.placeId}
-              onSave={handleSaveHomeLocation}
+              value={{
+                municipalityId: homeLocation.municipalityId,
+                placeId: homeLocation.placeId
+              }}
+              onChange={handleHomeLocationChange}
+              placeholder="Velg hjemsted"
               disabled={savingLocations}
             />
           </div>
