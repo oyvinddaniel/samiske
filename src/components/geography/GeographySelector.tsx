@@ -35,6 +35,10 @@ interface GroupedMunicipalities {
   municipalities: Municipality[]
 }
 
+interface PlaceWithMunicipality extends Place {
+  municipality: Municipality
+}
+
 export function GeographySelector({
   value,
   onChange,
@@ -45,18 +49,18 @@ export function GeographySelector({
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(true)
   const [groupedMunicipalities, setGroupedMunicipalities] = useState<GroupedMunicipalities[]>([])
-  const [places, setPlaces] = useState<Place[]>([])
+  const [allPlaces, setAllPlaces] = useState<PlaceWithMunicipality[]>([])
   const [selectedMunicipality, setSelectedMunicipality] = useState<Municipality | null>(null)
   const [selectedPlace, setSelectedPlace] = useState<Place | null>(null)
-  const [step, setStep] = useState<'municipality' | 'place'>('municipality')
+  const [searchQuery, setSearchQuery] = useState('')
 
-  // Load countries and municipalities
+  // Load countries, municipalities, and ALL places on mount
   useEffect(() => {
     const loadData = async () => {
       setLoading(true)
       const supabase = createClient()
 
-      // Fetch countries (used for grouping, not stored in state)
+      // Fetch countries
       const { data: countriesData } = await supabase
         .from('countries')
         .select('*')
@@ -68,6 +72,14 @@ export function GeographySelector({
         .select('*, country:countries(*)')
         .order('name')
 
+      // Fetch ALL places with their municipalities
+      const { data: placesData } = await supabase
+        .from('places')
+        .select('*, municipality:municipalities(*)')
+        .order('name')
+
+      console.log('🗺️ Loaded all places:', placesData?.length || 0)
+
       if (countriesData && municipalitiesData) {
         // Group municipalities by country
         const grouped: GroupedMunicipalities[] = countriesData.map(country => ({
@@ -78,88 +90,43 @@ export function GeographySelector({
         setGroupedMunicipalities(grouped)
       }
 
+      if (placesData) {
+        setAllPlaces(placesData as PlaceWithMunicipality[])
+      }
+
       setLoading(false)
     }
 
     loadData()
   }, [])
 
-  // Load places when municipality changes
-  useEffect(() => {
-    if (!selectedMunicipality) {
-      setPlaces([])
-      return
-    }
-
-    const loadPlaces = async () => {
-      const supabase = createClient()
-      console.log('🗺️ Loading places for municipality:', selectedMunicipality.name, selectedMunicipality.id)
-
-      const { data: placesData, error } = await supabase
-        .from('places')
-        .select('*')
-        .eq('municipality_id', selectedMunicipality.id)
-        .order('name')
-
-      console.log('🗺️ Places loaded:', {
-        municipality: selectedMunicipality.name,
-        count: placesData?.length || 0,
-        places: placesData,
-        error
-      })
-
-      setPlaces(placesData || [])
-    }
-
-    loadPlaces()
-  }, [selectedMunicipality])
-
   // Load selected values on mount
   useEffect(() => {
-    console.log('🗺️ GeographySelector loading values:', {
-      municipalityId: value?.municipalityId,
-      placeId: value?.placeId
-    })
-
-    if (!value?.municipalityId && !value?.placeId) {
-      console.log('🗺️ No values to load, returning early')
-      return
-    }
+    if (!value?.municipalityId && !value?.placeId) return
 
     const loadSelected = async () => {
       const supabase = createClient()
 
       if (value.placeId) {
-        console.log('🗺️ Loading place with ID:', value.placeId)
-        const { data: place, error } = await supabase
+        const { data: place } = await supabase
           .from('places')
           .select('*, municipality:municipalities(*)')
           .eq('id', value.placeId)
           .single()
 
-        console.log('🗺️ Place query result:', { place, error })
-
         if (place) {
           setSelectedPlace(place as Place)
           setSelectedMunicipality(place.municipality as Municipality)
-          setStep('place')
-          console.log('🗺️ Set place:', place.name)
-        } else {
-          console.error('🗺️ Place not found for ID:', value.placeId)
         }
       } else if (value.municipalityId) {
-        console.log('🗺️ Loading municipality with ID:', value.municipalityId)
-        const { data: municipality, error } = await supabase
+        const { data: municipality } = await supabase
           .from('municipalities')
           .select('*')
           .eq('id', value.municipalityId)
           .single()
 
-        console.log('🗺️ Municipality query result:', { municipality, error })
-
         if (municipality) {
           setSelectedMunicipality(municipality as Municipality)
-          console.log('🗺️ Set municipality:', municipality.name)
         }
       }
     }
@@ -170,35 +137,32 @@ export function GeographySelector({
   const handleSelectMunicipality = (municipality: Municipality) => {
     setSelectedMunicipality(municipality)
     setSelectedPlace(null)
-    setStep('place')
-    // Don't close yet - let user optionally select a place
-  }
-
-  const handleSelectPlace = (place: Place) => {
-    setSelectedPlace(place)
-    onChange({ municipalityId: selectedMunicipality?.id || null, placeId: place.id })
+    onChange({ municipalityId: municipality.id, placeId: null })
     setOpen(false)
   }
 
-  const handleConfirmMunicipality = () => {
-    if (selectedMunicipality) {
-      onChange({ municipalityId: selectedMunicipality.id, placeId: null })
-      setOpen(false)
-    }
+  const handleSelectPlace = (place: PlaceWithMunicipality) => {
+    setSelectedPlace(place)
+    setSelectedMunicipality(place.municipality)
+    onChange({ municipalityId: place.municipality.id, placeId: place.id })
+    setOpen(false)
   }
 
   const handleClear = () => {
     setSelectedMunicipality(null)
     setSelectedPlace(null)
-    setStep('municipality')
     onChange({ municipalityId: null, placeId: null })
     setOpen(false)
   }
 
-  const handleBack = () => {
-    setStep('municipality')
-    setSelectedPlace(null)
-  }
+  // Filter places based on search query
+  const filteredPlaces = searchQuery
+    ? allPlaces.filter(place =>
+        place.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        place.name_sami?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        place.municipality.name.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    : []
 
   // Get display text
   const getDisplayText = () => {
@@ -234,106 +198,81 @@ export function GeographySelector({
           <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[300px] p-0" align="start">
-        <Command>
+      <PopoverContent className="w-[350px] p-0" align="start">
+        <Command shouldFilter={false}>
           <CommandInput
-            placeholder={step === 'municipality' ? 'Sok etter kommune...' : 'Sok etter sted...'}
+            placeholder="Søk etter sted eller kommune..."
+            value={searchQuery}
+            onValueChange={setSearchQuery}
           />
           <CommandList>
             <CommandEmpty>
               {loading ? 'Laster...' : 'Ingen resultater funnet.'}
             </CommandEmpty>
 
-            {step === 'municipality' && (
-              <>
-                {/* Clear option if something is selected */}
-                {(selectedMunicipality || selectedPlace) && (
-                  <CommandGroup>
-                    <CommandItem onSelect={handleClear} className="text-muted-foreground">
-                      Fjern valg
-                    </CommandItem>
-                  </CommandGroup>
-                )}
-
-                {/* Municipalities grouped by country */}
-                {groupedMunicipalities.map(({ country, municipalities }) => (
-                  <CommandGroup key={country.id} heading={country.name}>
-                    {municipalities.map((municipality) => (
-                      <CommandItem
-                        key={municipality.id}
-                        value={`${municipality.name} ${country.name}`}
-                        onSelect={() => handleSelectMunicipality(municipality)}
-                      >
-                        <Building2 className="mr-2 h-4 w-4" />
-                        <span>{municipality.name}</span>
-                        {municipality.name_sami && municipality.name_sami !== municipality.name && (
-                          <span className="ml-2 text-xs text-muted-foreground italic">
-                            {municipality.name_sami}
-                          </span>
-                        )}
-                        {selectedMunicipality?.id === municipality.id && (
-                          <Check className="ml-auto h-4 w-4" />
-                        )}
-                      </CommandItem>
-                    ))}
-                  </CommandGroup>
-                ))}
-              </>
+            {/* Clear option if something is selected */}
+            {(selectedMunicipality || selectedPlace) && (
+              <CommandGroup>
+                <CommandItem onSelect={handleClear} className="text-muted-foreground">
+                  Fjern valg
+                </CommandItem>
+              </CommandGroup>
             )}
 
-            {step === 'place' && selectedMunicipality && (
-              <>
-                {/* Back button */}
-                <CommandGroup>
-                  <CommandItem onSelect={handleBack} className="text-muted-foreground">
-                    Tilbake til kommuner
-                  </CommandItem>
-                </CommandGroup>
-
-                {/* Confirm municipality only */}
-                <CommandGroup heading={`Velg hele ${selectedMunicipality.name}`}>
-                  <CommandItem onSelect={handleConfirmMunicipality}>
-                    <Building2 className="mr-2 h-4 w-4" />
-                    <span>Hele {selectedMunicipality.name} kommune</span>
-                    {!selectedPlace && (
+            {/* Show filtered places if user is searching */}
+            {searchQuery && filteredPlaces.length > 0 && (
+              <CommandGroup heading={`Steder (${filteredPlaces.length})`}>
+                {filteredPlaces.slice(0, 20).map((place) => (
+                  <CommandItem
+                    key={place.id}
+                    value={`${place.name} ${place.municipality.name}`}
+                    onSelect={() => handleSelectPlace(place)}
+                  >
+                    <MapPin className="mr-2 h-4 w-4" />
+                    <div className="flex flex-col">
+                      <span>{place.name}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {place.municipality.name}
+                      </span>
+                    </div>
+                    {selectedPlace?.id === place.id && (
                       <Check className="ml-auto h-4 w-4" />
                     )}
                   </CommandItem>
-                </CommandGroup>
-
-                {/* Places in municipality */}
-                {places.length > 0 && (
-                  <CommandGroup heading={`Steder i ${selectedMunicipality.name}`}>
-                    {places.map((place) => (
-                      <CommandItem
-                        key={place.id}
-                        value={`${place.name} ${selectedMunicipality.name}`}
-                        onSelect={() => handleSelectPlace(place)}
-                      >
-                        <MapPin className="mr-2 h-4 w-4" />
-                        <span>{place.name}</span>
-                        {place.name_sami && place.name_sami !== place.name && (
-                          <span className="ml-2 text-xs text-muted-foreground italic">
-                            {place.name_sami}
-                          </span>
-                        )}
-                        {selectedPlace?.id === place.id && (
-                          <Check className="ml-auto h-4 w-4" />
-                        )}
-                      </CommandItem>
-                    ))}
-                  </CommandGroup>
+                ))}
+                {filteredPlaces.length > 20 && (
+                  <CommandItem disabled>
+                    <span className="text-xs text-muted-foreground">
+                      + {filteredPlaces.length - 20} flere resultater...
+                    </span>
+                  </CommandItem>
                 )}
-
-                {places.length === 0 && !loading && (
-                  <CommandGroup>
-                    <CommandItem disabled>
-                      Ingen steder registrert i denne kommunen
-                    </CommandItem>
-                  </CommandGroup>
-                )}
-              </>
+              </CommandGroup>
             )}
+
+            {/* Show municipalities if not searching or no place results */}
+            {!searchQuery && groupedMunicipalities.map(({ country, municipalities }) => (
+              <CommandGroup key={country.id} heading={country.name}>
+                {municipalities.map((municipality) => (
+                  <CommandItem
+                    key={municipality.id}
+                    value={`${municipality.name} ${country.name}`}
+                    onSelect={() => handleSelectMunicipality(municipality)}
+                  >
+                    <Building2 className="mr-2 h-4 w-4" />
+                    <span>{municipality.name}</span>
+                    {municipality.name_sami && municipality.name_sami !== municipality.name && (
+                      <span className="ml-2 text-xs text-muted-foreground italic">
+                        {municipality.name_sami}
+                      </span>
+                    )}
+                    {selectedMunicipality?.id === municipality.id && (
+                      <Check className="ml-auto h-4 w-4" />
+                    )}
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            ))}
           </CommandList>
         </Command>
       </PopoverContent>
