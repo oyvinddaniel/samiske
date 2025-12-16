@@ -164,6 +164,14 @@ export function GeographySelector({
       )
     : []
 
+  // Filter municipalities based on search query
+  const filteredMunicipalities = searchQuery
+    ? groupedMunicipalities.flatMap(g => g.municipalities).filter(municipality =>
+        municipality.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        municipality.name_sami?.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    : []
+
   // Get display text
   const getDisplayText = () => {
     if (selectedPlace) {
@@ -216,6 +224,37 @@ export function GeographySelector({
                 <CommandItem onSelect={handleClear} className="text-muted-foreground">
                   Fjern valg
                 </CommandItem>
+              </CommandGroup>
+            )}
+
+            {/* Show filtered municipalities if user is searching */}
+            {searchQuery && filteredMunicipalities.length > 0 && (
+              <CommandGroup heading={`Kommuner (${filteredMunicipalities.length})`}>
+                {filteredMunicipalities.slice(0, 10).map((municipality) => (
+                  <CommandItem
+                    key={municipality.id}
+                    value={municipality.name}
+                    onSelect={() => handleSelectMunicipality(municipality)}
+                  >
+                    <Building2 className="mr-2 h-4 w-4" />
+                    <span>{municipality.name}</span>
+                    {municipality.name_sami && municipality.name_sami !== municipality.name && (
+                      <span className="ml-2 text-xs text-muted-foreground italic">
+                        {municipality.name_sami}
+                      </span>
+                    )}
+                    {selectedMunicipality?.id === municipality.id && !selectedPlace && (
+                      <Check className="ml-auto h-4 w-4" />
+                    )}
+                  </CommandItem>
+                ))}
+                {filteredMunicipalities.length > 10 && (
+                  <CommandItem disabled>
+                    <span className="text-xs text-muted-foreground">
+                      + {filteredMunicipalities.length - 10} flere kommuner...
+                    </span>
+                  </CommandItem>
+                )}
               </CommandGroup>
             )}
 

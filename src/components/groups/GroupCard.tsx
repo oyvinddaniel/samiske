@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Users, Lock, Eye, EyeOff } from 'lucide-react'
+import { Users, Lock, Eye, EyeOff, Clock } from 'lucide-react'
 import type { Group, GroupType } from '@/lib/types/groups'
 import { groupTypeLabels } from '@/lib/types/groups'
 
@@ -11,6 +11,7 @@ interface GroupCardProps {
   group: Group
   userRole?: string | null
   showType?: boolean
+  pendingCount?: number
   onClick?: () => void
 }
 
@@ -26,15 +27,16 @@ const typeColors: Record<GroupType, string> = {
   hidden: 'bg-gray-100 text-gray-800',
 }
 
-export function GroupCard({ group, userRole, showType = true, onClick }: GroupCardProps) {
+export function GroupCard({ group, userRole, showType = true, pendingCount = 0, onClick }: GroupCardProps) {
   const TypeIcon = typeIcons[group.group_type]
+  const isAdminOrMod = userRole === 'admin' || userRole === 'moderator'
 
   const cardContent = (
-    <Card className="hover:shadow-md transition-shadow cursor-pointer h-full">
+    <Card className="hover:shadow-md transition-shadow cursor-pointer h-full relative">
       <CardContent className="p-4">
         <div className="flex items-start gap-3">
           {/* Group avatar */}
-          <div className="w-12 h-12 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
+          <div className="relative w-12 h-12 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
             {group.image_url ? (
               <img
                 src={group.image_url}
@@ -43,6 +45,12 @@ export function GroupCard({ group, userRole, showType = true, onClick }: GroupCa
               />
             ) : (
               <Users className="w-6 h-6 text-blue-600" />
+            )}
+            {/* Pending members notification badge */}
+            {isAdminOrMod && pendingCount > 0 && (
+              <span className="absolute -top-1 -right-1 flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-bold text-white bg-red-500 rounded-full">
+                {pendingCount > 9 ? '9+' : pendingCount}
+              </span>
             )}
           </div>
 
@@ -68,15 +76,28 @@ export function GroupCard({ group, userRole, showType = true, onClick }: GroupCa
             )}
 
             {/* Stats */}
-            <div className="flex items-center gap-4 text-xs text-gray-500">
-              <span className="flex items-center gap-1">
-                <Users className="w-3 h-3" />
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500">
+              <span className="flex items-center gap-1.5">
+                <Users className="w-3.5 h-3.5" />
                 {group.member_count} {group.member_count === 1 ? 'medlem' : 'medlemmer'}
               </span>
               {group.post_count > 0 && (
-                <span>{group.post_count} innlegg</span>
+                <span className="flex items-center gap-1.5">
+                  <span className="w-1 h-1 bg-gray-300 rounded-full" />
+                  {group.post_count} innlegg
+                </span>
               )}
             </div>
+
+            {/* Pending members alert for admin/mod */}
+            {isAdminOrMod && pendingCount > 0 && (
+              <div className="mt-2 flex items-center gap-2 px-2.5 py-1.5 bg-orange-50 border border-orange-200 rounded-lg">
+                <Clock className="w-4 h-4 text-orange-500" />
+                <span className="text-xs font-medium text-orange-700">
+                  {pendingCount} {pendingCount === 1 ? 'forespørsel venter' : 'forespørsler venter'}
+                </span>
+              </div>
+            )}
 
             {/* User role badge */}
             {userRole && (

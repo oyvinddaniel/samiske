@@ -52,8 +52,9 @@ export function GroupSettingsDialog({
   const [inviting, setInviting] = useState<string | null>(null)
   const [processing, setProcessing] = useState<string | null>(null)
   const [existingMemberIds, setExistingMemberIds] = useState<string[]>([])
-  const [currentGeography, setCurrentGeography] = useState<{ type: 'municipality' | 'place', id: string, name: string } | null>(null)
+  const [currentGeography, setCurrentGeography] = useState<{ type: 'municipality' | 'place' | 'language_area' | 'sapmi', id: string | null, name: string } | null>(null)
   const [savingGeography, setSavingGeography] = useState(false)
+  const [languageAreas, setLanguageAreas] = useState<{ id: string, name: string }[]>([])
   const [allMembers, setAllMembers] = useState<GroupMember[]>([])
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const [currentUserRole, setCurrentUserRole] = useState<string | null>(null)
@@ -92,18 +93,39 @@ export function GroupSettingsDialog({
       const approvedMembers = await getGroupMembers(group.id, 'approved')
       setAllMembers(approvedMembers)
 
+      // Fetch language areas for selection
+      const { data: areas } = await supabase
+        .from('language_areas')
+        .select('id, name')
+        .order('name')
+      setLanguageAreas(areas || [])
+
       // Fetch current geography association
       const { data: groupPlace } = await supabase
         .from('group_places')
-        .select('place_id, municipality_id, place:places(name), municipality:municipalities(name)')
+        .select('place_id, municipality_id, language_area_id, is_sapmi, place:places(name), municipality:municipalities(name), language_area:language_areas(name)')
         .eq('group_id', group.id)
         .single()
 
       if (groupPlace) {
         const placeData = groupPlace.place as { name: string } | { name: string }[] | null
         const municipalityData = groupPlace.municipality as { name: string } | { name: string }[] | null
+        const languageAreaData = groupPlace.language_area as { name: string } | { name: string }[] | null
 
-        if (groupPlace.place_id) {
+        if (groupPlace.is_sapmi) {
+          setCurrentGeography({
+            type: 'sapmi',
+            id: null,
+            name: 'Hele Sápmi'
+          })
+        } else if (groupPlace.language_area_id) {
+          const area = Array.isArray(languageAreaData) ? languageAreaData[0] : languageAreaData
+          setCurrentGeography({
+            type: 'language_area',
+            id: groupPlace.language_area_id,
+            name: area?.name || 'Ukjent språkområde'
+          })
+        } else if (groupPlace.place_id) {
           const place = Array.isArray(placeData) ? placeData[0] : placeData
           setCurrentGeography({
             type: 'place',
@@ -231,7 +253,7 @@ export function GroupSettingsDialog({
     }
   }
 
-  const handleSaveGeography = async (geography: { type: 'municipality' | 'place', id: string, name: string } | null) => {
+  const handleSaveGeography = async (geography: { type: 'municipality' | 'place' | 'language_area' | 'sapmi', id: string | null, name: string } | null) => {
     setSavingGeography(true)
 
     try {
@@ -247,6 +269,8 @@ export function GroupSettingsDialog({
             group_id: group.id,
             place_id: geography.type === 'place' ? geography.id : null,
             municipality_id: geography.type === 'municipality' ? geography.id : null,
+            language_area_id: geography.type === 'language_area' ? geography.id : null,
+            is_sapmi: geography.type === 'sapmi',
           })
 
         if (error) throw error
@@ -276,44 +300,51 @@ export function GroupSettingsDialog({
           </DialogHeader>
 
           <Tabs defaultValue="general" className="flex-1">
-            <ScrollArea className="h-auto">
-              <TabsList className="w-full flex flex-wrap h-auto p-1 gap-1">
-                <TabsTrigger value="general" className="flex-1 min-w-[80px] text-xs px-2 py-1.5">
-                  <Settings className="w-3.5 h-3.5 mr-1" />
-                  Generelt
+            <div className="border-b px-3 py-2">
+              <TabsList className="grid grid-cols-4 gap-1.5 h-auto w-full">
+                <TabsTrigger value="general" className="px-2 py-2 text-xs flex flex-col items-center gap-1">
+                  <Settings className="w-4 h-4" />
+                  <span>Generelt</span>
                 </TabsTrigger>
-                <TabsTrigger value="members" className="flex-1 min-w-[80px] text-xs px-2 py-1.5">
-                  <Users className="w-3.5 h-3.5 mr-1" />
-                  Medlemmer
+                <TabsTrigger value="members" className="px-2 py-2 text-xs flex flex-col items-center gap-1">
+                  <Users className="w-4 h-4" />
+                  <span>Medlemmer</span>
                 </TabsTrigger>
-                <TabsTrigger value="invite" className="flex-1 min-w-[80px] text-xs px-2 py-1.5">
-                  <UserPlus className="w-3.5 h-3.5 mr-1" />
-                  Inviter
+                <TabsTrigger value="invite" className="px-2 py-2 text-xs flex flex-col items-center gap-1">
+                  <UserPlus className="w-4 h-4" />
+                  <span>Inviter</span>
                 </TabsTrigger>
-                <TabsTrigger value="pending" className="flex-1 min-w-[80px] text-xs px-2 py-1.5">
-                  <Clock className="w-3.5 h-3.5 mr-1" />
-                  ({pendingMembers.length})
+                <TabsTrigger value="pending" className="px-2 py-2 text-xs flex flex-col items-center gap-1 relative">
+                  <div className="relative">
+                    <Clock className="w-4 h-4" />
+                    {pendingMembers.length > 0 && (
+                      <span className="absolute -top-1 -right-2 min-w-[16px] h-[16px] px-1 text-[10px] font-bold bg-orange-500 text-white rounded-full flex items-center justify-center">
+                        {pendingMembers.length}
+                      </span>
+                    )}
+                  </div>
+                  <span>Ventende</span>
                 </TabsTrigger>
-                <TabsTrigger value="geography" className="flex-1 min-w-[80px] text-xs px-2 py-1.5">
-                  <MapPin className="w-3.5 h-3.5 mr-1" />
-                  Geografi
+                <TabsTrigger value="geography" className="px-2 py-2 text-xs flex flex-col items-center gap-1">
+                  <MapPin className="w-4 h-4" />
+                  <span>Geografi</span>
                 </TabsTrigger>
-                <TabsTrigger value="stats" className="flex-1 min-w-[80px] text-xs px-2 py-1.5">
-                  <BarChart3 className="w-3.5 h-3.5 mr-1" />
-                  Statistikk
+                <TabsTrigger value="stats" className="px-2 py-2 text-xs flex flex-col items-center gap-1">
+                  <BarChart3 className="w-4 h-4" />
+                  <span>Statistikk</span>
                 </TabsTrigger>
-                <TabsTrigger value="notifications" className="flex-1 min-w-[80px] text-xs px-2 py-1.5">
-                  <Bell className="w-3.5 h-3.5 mr-1" />
-                  Varsler
+                <TabsTrigger value="notifications" className="px-2 py-2 text-xs flex flex-col items-center gap-1">
+                  <Bell className="w-4 h-4" />
+                  <span>Varsler</span>
                 </TabsTrigger>
                 {isAdmin && (
-                  <TabsTrigger value="danger" className="flex-1 min-w-[80px] text-xs px-2 py-1.5 text-red-600">
-                    <AlertTriangle className="w-3.5 h-3.5 mr-1" />
-                    Faresone
+                  <TabsTrigger value="danger" className="px-2 py-2 text-xs flex flex-col items-center gap-1 text-red-600 data-[state=active]:text-red-600">
+                    <AlertTriangle className="w-4 h-4" />
+                    <span>Faresone</span>
                   </TabsTrigger>
                 )}
               </TabsList>
-            </ScrollArea>
+            </div>
 
             <ScrollArea className="h-[400px]">
               <div className="p-4">
@@ -442,17 +473,19 @@ export function GroupSettingsDialog({
                   <div className="space-y-4">
                     <div className="text-sm text-gray-600 bg-blue-50 border border-blue-200 rounded-lg p-3">
                       <p className="font-medium mb-1">Hvorfor koble til et sted?</p>
-                      <p>Når gruppen kobles til en kommune eller et sted, vil gruppens innlegg vises i stedets feed.</p>
+                      <p>Når gruppen kobles til et område, vil gruppens innlegg vises i det områdets feed.</p>
                     </div>
 
                     {currentGeography ? (
                       <div className="border rounded-lg p-4 bg-white">
-                        <div className="flex items-start justify-between mb-3">
+                        <div className="flex items-start justify-between">
                           <div>
                             <p className="text-sm text-gray-500">Koblet til</p>
                             <p className="font-medium">{currentGeography.name}</p>
                             <p className="text-xs text-gray-500 mt-1">
-                              {currentGeography.type === 'place' ? 'Sted' : 'Kommune'}
+                              {currentGeography.type === 'sapmi' ? 'Hele Sápmi' :
+                               currentGeography.type === 'language_area' ? 'Språkområde' :
+                               currentGeography.type === 'place' ? 'Sted' : 'Kommune'}
                             </p>
                           </div>
                           <Button variant="outline" size="sm" onClick={() => handleSaveGeography(null)} disabled={savingGeography}>
@@ -467,26 +500,64 @@ export function GroupSettingsDialog({
                       </div>
                     )}
 
-                    <div className="pt-4 border-t">
-                      <p className="text-sm font-medium mb-3">
+                    <div className="pt-4 border-t space-y-4">
+                      <p className="text-sm font-medium">
                         {currentGeography ? 'Endre geografisk tilknytning' : 'Velg geografisk område'}
                       </p>
-                      <GeographySelector
-                        value={{
-                          municipalityId: currentGeography?.type === 'municipality' ? currentGeography.id : null,
-                          placeId: currentGeography?.type === 'place' ? currentGeography.id : null
-                        }}
-                        onChange={async (value) => {
-                          if (value.placeId) {
-                            const { data: place } = await supabase.from('places').select('name').eq('id', value.placeId).single()
-                            if (place) handleSaveGeography({ type: 'place', id: value.placeId, name: place.name })
-                          } else if (value.municipalityId) {
-                            const { data: municipality } = await supabase.from('municipalities').select('name').eq('id', value.municipalityId).single()
-                            if (municipality) handleSaveGeography({ type: 'municipality', id: value.municipalityId, name: municipality.name })
-                          }
-                        }}
-                        placeholder="Søk etter kommune eller sted..."
-                      />
+
+                      {/* Sápmi button */}
+                      <button
+                        onClick={() => handleSaveGeography({ type: 'sapmi', id: null, name: 'Hele Sápmi' })}
+                        disabled={savingGeography || currentGeography?.type === 'sapmi'}
+                        className="w-full flex items-center gap-3 p-3 border rounded-lg hover:bg-blue-50 hover:border-blue-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-red-500 via-yellow-500 to-green-500 flex items-center justify-center">
+                          <span className="text-white text-lg">🌍</span>
+                        </div>
+                        <div className="text-left">
+                          <p className="font-medium">Hele Sápmi</p>
+                          <p className="text-xs text-gray-500">Synlig i hele det samiske området</p>
+                        </div>
+                      </button>
+
+                      {/* Language areas */}
+                      <div>
+                        <p className="text-xs text-gray-500 mb-2">Språkområder</p>
+                        <div className="grid grid-cols-2 gap-2">
+                          {languageAreas.map(area => (
+                            <button
+                              key={area.id}
+                              onClick={() => handleSaveGeography({ type: 'language_area', id: area.id, name: area.name })}
+                              disabled={savingGeography || (currentGeography?.type === 'language_area' && currentGeography?.id === area.id)}
+                              className="flex items-center gap-2 p-2 border rounded-lg hover:bg-blue-50 hover:border-blue-300 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                            >
+                              <MapPin className="w-4 h-4 text-blue-500 flex-shrink-0" />
+                              <span className="truncate">{area.name.replace(' område', '')}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Municipality/Place selector */}
+                      <div>
+                        <p className="text-xs text-gray-500 mb-2">Kommune eller sted</p>
+                        <GeographySelector
+                          value={{
+                            municipalityId: currentGeography?.type === 'municipality' ? currentGeography.id : null,
+                            placeId: currentGeography?.type === 'place' ? currentGeography.id : null
+                          }}
+                          onChange={async (value) => {
+                            if (value.placeId) {
+                              const { data: place } = await supabase.from('places').select('name').eq('id', value.placeId).single()
+                              if (place) handleSaveGeography({ type: 'place', id: value.placeId, name: place.name })
+                            } else if (value.municipalityId) {
+                              const { data: municipality } = await supabase.from('municipalities').select('name').eq('id', value.municipalityId).single()
+                              if (municipality) handleSaveGeography({ type: 'municipality', id: value.municipalityId, name: municipality.name })
+                            }
+                          }}
+                          placeholder="Søk etter kommune eller sted..."
+                        />
+                      </div>
                     </div>
                   </div>
                 </TabsContent>

@@ -194,7 +194,7 @@ export function ProfileHeader({
   const handleStartConversation = (userId: string) => {
     window.dispatchEvent(
       new CustomEvent('start-conversation-with-user', {
-        detail: { userId }
+        detail: { userId, mode: 'bubble' }
       })
     )
   }

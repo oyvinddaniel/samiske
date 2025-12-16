@@ -17,6 +17,7 @@ import { BookmarksPanel } from '@/components/bookmarks/BookmarksPanel'
 import { PostDetailPanel } from '@/components/posts/PostDetailPanel'
 import { CalendarView } from '@/components/calendar/CalendarView'
 import { GroupsContent } from '@/app/grupper/GroupsContent'
+import { FloatingChatBubble } from '@/components/social/FloatingChatBubble'
 
 interface HomeLayoutProps {
   children: React.ReactNode
@@ -50,6 +51,7 @@ export function HomeLayout({ children, currentCategory = '' }: HomeLayoutProps) 
   const [selectedCommunityTab, setSelectedCommunityTab] = useState<string | null>(null)
   const [selectedPostId, setSelectedPostId] = useState<string | null>(null)
   const [initialConversationUserId, setInitialConversationUserId] = useState<string | null>(null)
+  const [floatingChatUserId, setFloatingChatUserId] = useState<string | null>(null)
 
   // Helper to update URL with panel state
   const updateURL = (panel: ActivePanel, params: Record<string, string> = {}) => {
@@ -125,11 +127,17 @@ export function HomeLayout({ children, currentCategory = '' }: HomeLayoutProps) 
       setInitialConversationUserId(null) // Clear any previous user
       window.dispatchEvent(new CustomEvent('close-left-sidebar'))
     }
-    const handleStartConversation = (e: CustomEvent<{ userId: string }>) => {
-      updateURL('messages', { userId: e.detail.userId })
-      setInitialConversationUserId(e.detail.userId)
-      setActivePanel('messages')
-      window.dispatchEvent(new CustomEvent('close-left-sidebar'))
+    const handleStartConversation = (e: CustomEvent<{ userId: string; mode?: 'panel' | 'bubble' }>) => {
+      if (e.detail.mode === 'bubble') {
+        // Open floating chat bubble
+        setFloatingChatUserId(e.detail.userId)
+      } else {
+        // Open in messages panel (default)
+        updateURL('messages', { userId: e.detail.userId })
+        setInitialConversationUserId(e.detail.userId)
+        setActivePanel('messages')
+        window.dispatchEvent(new CustomEvent('close-left-sidebar'))
+      }
     }
 
     // Listen for group/community panel events
@@ -358,6 +366,14 @@ export function HomeLayout({ children, currentCategory = '' }: HomeLayoutProps) 
 
       {/* Mobile bottom navigation */}
       <BottomNav />
+
+      {/* Floating chat bubble */}
+      {floatingChatUserId && (
+        <FloatingChatBubble
+          userId={floatingChatUserId}
+          onClose={() => setFloatingChatUserId(null)}
+        />
+      )}
     </div>
   )
 }

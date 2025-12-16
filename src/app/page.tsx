@@ -1,6 +1,6 @@
-import { HomeFeedTabs } from '@/components/feed/HomeFeedTabs'
 import { HomeLayout } from '@/components/layout/HomeLayout'
 import { LandingPage } from '@/components/landing/LandingPage'
+import { HomeFeedTabsClient } from '@/components/feed/HomeFeedTabsClient'
 import { createClient } from '@/lib/supabase/server'
 
 interface HomePageProps {
@@ -23,7 +23,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
 
   return (
     <HomeLayout currentCategory={categorySlug}>
-      <HomeFeedTabs categorySlug={categorySlug} />
+      <HomeFeedTabsClient categorySlug={categorySlug} />
     </HomeLayout>
   )
 }

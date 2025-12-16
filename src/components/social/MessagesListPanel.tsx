@@ -256,7 +256,7 @@ export function MessagesListPanel({ onClose, initialConversationUserId }: Messag
         </div>
 
         {/* Conversation */}
-        <div className="flex-1 overflow-hidden">
+        <div className="flex-1 overflow-hidden max-h-[500px]">
           <ConversationView
             conversationId={selectedConversationId}
             currentUserId={currentUserId}

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Users, Plus, Search, FileText, Grid, X, Settings } from 'lucide-react'
+import { Users, Plus, Search, FileText, Grid, X, Settings, Clock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -23,6 +23,7 @@ export function GroupsContent() {
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [activeTab, setActiveTab] = useState('utforsk')
+  const [pendingCounts, setPendingCounts] = useState<Record<string, number>>({})
 
   // Selected group state
   const [selectedGroup, setSelectedGroup] = useState<Group | null>(null)
@@ -39,6 +40,31 @@ export function GroupsContent() {
 
   const supabase = createClient()
 
+  // Fetch pending counts for admin/moderator groups
+  const fetchPendingCounts = useCallback(async (groups: UserGroup[]) => {
+    const adminModGroups = groups.filter(g => g.user_role === 'admin' || g.user_role === 'moderator')
+    if (adminModGroups.length === 0) return
+
+    const counts: Record<string, number> = {}
+
+    // Fetch pending counts for each admin/mod group
+    await Promise.all(
+      adminModGroups.map(async (group) => {
+        const { count } = await supabase
+          .from('group_members')
+          .select('*', { count: 'exact', head: true })
+          .eq('group_id', group.id)
+          .eq('status', 'pending')
+
+        if (count && count > 0) {
+          counts[group.id] = count
+        }
+      })
+    )
+
+    setPendingCounts(counts)
+  }, [supabase])
+
   // Fetch initial data
   useEffect(() => {
     const fetchData = async () => {
@@ -48,6 +74,8 @@ export function GroupsContent() {
       if (user) {
         const groups = await getUserGroups(user.id)
         setUserGroups(groups)
+        // Fetch pending counts for admin/mod groups
+        await fetchPendingCounts(groups)
       }
 
       const { data: groups } = await supabase
@@ -61,7 +89,7 @@ export function GroupsContent() {
     }
 
     fetchData()
-  }, [supabase])
+  }, [supabase, fetchPendingCounts])
 
   // Fetch group details when selected
   const fetchGroupDetails = useCallback(async (group: Group) => {
@@ -104,10 +132,11 @@ export function GroupsContent() {
         await fetchGroupDetails(updatedGroup)
       }
     }
-    // Also refresh user groups
+    // Also refresh user groups and pending counts
     if (currentUserId) {
       const groups = await getUserGroups(currentUserId)
       setUserGroups(groups)
+      await fetchPendingCounts(groups)
     }
   }
 
@@ -163,12 +192,15 @@ export function GroupsContent() {
                 <p className="text-sm text-gray-600 line-clamp-2 mb-2">{selectedGroup.description}</p>
               )}
 
-              <div className="flex items-center gap-3 text-xs text-gray-500">
-                <span className="flex items-center gap-1">
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500">
+                <span className="flex items-center gap-1.5">
                   <Users className="w-3.5 h-3.5" />
                   {selectedGroup.member_count} medlemmer
                 </span>
-                <span>{selectedGroup.post_count} innlegg</span>
+                <span className="flex items-center gap-1.5">
+                  <span className="w-1 h-1 bg-gray-300 rounded-full" />
+                  {selectedGroup.post_count} innlegg
+                </span>
               </div>
             </div>
 
@@ -198,6 +230,25 @@ export function GroupsContent() {
             </div>
           </div>
         </div>
+
+        {/* Pending members alert for admin/mod */}
+        {(membership.role === 'admin' || membership.role === 'moderator') && pendingMembers.length > 0 && (
+          <button
+            onClick={() => setShowSettings(true)}
+            className="w-full flex items-center gap-3 px-4 py-3 bg-orange-50 border border-orange-200 rounded-xl hover:bg-orange-100 transition-colors"
+          >
+            <div className="flex items-center justify-center w-10 h-10 bg-orange-100 rounded-full">
+              <Clock className="w-5 h-5 text-orange-600" />
+            </div>
+            <div className="flex-1 text-left">
+              <p className="text-sm font-semibold text-orange-800">
+                {pendingMembers.length} {pendingMembers.length === 1 ? 'forespørsel' : 'forespørsler'} venter
+              </p>
+              <p className="text-xs text-orange-600">Klikk for å behandle</p>
+            </div>
+            <Settings className="w-4 h-4 text-orange-500" />
+          </button>
+        )}
 
         {/* Group content tabs */}
         {canViewContent ? (
@@ -411,6 +462,7 @@ export function GroupsContent() {
                         group={group}
                         userRole={userGroup?.user_role}
                         showType={true}
+                        pendingCount={pendingCounts[group.id] || 0}
                         onClick={() => handleSelectGroup(group)}
                       />
                     )
@@ -472,6 +524,7 @@ export function GroupsContent() {
                   group={group}
                   userRole={group.user_role}
                   showType={true}
+                  pendingCount={pendingCounts[group.id] || 0}
                   onClick={() => handleSelectGroup(group)}
                 />
               ))}
