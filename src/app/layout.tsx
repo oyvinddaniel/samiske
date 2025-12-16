@@ -3,7 +3,6 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ServiceWorkerRegistration, InstallPrompt } from "@/components/pwa";
 import { FloatingSocialBubbles } from "@/components/social/FloatingSocialBubbles";
-import { FeedbackBubble } from "@/components/feedback/FeedbackBubble";
 import { BugReportBubble } from "@/components/bug-reports";
 import { BroadcastMessageModal } from "@/components/broadcast/BroadcastMessageModal";
 import { Toaster } from "@/components/ui/sonner";
@@ -68,7 +67,6 @@ export default function RootLayout({
             <Footer />
           </div>
           <FloatingSocialBubbles />
-          <FeedbackBubble />
           <BugReportBubble />
           <BroadcastMessageModal />
           <InstallPrompt />

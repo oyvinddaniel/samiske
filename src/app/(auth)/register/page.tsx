@@ -111,19 +111,19 @@ export default function RegisterPage() {
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
         <Card className="w-full max-w-md">
           <CardHeader className="text-center">
-            <CardTitle className="text-2xl font-bold text-green-600">Registrering vellykket!</CardTitle>
+            <CardTitle className="text-2xl font-bold text-green-600">Velkommen!</CardTitle>
           </CardHeader>
           <CardContent className="text-center space-y-4">
             <p className="text-gray-600">
-              Vi har sendt en bekreftelseslenke til <strong>{email}</strong>
+              Din konto er opprettet og klar til bruk.
             </p>
             <p className="text-sm text-gray-500">
-              Sjekk innboksen din og klikk på lenken for å aktivere kontoen.
+              Du kan nå logge inn med <strong>{email}</strong>
             </p>
           </CardContent>
           <CardFooter>
             <Link href="/login" className="w-full">
-              <Button variant="outline" className="w-full">
+              <Button className="w-full">
                 Gå til innlogging
               </Button>
             </Link>

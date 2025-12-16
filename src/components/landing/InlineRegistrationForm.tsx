@@ -131,15 +131,15 @@ export function InlineRegistrationForm({ onLoginClick }: InlineRegistrationFormP
       <Card className="w-full">
         <CardHeader className="text-center pb-4">
           <CardTitle className="text-xl font-bold text-green-600">
-            ✓ Registrering vellykket!
+            ✓ Velkommen!
           </CardTitle>
         </CardHeader>
         <CardContent className="text-center space-y-3">
           <p className="text-sm text-gray-600">
-            Bekreftelseslenke sendt til <strong>{email}</strong>
+            Din konto er opprettet og klar til bruk.
           </p>
           <p className="text-xs text-gray-500">
-            Sjekk innboksen din og klikk på lenken for å aktivere kontoen.
+            Klikk på "Logg inn" for å fortsette.
           </p>
         </CardContent>
       </Card>

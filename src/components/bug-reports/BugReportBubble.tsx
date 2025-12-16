@@ -47,7 +47,7 @@ export function BugReportBubble() {
       <button
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
-          'fixed bottom-20 right-4 lg:bottom-4 lg:right-4 z-[9997]',
+          'fixed bottom-20 left-4 lg:bottom-4 lg:left-4 z-[9997]',
           'w-12 h-12 rounded-full shadow-lg flex items-center justify-center transition-all duration-300 hover:scale-105',
           isOpen
             ? 'bg-orange-700 text-white ring-2 ring-orange-400'
