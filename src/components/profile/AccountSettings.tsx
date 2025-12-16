@@ -92,6 +92,8 @@ export function AccountSettings({ userId }: AccountSettingsProps) {
     municipalityId: string | null
     placeId: string | null
   }>({ municipalityId: null, placeId: null })
+  const [showCurrentLocation, setShowCurrentLocation] = useState(true)
+  const [showHomeLocation, setShowHomeLocation] = useState(true)
   const [savingLocations, setSavingLocations] = useState(false)
 
   const [deleting, setDeleting] = useState(false)
@@ -119,6 +121,8 @@ export function AccountSettings({ userId }: AccountSettingsProps) {
         setPhone(profileData.phone || '')
         setPhonePublic(profileData.phone_public || false)
         setAvatarUrl(profileData.avatar_url || '')
+        setShowCurrentLocation(profileData.show_current_location ?? true)
+        setShowHomeLocation(profileData.show_home_location ?? true)
       }
 
       // Check push notification support
