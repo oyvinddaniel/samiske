@@ -4,7 +4,8 @@ import { useState, useEffect, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Users, UserPlus, Activity, TrendingUp, Calendar } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Users, UserPlus, Activity, TrendingUp, Calendar, LogIn, UserCheck } from 'lucide-react'
 import { formatDate } from './utils'
 
 interface AuthUser {
@@ -34,7 +35,29 @@ export function UserAnalyticsTab() {
     registeredThisMonth: 0,
   })
   const [trend, setTrend] = useState<RegistrationTrend[]>([])
+  const [recentLoginsLimit, setRecentLoginsLimit] = useState(10)
+  const [recentRegistrationsLimit, setRecentRegistrationsLimit] = useState(10)
   const supabase = useMemo(() => createClient(), [])
+
+  // Derived data: users sorted by last login
+  const recentLogins = useMemo(() => {
+    return [...users]
+      .filter(user => user.last_sign_in_at !== null)
+      .sort((a, b) => {
+        const dateA = new Date(a.last_sign_in_at!).getTime()
+        const dateB = new Date(b.last_sign_in_at!).getTime()
+        return dateB - dateA // Newest first
+      })
+  }, [users])
+
+  // Derived data: users sorted by registration date
+  const recentRegistrations = useMemo(() => {
+    return [...users].sort((a, b) => {
+      const dateA = new Date(a.created_at).getTime()
+      const dateB = new Date(b.created_at).getTime()
+      return dateB - dateA // Newest first
+    })
+  }, [users])
 
   useEffect(() => {
     const fetchData = async () => {
@@ -174,6 +197,136 @@ export function UserAnalyticsTab() {
                   </Badge>
                 </div>
               ))
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Recent Logins */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <LogIn className="w-5 h-5 text-purple-600" />
+            Siste påloggede brukere
+          </CardTitle>
+          <CardDescription>
+            De {recentLoginsLimit} brukerne som nylig har logget inn
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            {recentLogins.length === 0 ? (
+              <p className="text-center text-gray-500 py-8">Ingen pålogginger registrert</p>
+            ) : (
+              <>
+                {recentLogins.slice(0, recentLoginsLimit).map((user) => (
+                  <div
+                    key={user.id}
+                    className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <h4 className="font-medium text-gray-900">
+                          {user.raw_user_meta_data?.full_name || 'Ingen navn'}
+                        </h4>
+                        {user.email_confirmed_at && (
+                          <Badge className="bg-green-500 text-xs">✓</Badge>
+                        )}
+                      </div>
+                      <p className="text-xs text-gray-500">{user.email}</p>
+                    </div>
+                    <div className="text-right ml-4">
+                      <p className="text-sm font-medium text-gray-900">
+                        {new Date(user.last_sign_in_at!).toLocaleDateString('nb-NO', {
+                          day: '2-digit',
+                          month: '2-digit',
+                          year: 'numeric'
+                        })}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {new Date(user.last_sign_in_at!).toLocaleTimeString('nb-NO', {
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+                {recentLogins.length > recentLoginsLimit && (
+                  <Button
+                    onClick={() => setRecentLoginsLimit(prev => prev + 10)}
+                    variant="outline"
+                    className="w-full mt-3"
+                  >
+                    Vis 10 flere ({recentLogins.length - recentLoginsLimit} gjenstår)
+                  </Button>
+                )}
+              </>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Recent Registrations */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <UserCheck className="w-5 h-5 text-green-600" />
+            Siste registrerte brukere
+          </CardTitle>
+          <CardDescription>
+            De {recentRegistrationsLimit} brukerne som nylig har registrert seg
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            {recentRegistrations.length === 0 ? (
+              <p className="text-center text-gray-500 py-8">Ingen brukere funnet</p>
+            ) : (
+              <>
+                {recentRegistrations.slice(0, recentRegistrationsLimit).map((user) => (
+                  <div
+                    key={user.id}
+                    className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <h4 className="font-medium text-gray-900">
+                          {user.raw_user_meta_data?.full_name || 'Ingen navn'}
+                        </h4>
+                        {user.email_confirmed_at && (
+                          <Badge className="bg-green-500 text-xs">✓</Badge>
+                        )}
+                      </div>
+                      <p className="text-xs text-gray-500">{user.email}</p>
+                    </div>
+                    <div className="text-right ml-4">
+                      <p className="text-sm font-medium text-gray-900">
+                        {new Date(user.created_at).toLocaleDateString('nb-NO', {
+                          day: '2-digit',
+                          month: '2-digit',
+                          year: 'numeric'
+                        })}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {new Date(user.created_at).toLocaleTimeString('nb-NO', {
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+                {recentRegistrations.length > recentRegistrationsLimit && (
+                  <Button
+                    onClick={() => setRecentRegistrationsLimit(prev => prev + 10)}
+                    variant="outline"
+                    className="w-full mt-3"
+                  >
+                    Vis 10 flere ({recentRegistrations.length - recentRegistrationsLimit} gjenstår)
+                  </Button>
+                )}
+              </>
             )}
           </div>
         </CardContent>
