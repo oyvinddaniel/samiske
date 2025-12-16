@@ -31,18 +31,13 @@ COMMENT ON FUNCTION public.get_auth_users_count() IS 'Returns the total count of
 
 -- 2A. Hent alle brukere med detaljer
 CREATE OR REPLACE FUNCTION public.get_auth_users_list()
-RETURNS TABLE (
-  id UUID,
-  email TEXT,
-  created_at TIMESTAMPTZ,
-  last_sign_in_at TIMESTAMPTZ,
-  email_confirmed_at TIMESTAMPTZ,
-  raw_user_meta_data JSONB
-)
+RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
 AS $$
+DECLARE
+  result JSONB;
 BEGIN
   -- Only allow admins to see this
   IF NOT EXISTS (
@@ -52,16 +47,21 @@ BEGIN
     RAISE EXCEPTION 'Only admins can access user analytics';
   END IF;
 
-  RETURN QUERY
-  SELECT
-    u.id,
-    u.email,
-    u.created_at,
-    u.last_sign_in_at,
-    u.email_confirmed_at,
-    u.raw_user_meta_data
-  FROM auth.users u
-  ORDER BY u.created_at DESC;
+  SELECT jsonb_agg(
+    jsonb_build_object(
+      'id', u.id,
+      'email', u.email,
+      'created_at', u.created_at,
+      'last_sign_in_at', u.last_sign_in_at,
+      'email_confirmed_at', u.email_confirmed_at,
+      'raw_user_meta_data', COALESCE(u.raw_user_meta_data, '{}'::jsonb)
+    )
+    ORDER BY u.created_at DESC
+  )
+  INTO result
+  FROM auth.users u;
+
+  RETURN COALESCE(result, '[]'::jsonb);
 END;
 $$;
 
