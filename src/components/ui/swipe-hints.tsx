@@ -45,20 +45,20 @@ export function SwipeHints() {
   return (
     <>
       {/* Venstre hint */}
-      <div className="md:hidden fixed left-0 top-1/2 -translate-y-1/2 z-30 pointer-events-none">
-        <div className="flex items-center gap-0.5">
-          <ChevronRight className="w-5 h-5 text-blue-600/60 animate-slide-right" />
-          <ChevronRight className="w-5 h-5 text-blue-600/40 animate-slide-right animation-delay-75" />
-          <ChevronRight className="w-5 h-5 text-blue-600/20 animate-slide-right animation-delay-150" />
+      <div className="md:hidden fixed left-0 top-[30%] z-30 pointer-events-none">
+        <div className="flex items-center gap-1 drop-shadow-lg">
+          <ChevronRight className="w-10 h-10 text-blue-600 stroke-[3] animate-slide-right" strokeWidth={3} />
+          <ChevronRight className="w-10 h-10 text-blue-600/80 stroke-[3] animate-slide-right animation-delay-75" strokeWidth={3} />
+          <ChevronRight className="w-10 h-10 text-blue-600/60 stroke-[3] animate-slide-right animation-delay-150" strokeWidth={3} />
         </div>
       </div>
 
       {/* Høyre hint */}
-      <div className="md:hidden fixed right-0 top-1/2 -translate-y-1/2 z-30 pointer-events-none">
-        <div className="flex items-center gap-0.5">
-          <ChevronLeft className="w-5 h-5 text-blue-600/20 animate-slide-left animation-delay-150" />
-          <ChevronLeft className="w-5 h-5 text-blue-600/40 animate-slide-left animation-delay-75" />
-          <ChevronLeft className="w-5 h-5 text-blue-600/60 animate-slide-left" />
+      <div className="md:hidden fixed right-0 top-[30%] z-30 pointer-events-none">
+        <div className="flex items-center gap-1 drop-shadow-lg">
+          <ChevronLeft className="w-10 h-10 text-blue-600/60 stroke-[3] animate-slide-left animation-delay-150" strokeWidth={3} />
+          <ChevronLeft className="w-10 h-10 text-blue-600/80 stroke-[3] animate-slide-left animation-delay-75" strokeWidth={3} />
+          <ChevronLeft className="w-10 h-10 text-blue-600 stroke-[3] animate-slide-left" strokeWidth={3} />
         </div>
       </div>
     </>
