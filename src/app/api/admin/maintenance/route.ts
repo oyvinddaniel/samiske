@@ -2,15 +2,18 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { createClient as createServerClient } from '@/lib/supabase/server'
 
-// Use service role for admin operations
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  { auth: { autoRefreshToken: false, persistSession: false } }
-)
+// Helper for å opprette admin-klient kun når nødvendig
+function getSupabaseAdmin() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } }
+  )
+}
 
 export async function GET() {
   try {
+    const supabaseAdmin = getSupabaseAdmin()
     const { data, error } = await supabaseAdmin
       .from('app_settings')
       .select('value')
@@ -54,6 +57,9 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json()
     const { enabled, message, logoutAllUsers } = body
+
+    // Opprett admin-klient etter verifisering av admin-status
+    const supabaseAdmin = getSupabaseAdmin()
 
     // Update maintenance mode setting
     const { error: updateError } = await supabaseAdmin

@@ -85,6 +85,23 @@ export function SocialPanel({ initialTab = 'friends', initialConversationUserId 
     }
   }, [currentUserId, supabase, fetchCounts])
 
+  // Listen for messages-read event from ConversationView
+  useEffect(() => {
+    if (!currentUserId) return
+
+    const handleMessagesRead = () => {
+      console.log('📭 Messages marked as read, refreshing SocialPanel counts')
+      fetchCounts()
+    }
+
+    window.addEventListener('messages-read', handleMessagesRead)
+
+    return () => {
+      window.removeEventListener('messages-read', handleMessagesRead)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUserId]) // Intentionally not including fetchCounts to avoid re-subscribing
+
   // Handle starting a conversation from friends list
   const handleStartConversation = (userId: string) => {
     setConversationUserId(userId)

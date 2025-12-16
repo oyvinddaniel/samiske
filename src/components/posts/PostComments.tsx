@@ -188,10 +188,10 @@ export function PostComments({
                           onClick={() => onCommentLike(comment.id)}
                           disabled={!currentUserId}
                           className={`text-[9px] hover:underline flex items-center gap-0.5 ${
-                            likeData.liked ? 'text-red-500' : likeData.count > 0 ? 'text-pink-400' : 'text-gray-400'
+                            likeData.liked ? 'text-red-500' : likeData.count > 0 ? 'text-red-500' : 'text-gray-400'
                           }`}
                         >
-                          <Heart className={`w-3 h-3 ${likeData.liked || likeData.count > 0 ? 'fill-current' : ''}`} />
+                          <Heart className={`w-3 h-3 ${likeData.liked ? 'fill-current' : ''}`} />
                           {likeData.count > 0 && <span>{likeData.count}</span>}
                         </button>
                       </TooltipTrigger>
@@ -337,10 +337,10 @@ export function PostComments({
                             onClick={() => onCommentLike(comment.id)}
                             disabled={!currentUserId}
                             className={`text-[9px] hover:underline flex items-center gap-0.5 ${
-                              likeData.liked ? 'text-red-500' : likeData.count > 0 ? 'text-pink-400' : 'text-gray-400'
+                              likeData.liked ? 'text-red-500' : likeData.count > 0 ? 'text-red-500' : 'text-gray-400'
                             }`}
                           >
-                            <Heart className={`w-3 h-3 ${likeData.liked || likeData.count > 0 ? 'fill-current' : ''}`} />
+                            <Heart className={`w-3 h-3 ${likeData.liked ? 'fill-current' : ''}`} />
                             {likeData.count > 0 && <span>{likeData.count}</span>}
                           </button>
                         </TooltipTrigger>

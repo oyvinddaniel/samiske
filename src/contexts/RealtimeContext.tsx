@@ -66,8 +66,8 @@ export function RealtimeProvider({
 
   const refreshNotifications = refreshSocialNotifications
 
-  // Debounced refresh to prevent excessive database queries
-  const debouncedRefresh = useDebouncedCallback(refreshSocialNotifications, 1000)
+  // Debounced refresh to prevent excessive database queries (reduced from 1000ms to 300ms)
+  const debouncedRefresh = useDebouncedCallback(refreshSocialNotifications, 300)
 
   // Auth state listener
   useEffect(() => {
@@ -128,7 +128,8 @@ export function RealtimeProvider({
         },
         (payload) => {
           console.log('💬 New message detected:', payload.new)
-          debouncedRefresh()
+          // Immediate refresh for new messages - no debounce
+          refreshSocialNotifications()
         }
       )
       .on(
@@ -152,7 +153,22 @@ export function RealtimeProvider({
       console.log('🔌 Cleaning up Realtime subscription')
       supabase.removeChannel(channel)
     }
-  }, [user, supabase, debouncedRefresh])
+  }, [user, supabase, debouncedRefresh, refreshSocialNotifications])
+
+  // Listen for messages-read event from ConversationView
+  useEffect(() => {
+    const handleMessagesRead = () => {
+      console.log('📭 Messages marked as read, refreshing counts')
+      // Immediate refresh - no debounce
+      refreshSocialNotifications()
+    }
+
+    window.addEventListener('messages-read', handleMessagesRead)
+
+    return () => {
+      window.removeEventListener('messages-read', handleMessagesRead)
+    }
+  }, [refreshSocialNotifications])
 
   return (
     <RealtimeContext.Provider

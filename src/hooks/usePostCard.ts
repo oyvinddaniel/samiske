@@ -330,9 +330,28 @@ export function usePostCard({ post, currentUserId }: UsePostCardProps) {
   }
 
   const handleDeleteComment = async (commentId: string) => {
+    if (!currentUserId) return
     if (!confirm('Slett kommentar?')) return
 
-    await supabase.from('comments').delete().eq('id', commentId)
+    // Verifiser eierskap før sletting
+    const { data: comment } = await supabase
+      .from('comments')
+      .select('user_id')
+      .eq('id', commentId)
+      .single()
+
+    if (!comment || comment.user_id !== currentUserId) {
+      toast.error('Du kan ikke slette denne kommentaren')
+      return
+    }
+
+    const { error } = await supabase.from('comments').delete().eq('id', commentId)
+
+    if (error) {
+      toast.error('Kunne ikke slette kommentar')
+      return
+    }
+
     setCommentCount((prev) => prev - 1)
     fetchComments()
   }

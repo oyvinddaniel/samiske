@@ -22,14 +22,14 @@ interface NotificationCounts {
 
 interface NotificationItem {
   id: string
-  type: 'new_post' | 'comment_on_my_post' | 'comment_on_followed' | 'like_on_my_post'
+  type: 'new_post' | 'comment_on_my_post' | 'comment_on_followed' | 'like_on_my_post' | 'new_message'
   message: string
   postId?: string
   postTitle?: string
   actorName?: string
   actorAvatar?: string
   createdAt: string
-  isNew: boolean
+  isRead: boolean
 }
 
 interface NotificationBellProps {
@@ -48,42 +48,63 @@ export function NotificationBell({ userId }: NotificationBellProps) {
   const [isOpen, setIsOpen] = useState(false)
   const supabase = createClient()
 
-  const totalCount =
-    counts.newPosts +
-    counts.commentsOnMyPosts +
-    counts.commentsOnFollowedPosts +
-    counts.likesOnMyPosts
+  // Calculate total unread count from all notifications (including messages)
+  const totalCount = notifications.filter((n) => !n.isRead).length
 
-  // Fetch notifications using optimized RPC function
+  // Fetch notifications using new notifications table
   const fetchNotifications = useCallback(async () => {
     try {
-      const { data, error } = await supabase.rpc('get_notification_summary', {
+      // Hent notifikasjoner fra ny tabell
+      const { data: notifications, error: notifError } = await supabase.rpc('get_notifications', {
         p_user_id: userId,
+        p_limit: 50,
+        p_offset: 0,
+        p_unread_only: false,
       })
 
-      if (error) {
-        console.error('Error fetching notifications:', error)
+      if (notifError) {
+        console.error('Error fetching notifications:', notifError)
         setLoading(false)
         return
       }
 
-      if (!data || data.length === 0) {
-        setLoading(false)
-        return
+      // Hent unread count
+      const { data: unreadCount, error: countError } = await supabase.rpc(
+        'get_unread_notification_count',
+        { p_user_id: userId }
+      )
+
+      if (countError) {
+        console.error('Error fetching unread count:', countError)
       }
 
-      const summary = data[0]
+      // Transform data til NotificationItem format
+      const transformedNotifications: NotificationItem[] = (notifications || []).map((n: any) => ({
+        id: n.id,
+        type: n.type,
+        message: n.message,
+        postId: n.post_id,
+        postTitle: n.post_title,
+        actorName: n.actor_name,
+        actorAvatar: n.actor_avatar,
+        createdAt: n.created_at,
+        isRead: n.is_read,
+      }))
 
-      setCounts({
-        newPosts: summary.new_posts_count || 0,
-        commentsOnMyPosts: summary.comments_on_my_posts_count || 0,
-        commentsOnFollowedPosts: summary.comments_on_followed_count || 0,
-        likesOnMyPosts: summary.likes_count || 0,
-      })
+      setNotifications(transformedNotifications)
 
-      // Parse recent notifications from JSONB
-      const recentNotifications = summary.recent_notifications || []
-      setNotifications(recentNotifications)
+      // Calculate counts from unread notifications
+      const unreadNotifications = transformedNotifications.filter((n) => !n.isRead)
+      const newCounts = {
+        newPosts: unreadNotifications.filter((n) => n.type === 'new_post').length,
+        commentsOnMyPosts: unreadNotifications.filter((n) => n.type === 'comment_on_my_post')
+          .length,
+        commentsOnFollowedPosts: unreadNotifications.filter((n) => n.type === 'comment_on_followed')
+          .length,
+        likesOnMyPosts: unreadNotifications.filter((n) => n.type === 'like_on_my_post').length,
+      }
+      setCounts(newCounts)
+
       setLoading(false)
     } catch (error) {
       console.error('Error fetching notifications:', error)
@@ -98,7 +119,7 @@ export function NotificationBell({ userId }: NotificationBellProps) {
 
   // Realtime subscriptions for instant updates
   useEffect(() => {
-    console.log('🔔 Setting up Realtime subscriptions for notifications')
+    console.log('🔔 Setting up Realtime subscription for notifications')
 
     const channel = supabase
       .channel('notifications-' + userId)
@@ -107,35 +128,80 @@ export function NotificationBell({ userId }: NotificationBellProps) {
         {
           event: 'INSERT',
           schema: 'public',
-          table: 'posts',
+          table: 'notifications',
+          filter: `recipient_id=eq.${userId}`,
         },
         (payload) => {
-          console.log('📝 New post detected:', payload.new)
+          console.log('📬 New notification received:', payload.new)
+          // Fetch immediately - no debounce for instant updates
           fetchNotifications()
         }
       )
       .on(
         'postgres_changes',
         {
-          event: 'INSERT',
+          event: 'UPDATE',
           schema: 'public',
-          table: 'comments',
+          table: 'notifications',
+          filter: `recipient_id=eq.${userId}`,
         },
         (payload) => {
-          console.log('💬 New comment detected:', payload.new)
-          fetchNotifications()
+          console.log('📝 Notification updated:', payload.new)
+          // Update local state directly for instant feedback
+          const updatedNotif = payload.new as any
+          setNotifications((prev) =>
+            prev.map((n) =>
+              n.id === updatedNotif.id ? { ...n, isRead: updatedNotif.is_read } : n
+            )
+          )
+          // Recalculate counts
+          setNotifications((prev) => {
+            const unreadCount = prev.filter((n) => !n.isRead).length
+            const newCounts = {
+              newPosts: prev.filter((n) => !n.isRead && n.type === 'new_post').length,
+              commentsOnMyPosts: prev.filter(
+                (n) => !n.isRead && n.type === 'comment_on_my_post'
+              ).length,
+              commentsOnFollowedPosts: prev.filter(
+                (n) => !n.isRead && n.type === 'comment_on_followed'
+              ).length,
+              likesOnMyPosts: prev.filter((n) => !n.isRead && n.type === 'like_on_my_post').length,
+            }
+            setCounts(newCounts)
+            return prev
+          })
         }
       )
       .on(
         'postgres_changes',
         {
-          event: 'INSERT',
+          event: 'DELETE',
           schema: 'public',
-          table: 'likes',
+          table: 'notifications',
+          filter: `recipient_id=eq.${userId}`,
         },
         (payload) => {
-          console.log('❤️ New like detected:', payload.new)
-          fetchNotifications()
+          console.log('🗑️ Notification deleted:', payload.old)
+          // Remove notification from local state immediately
+          const deletedNotif = payload.old as any
+          setNotifications((prev) => {
+            const filtered = prev.filter((n) => n.id !== deletedNotif.id)
+
+            // Recalculate counts
+            const unreadNotifications = filtered.filter((n) => !n.isRead)
+            const newCounts = {
+              newPosts: unreadNotifications.filter((n) => n.type === 'new_post').length,
+              commentsOnMyPosts: unreadNotifications.filter((n) => n.type === 'comment_on_my_post')
+                .length,
+              commentsOnFollowedPosts: unreadNotifications.filter(
+                (n) => n.type === 'comment_on_followed'
+              ).length,
+              likesOnMyPosts: unreadNotifications.filter((n) => n.type === 'like_on_my_post').length,
+            }
+            setCounts(newCounts)
+
+            return filtered
+          })
         }
       )
       .subscribe((status) => {
@@ -143,7 +209,7 @@ export function NotificationBell({ userId }: NotificationBellProps) {
       })
 
     return () => {
-      console.log('🔌 Cleaning up notification subscriptions')
+      console.log('🔌 Cleaning up notification subscription')
       supabase.removeChannel(channel)
     }
   }, [supabase, userId, fetchNotifications])
@@ -152,29 +218,61 @@ export function NotificationBell({ userId }: NotificationBellProps) {
     setIsOpen(open)
   }
 
-  // Mark all as read - updates last_seen_at
-  const markAllAsRead = async () => {
-    if (totalCount > 0) {
-      const { error } = await supabase
-        .from('profiles')
-        .update({ last_seen_at: new Date().toISOString() })
-        .eq('id', userId)
+  // Mark single notification as read
+  const markAsRead = async (notificationId: string) => {
+    // Optimistic update
+    setNotifications((prev) => prev.map((n) => (n.id === notificationId ? { ...n, isRead: true } : n)))
 
-      if (error) {
-        console.error('Error marking notifications as read:', error)
-        return
+    // Recalculate counts optimistically
+    setNotifications((prev) => {
+      const unreadNotifications = prev.filter((n) => !n.isRead)
+      const newCounts = {
+        newPosts: unreadNotifications.filter((n) => n.type === 'new_post').length,
+        commentsOnMyPosts: unreadNotifications.filter((n) => n.type === 'comment_on_my_post')
+          .length,
+        commentsOnFollowedPosts: unreadNotifications.filter(
+          (n) => n.type === 'comment_on_followed'
+        ).length,
+        likesOnMyPosts: unreadNotifications.filter((n) => n.type === 'like_on_my_post').length,
       }
+      setCounts(newCounts)
+      return prev
+    })
 
-      // Reset counts and mark all notifications as read locally
-      setCounts({
-        newPosts: 0,
-        commentsOnMyPosts: 0,
-        commentsOnFollowedPosts: 0,
-        likesOnMyPosts: 0,
-      })
+    // Sync with backend
+    const { error } = await supabase.rpc('mark_notification_as_read', {
+      p_notification_id: notificationId,
+    })
 
-      // Mark all notifications as read in UI
-      setNotifications((prev) => prev.map((n) => ({ ...n, isNew: false })))
+    if (error) {
+      console.error('Error marking notification as read:', error)
+      // Revert optimistic update on error
+      fetchNotifications()
+    }
+  }
+
+  // Mark all as read - uses new RPC function
+  const markAllAsRead = async () => {
+    if (totalCount === 0) return
+
+    // Optimistic update
+    setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })))
+    setCounts({
+      newPosts: 0,
+      commentsOnMyPosts: 0,
+      commentsOnFollowedPosts: 0,
+      likesOnMyPosts: 0,
+    })
+
+    // Sync with backend
+    const { error } = await supabase.rpc('mark_all_notifications_as_read', {
+      p_user_id: userId,
+    })
+
+    if (error) {
+      console.error('Error marking all notifications as read:', error)
+      // Revert on error
+      fetchNotifications()
     }
   }
 
@@ -213,6 +311,8 @@ export function NotificationBell({ userId }: NotificationBellProps) {
         return <MessageCircle className="w-3 h-3 text-green-600" />
       case 'like_on_my_post':
         return <Heart className="w-3 h-3 text-red-500 fill-red-500" />
+      case 'new_message':
+        return <MessageCircle className="w-3 h-3 text-purple-600 fill-purple-600" />
       default:
         return <Bell className="w-3 h-3 text-gray-600" />
     }
@@ -254,7 +354,7 @@ export function NotificationBell({ userId }: NotificationBellProps) {
             <p className="text-xs text-gray-400 mt-1">Ingen aktivitet de siste 7 dagene</p>
           </div>
         ) : (
-          <div className="max-h-[400px] overflow-y-auto">
+          <div className="h-[400px] overflow-y-auto">
             {/* Summary section */}
             {(counts.newPosts > 0 ||
               counts.commentsOnMyPosts > 0 ||
@@ -292,15 +392,28 @@ export function NotificationBell({ userId }: NotificationBellProps) {
                 <Link
                   href={notification.postId ? `/#post-${notification.postId}` : '/'}
                   className={`flex items-start gap-3 px-3 py-2 cursor-pointer hover:bg-gray-50 ${
-                    notification.isNew ? 'bg-blue-50/50' : ''
+                    !notification.isRead ? 'bg-blue-50/50' : ''
                   }`}
+                  onClick={(e) => {
+                    // Mark as read
+                    if (!notification.isRead) {
+                      markAsRead(notification.id)
+                    }
+
+                    // For message notifications, open messages panel instead
+                    if (notification.type === 'new_message') {
+                      e.preventDefault()
+                      window.dispatchEvent(new CustomEvent('open-messages-panel'))
+                      setIsOpen(false)
+                    }
+                  }}
                 >
                   <div className="relative flex-shrink-0">
-                    <Avatar className={`w-8 h-8 ${!notification.isNew ? 'opacity-60' : ''}`}>
+                    <Avatar className={`w-8 h-8 ${notification.isRead ? 'opacity-60' : ''}`}>
                       <AvatarImage src={notification.actorAvatar} />
                       <AvatarFallback
                         className={`text-xs ${
-                          notification.isNew
+                          !notification.isRead
                             ? 'bg-blue-100 text-blue-600'
                             : 'bg-gray-100 text-gray-500'
                         }`}
@@ -310,29 +423,29 @@ export function NotificationBell({ userId }: NotificationBellProps) {
                     </Avatar>
                     <span
                       className={`absolute -bottom-1 -right-1 bg-white rounded-full p-0.5 ${
-                        !notification.isNew ? 'opacity-60' : ''
+                        notification.isRead ? 'opacity-60' : ''
                       }`}
                     >
                       {getNotificationIcon(notification.type)}
                     </span>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className={`text-sm ${!notification.isNew ? 'text-gray-500' : ''}`}>
+                    <p className={`text-sm ${notification.isRead ? 'text-gray-500' : ''}`}>
                       <span
                         className={
-                          notification.isNew ? 'font-medium' : 'font-normal text-gray-500'
+                          !notification.isRead ? 'font-medium' : 'font-normal text-gray-500'
                         }
                       >
                         {notification.actorName}
                       </span>{' '}
-                      <span className={notification.isNew ? 'text-gray-600' : 'text-gray-400'}>
+                      <span className={!notification.isRead ? 'text-gray-600' : 'text-gray-400'}>
                         {notification.message}
                       </span>
                     </p>
                     {notification.postTitle && (
                       <p
                         className={`text-xs truncate ${
-                          notification.isNew ? 'text-gray-500' : 'text-gray-400'
+                          !notification.isRead ? 'text-gray-500' : 'text-gray-400'
                         }`}
                       >
                         «{notification.postTitle}»
@@ -340,13 +453,13 @@ export function NotificationBell({ userId }: NotificationBellProps) {
                     )}
                     <p
                       className={`text-[10px] mt-0.5 ${
-                        notification.isNew ? 'text-gray-400' : 'text-gray-300'
+                        !notification.isRead ? 'text-gray-400' : 'text-gray-300'
                       }`}
                     >
                       {getTimeAgo(notification.createdAt)}
                     </p>
                   </div>
-                  {notification.isNew && (
+                  {!notification.isRead && (
                     <div className="flex-shrink-0 self-center">
                       <div className="w-2 h-2 bg-blue-500 rounded-full" />
                     </div>

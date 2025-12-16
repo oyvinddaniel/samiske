@@ -15,13 +15,15 @@ import { ProfileFeedView } from '@/components/profile/ProfileFeedView'
 import { GeographyExplorerView, GeographyDetailView } from '@/components/geography'
 import { BookmarksPanel } from '@/components/bookmarks/BookmarksPanel'
 import { PostDetailPanel } from '@/components/posts/PostDetailPanel'
+import { CalendarView } from '@/components/calendar/CalendarView'
+import { GroupsContent } from '@/app/grupper/GroupsContent'
 
 interface HomeLayoutProps {
   children: React.ReactNode
   currentCategory?: string
 }
 
-type ActivePanel = 'feed' | 'friends' | 'messages' | 'chat' | 'group' | 'community' | 'community-page' | 'profile' | 'geography' | 'bookmarks' | 'location' | 'post'
+type ActivePanel = 'feed' | 'friends' | 'messages' | 'chat' | 'group' | 'community' | 'community-page' | 'profile' | 'geography' | 'bookmarks' | 'location' | 'post' | 'calendar' | 'groups'
 
 interface ChatTarget {
   id: string
@@ -94,6 +96,10 @@ export function HomeLayout({ children, currentCategory = '' }: HomeLayoutProps) 
         break
       case 'post':
         setSelectedPostId(searchParams.get('postId'))
+        break
+      case 'calendar':
+      case 'groups':
+        // No additional state needed for these panels
         break
     }
   }, [searchParams])
@@ -175,6 +181,16 @@ export function HomeLayout({ children, currentCategory = '' }: HomeLayoutProps) 
       setActivePanel('location')
       window.dispatchEvent(new CustomEvent('close-left-sidebar'))
     }
+    const handleOpenCalendarPanel = () => {
+      updateURL('calendar')
+      setActivePanel('calendar')
+      window.dispatchEvent(new CustomEvent('close-left-sidebar'))
+    }
+    const handleOpenGroupsPanel = () => {
+      updateURL('groups')
+      setActivePanel('groups')
+      window.dispatchEvent(new CustomEvent('close-left-sidebar'))
+    }
 
     window.addEventListener('open-left-sidebar', handleOpenLeftSidebar)
     window.addEventListener('close-left-sidebar', handleCloseLeftSidebar)
@@ -189,6 +205,8 @@ export function HomeLayout({ children, currentCategory = '' }: HomeLayoutProps) 
     window.addEventListener('open-geography-panel', handleOpenGeographyPanel)
     window.addEventListener('open-bookmarks-panel', handleOpenBookmarksPanel)
     window.addEventListener('open-location-panel', handleOpenLocationPanel as EventListener)
+    window.addEventListener('open-calendar-panel', handleOpenCalendarPanel)
+    window.addEventListener('open-groups-panel', handleOpenGroupsPanel)
 
     return () => {
       window.removeEventListener('open-left-sidebar', handleOpenLeftSidebar)
@@ -204,6 +222,8 @@ export function HomeLayout({ children, currentCategory = '' }: HomeLayoutProps) 
       window.removeEventListener('open-geography-panel', handleOpenGeographyPanel)
       window.removeEventListener('open-bookmarks-panel', handleOpenBookmarksPanel)
       window.removeEventListener('open-location-panel', handleOpenLocationPanel as EventListener)
+      window.removeEventListener('open-calendar-panel', handleOpenCalendarPanel)
+      window.removeEventListener('open-groups-panel', handleOpenGroupsPanel)
     }
   }, [])
 
@@ -216,7 +236,7 @@ export function HomeLayout({ children, currentCategory = '' }: HomeLayoutProps) 
         {/* Left Sidebar */}
         <Sidebar
           currentCategory={currentCategory}
-          activePanel={activePanel === 'community-page' ? 'community' : activePanel === 'post' ? 'feed' : activePanel}
+          activePanel={activePanel === 'community-page' ? 'community' : activePanel === 'post' ? 'feed' : activePanel === 'calendar' || activePanel === 'groups' ? 'feed' : activePanel}
           selectedLocationId={selectedLocation?.id}
         />
 
@@ -304,6 +324,10 @@ export function HomeLayout({ children, currentCategory = '' }: HomeLayoutProps) 
                     setSelectedLocation({ type, id, name: '' })
                   }}
                 />
+              ) : activePanel === 'calendar' ? (
+                <CalendarView hideBackButton={true} />
+              ) : activePanel === 'groups' ? (
+                <GroupsContent />
               ) : (
                 children
               )}

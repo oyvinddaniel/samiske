@@ -32,20 +32,15 @@ function ActiveUsersIndicator() {
 
   useEffect(() => {
     const fetchActiveUsers = async () => {
-      // Get users active in the last 24 hours
-      const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
-
-      const { count, error } = await supabase
-        .from('profiles')
-        .select('*', { count: 'exact', head: true })
-        .gte('last_seen_at', twentyFourHoursAgo)
+      // Bruk sikker RPC-funksjon for å telle aktive brukere
+      const { data, error } = await supabase
+        .rpc('get_active_users_count', { since_hours: 24 })
 
       if (error) {
         console.error('Error fetching active users:', error)
         setActiveCount(0)
       } else {
-        console.log('Active users in last 24h:', count)
-        setActiveCount(count || 0)
+        setActiveCount(data || 0)
       }
     }
 

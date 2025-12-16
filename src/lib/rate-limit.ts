@@ -123,4 +123,16 @@ export const rateLimiters = {
     limit: 5,           // 5 requests
     windowMs: 3600000,  // per hour
   },
+
+  // Auth rate limits (login/register)
+  auth: {
+    limit: 5,           // 5 attempts
+    windowMs: 900000,   // per 15 minutes
+  },
+
+  // Registration rate limit (stricter)
+  register: {
+    limit: 3,           // 3 registrations
+    windowMs: 3600000,  // per hour
+  },
 }

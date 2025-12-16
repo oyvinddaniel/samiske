@@ -40,7 +40,6 @@ export function Header({ currentCategory }: HeaderProps) {
   const [loading, setLoading] = useState(true)
   const [showSocialPanel, setShowSocialPanel] = useState(false)
   const [mounted, setMounted] = useState(false)
-  const [socialNotifications, setSocialNotifications] = useState(0)
   const [isCollapsed, setIsCollapsed] = useState(false)
 
   // Create stable supabase client reference
@@ -140,47 +139,6 @@ export function Header({ currentCategory }: HeaderProps) {
     return () => subscription.unsubscribe()
   }, [supabase])
 
-  // Fetch social notification counts
-  const fetchNotificationCounts = useCallback(async () => {
-    if (!user) {
-      setSocialNotifications(0)
-      return
-    }
-
-    try {
-      const { count: pendingCount } = await supabase
-        .from('friendships')
-        .select('*', { count: 'exact', head: true })
-        .eq('addressee_id', user.id)
-        .eq('status', 'pending')
-
-      const { data: unreadCount } = await supabase
-        .rpc('get_unread_message_count', { user_id_param: user.id })
-
-      setSocialNotifications((pendingCount || 0) + (unreadCount || 0))
-    } catch {
-      setSocialNotifications(0)
-    }
-  }, [user, supabase])
-
-  useEffect(() => {
-    fetchNotificationCounts()
-  }, [fetchNotificationCounts])
-
-  useEffect(() => {
-    if (!user) return
-
-    const channel = supabase
-      .channel('header-social-notifications')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'friendships', filter: `addressee_id=eq.${user.id}` }, () => fetchNotificationCounts())
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, () => fetchNotificationCounts())
-      .subscribe()
-
-    return () => {
-      supabase.removeChannel(channel)
-    }
-  }, [user, supabase, fetchNotificationCounts])
-
   useEffect(() => {
     if (showSocialPanel) {
       document.body.style.overflow = 'hidden'
@@ -264,14 +222,9 @@ export function Header({ currentCategory }: HeaderProps) {
                 onClick={() => setShowSocialPanel(true)}
                 className="hidden lg:flex relative p-2 text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition-colors focus-visible:ring-2 focus-visible:ring-white"
                 title="Venner og meldinger"
-                aria-label={`Venner og meldinger${socialNotifications > 0 ? ` (${socialNotifications} uleste)` : ''}`}
+                aria-label="Venner og meldinger"
               >
                 <Users className="w-5 h-5" />
-                {socialNotifications > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 bg-red-500 text-white text-[9px] w-4 h-4 rounded-full flex items-center justify-center" aria-hidden="true">
-                    {socialNotifications > 9 ? '9+' : socialNotifications}
-                  </span>
-                )}
               </button>
               <NotificationBell userId={user.id} />
               <BroadcastBadge />

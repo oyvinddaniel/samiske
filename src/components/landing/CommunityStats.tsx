@@ -17,18 +17,14 @@ export function CommunityStats() {
     if (!mounted) return
 
     const fetchStats = async () => {
-      console.log('👥 Fetching community stats...')
+      // Bruk sikre RPC-funksjoner som ikke eksponerer data
       const [membersCount, postsCount] = await Promise.all([
         supabase.rpc('get_auth_users_count'),
-        supabase.from('posts').select('*', { count: 'exact', head: true }),
+        supabase.rpc('get_posts_count'),
       ])
 
-      console.log('👥 Members count response:', membersCount)
-      console.log('👥 Members data:', membersCount.data)
-      console.log('👥 Members error:', membersCount.error)
-
       setTotalMembers(membersCount.data || 0)
-      setTotalPosts(postsCount.count || 0)
+      setTotalPosts(postsCount.data || 0)
     }
 
     fetchStats()

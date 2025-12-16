@@ -47,18 +47,49 @@ export function ConversationView({ conversationId, currentUserId }: Conversation
   // Mark as read when viewing
   useEffect(() => {
     const markAsRead = async () => {
-      await supabase
+      // Marker meldinger som lest i conversation_participants
+      const { error: updateError } = await supabase
         .from('conversation_participants')
         .update({ last_read_at: new Date().toISOString() })
         .eq('conversation_id', conversationId)
         .eq('user_id', currentUserId)
+
+      if (updateError) {
+        console.error('❌ Error updating last_read_at:', updateError)
+      } else {
+        console.log('✅ Updated last_read_at for conversation:', conversationId)
+      }
+
+      // Marker meldingsnotifikasjoner som lest i notifications-tabellen
+      const { error: rpcError } = await supabase.rpc('mark_message_notifications_as_read', {
+        p_conversation_id: conversationId,
+        p_user_id: currentUserId,
+      })
+
+      if (rpcError) {
+        console.error('❌ Error marking message notifications as read:', rpcError)
+      }
+
+      // Trigger refresh i MessagesPanel og NotificationBell for umiddelbar sync
+      window.dispatchEvent(new CustomEvent('messages-read'))
     }
 
+    // Mark as read immediately on mount
     markAsRead()
 
-    // Also mark as read when component unmounts
+    // Mark as read on visibility change (user returns to tab)
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        markAsRead()
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
     return () => {
+      // Final mark on unmount
       markAsRead()
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
     }
   }, [conversationId, currentUserId, supabase])
 

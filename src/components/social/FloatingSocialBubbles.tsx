@@ -9,7 +9,7 @@ import { cn } from '@/lib/utils'
 
 export function FloatingSocialBubbles() {
   const [showSocialPanel, setShowSocialPanel] = useState(false)
-  const [activeTab, setActiveTab] = useState<'friends' | 'messages'>('friends')
+  const [activeTab, setActiveTab] = useState<'friends' | 'messages'>('messages')
   const [mounted, setMounted] = useState(false)
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const supabase = useMemo(() => createClient(), [])
@@ -67,7 +67,7 @@ export function FloatingSocialBubbles() {
           'w-80 sm:w-96',
           'right-4',
           'bottom-36 lg:bottom-20',
-          'max-h-[60vh]',
+          'h-[60vh]',
           showSocialPanel
             ? 'opacity-100 scale-100'
             : 'opacity-0 scale-95 pointer-events-none'
@@ -97,34 +97,20 @@ export function FloatingSocialBubbles() {
         </div>
       </div>
 
-      {/* Two floating bubble buttons - always visible */}
-      <div className="fixed bottom-20 right-4 lg:bottom-4 lg:right-4 flex flex-col gap-3 z-[9997]">
-        {/* Messages bubble */}
+      {/* Single floating bubble button - always visible */}
+      <div className="fixed bottom-20 right-4 lg:bottom-4 lg:right-4 z-[9997]">
+        {/* Chat bubble */}
         <button
           onClick={() => togglePanel('messages')}
           className={cn(
             'w-12 h-12 rounded-full shadow-lg flex items-center justify-center transition-all duration-300 hover:scale-105',
-            showSocialPanel && activeTab === 'messages'
-              ? 'bg-green-700 text-white ring-2 ring-green-400'
-              : 'bg-green-600 text-white hover:bg-green-700'
-          )}
-          aria-label="Meldinger"
-        >
-          <MessageCircle className="w-5 h-5" />
-        </button>
-
-        {/* Friends bubble */}
-        <button
-          onClick={() => togglePanel('friends')}
-          className={cn(
-            'w-12 h-12 rounded-full shadow-lg flex items-center justify-center transition-all duration-300 hover:scale-105',
-            showSocialPanel && activeTab === 'friends'
+            showSocialPanel
               ? 'bg-blue-700 text-white ring-2 ring-blue-400'
               : 'bg-blue-600 text-white hover:bg-blue-700'
           )}
-          aria-label="Venner"
+          aria-label="Chat"
         >
-          <Users className="w-5 h-5" />
+          <MessageCircle className="w-5 h-5" />
         </button>
       </div>
     </>,

@@ -42,19 +42,36 @@ export default function LoginPage() {
     setLoading(true)
     setError(null)
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    })
+    try {
+      // Bruk API-rute med rate limiting
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      })
 
-    if (error) {
-      setError(error.message === 'Invalid login credentials'
-        ? 'Feil e-post eller passord'
-        : error.message)
-      setLoading(false)
-    } else {
+      const data = await response.json()
+
+      if (!response.ok) {
+        if (response.status === 429) {
+          setError('For mange innloggingsforsøk. Prøv igjen om 15 minutter.')
+        } else {
+          setError(data.error || 'Feil e-post eller passord')
+        }
+        setLoading(false)
+        return
+      }
+
+      // Oppdater Supabase-session på klienten
+      if (data.session) {
+        await supabase.auth.setSession(data.session)
+      }
+
       // Use hard reload to ensure all client-side components get fresh auth state
       window.location.href = '/'
+    } catch {
+      setError('En feil oppstod. Prøv igjen.')
+      setLoading(false)
     }
   }
 

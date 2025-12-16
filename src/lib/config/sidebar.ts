@@ -39,6 +39,7 @@ export const sidebarConfig = {
     myPlaces: 'Mine steder',
     addPlace: 'Legg til sted',
     seeAll: 'Se alle',
+    showMore: 'Vis flere',
   },
 }
 

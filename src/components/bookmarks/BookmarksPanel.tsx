@@ -138,9 +138,9 @@ function CompactBookmarkCard({
 
           <div className="flex items-center gap-2 text-xs text-gray-400">
             <span className={`flex items-center gap-0.5 ${
-              post.user_has_liked ? 'text-red-500' : post.like_count > 0 ? 'text-pink-400' : ''
+              post.user_has_liked ? 'text-red-500' : post.like_count > 0 ? 'text-red-500' : ''
             }`}>
-              <Heart className={`w-3 h-3 ${post.user_has_liked || post.like_count > 0 ? 'fill-current' : ''}`} />
+              <Heart className={`w-3 h-3 ${post.user_has_liked ? 'fill-current' : ''}`} />
               {post.like_count}
             </span>
             <span className="flex items-center gap-0.5">

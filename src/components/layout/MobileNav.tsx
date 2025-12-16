@@ -535,12 +535,14 @@ function MobileNavContent({ currentCategory = '' }: MobileNavProps) {
                 </Link>
 
                 {/* Kalender */}
-                <Link
-                  href="/?visning=kalender"
-                  onClick={() => setIsOpen(false)}
+                <button
+                  onClick={() => {
+                    setIsOpen(false)
+                    window.dispatchEvent(new CustomEvent('open-calendar-panel'))
+                  }}
                   className={cn(
-                    'flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-colors',
-                    currentVisning === 'kalender'
+                    'w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-colors',
+                    pathname === '/' && searchParams.get('panel') === 'calendar'
                       ? 'bg-blue-50 text-blue-700'
                       : 'text-gray-500 hover:bg-blue-50/50 hover:text-gray-700'
                   )}
@@ -548,23 +550,25 @@ function MobileNavContent({ currentCategory = '' }: MobileNavProps) {
                   <span className="flex items-center gap-3">
                     <Calendar className={cn(
                       'w-4 h-4 transition-colors',
-                      currentVisning === 'kalender' ? 'text-blue-600' : 'text-red-500'
+                      pathname === '/' && searchParams.get('panel') === 'calendar' ? 'text-blue-600' : 'text-red-500'
                     )} />
                     Kalender
                   </span>
                   <ChevronRight className="w-4 h-4 text-gray-400" />
-                </Link>
+                </button>
               </div>
 
               {/* Navigation section - Grupper & Samfunn */}
               <div className="mb-4 pb-4 border-b border-gray-100">
-                {/* Grupper - direct link */}
-                <Link
-                  href="/grupper"
-                  onClick={() => setIsOpen(false)}
+                {/* Grupper - opens groups panel */}
+                <button
+                  onClick={() => {
+                    setIsOpen(false)
+                    window.dispatchEvent(new CustomEvent('open-groups-panel'))
+                  }}
                   className={cn(
-                    'flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-colors',
-                    pathname === '/grupper'
+                    'w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-colors',
+                    pathname === '/' && searchParams.get('panel') === 'groups'
                       ? 'bg-blue-50 text-blue-700'
                       : 'text-gray-600 hover:bg-blue-50/50 hover:text-gray-700'
                   )}
@@ -572,12 +576,12 @@ function MobileNavContent({ currentCategory = '' }: MobileNavProps) {
                   <span className="flex items-center gap-3">
                     <Users className={cn(
                       'w-4 h-4 transition-colors',
-                      pathname === '/grupper' ? 'text-blue-600' : 'text-purple-500'
+                      pathname === '/' && searchParams.get('panel') === 'groups' ? 'text-blue-600' : 'text-purple-500'
                     )} />
                     Grupper
                   </span>
                   <ChevronRight className="w-4 h-4 text-gray-400" />
-                </Link>
+                </button>
 
                 {/* Samfunn - opens community panel */}
                 <button
@@ -642,17 +646,20 @@ function MobileNavContent({ currentCategory = '' }: MobileNavProps) {
                       </li>
                     ))}
 
-                    {/* Se alle link if more locations */}
+                    {/* Vis flere button if more locations */}
                     {hasMoreLocations && (
                       <li>
-                        <Link
-                          href="/innstillinger?tab=steder"
-                          onClick={() => setIsOpen(false)}
-                          className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-500 hover:bg-blue-50/50 hover:text-gray-700 transition-colors"
+                        <button
+                          onClick={() => {
+                            const newMax = maxVisibleLocations + 5
+                            setMaxVisibleLocations(newMax)
+                            localStorage.setItem(sidebarConfig.storageKeys.maxLocations, newMax.toString())
+                          }}
+                          className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-500 hover:bg-blue-50/50 hover:text-gray-700 transition-colors"
                         >
-                          <Settings2 className="w-4 h-4" />
-                          <span>{sidebarConfig.labels.seeAll} ({starredLocations.length})</span>
-                        </Link>
+                          <Plus className="w-4 h-4" />
+                          <span>{sidebarConfig.labels.showMore} ({starredLocations.length - maxVisibleLocations} til)</span>
+                        </button>
                       </li>
                     )}
                   </ul>

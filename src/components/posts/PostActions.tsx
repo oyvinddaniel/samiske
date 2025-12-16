@@ -40,12 +40,12 @@ export function PostActions({
           variant="ghost"
           size="sm"
           className={`h-7 px-1.5 text-xs ${
-            liked ? 'text-red-500' : likeCount > 0 ? 'text-pink-400' : 'text-gray-400'
+            liked ? 'text-red-500' : likeCount > 0 ? 'text-red-500' : 'text-gray-400'
           }`}
           onClick={onLike}
           disabled={!currentUserId}
         >
-          <Heart className={`w-4 h-4 mr-1 ${liked ? 'fill-current' : likeCount > 0 ? 'fill-current' : ''}`} />
+          <Heart className={`w-4 h-4 mr-1 ${liked ? 'fill-current' : ''}`} />
           {likeCount}
         </Button>
 

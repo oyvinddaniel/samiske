@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -39,7 +38,6 @@ export default function RegisterPage() {
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
   const [loading, setLoading] = useState(false)
-  const supabase = createClient()
   const maintenance = useMaintenanceMode()
 
   // Show loading while checking maintenance status
@@ -85,23 +83,35 @@ export default function RegisterPage() {
       return
     }
 
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
-        data: {
-          full_name: fullName,
-          privacy_consent_at: new Date().toISOString(),
-        },
-      },
-    })
+    try {
+      // Bruk API-rute med rate limiting
+      const response = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email,
+          password,
+          fullName,
+          privacyConsent
+        })
+      })
 
-    if (error) {
-      setError(error.message)
-      setLoading(false)
-    } else {
+      const data = await response.json()
+
+      if (!response.ok) {
+        if (response.status === 429) {
+          setError('For mange registreringsforsøk. Prøv igjen senere.')
+        } else {
+          setError(data.error || 'Kunne ikke opprette konto')
+        }
+        setLoading(false)
+        return
+      }
+
       setSuccess(true)
+      setLoading(false)
+    } catch {
+      setError('En feil oppstod. Prøv igjen.')
       setLoading(false)
     }
   }

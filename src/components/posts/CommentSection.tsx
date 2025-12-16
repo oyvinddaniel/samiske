@@ -84,10 +84,23 @@ export function CommentSection({ postId, currentUserId }: CommentSectionProps) {
     setSubmitting(false)
   }
 
-  const handleDelete = async (commentId: string) => {
+  const handleDelete = async (commentId: string, commentUserId: string) => {
+    if (!currentUserId) return
     if (!confirm('Er du sikker på at du vil slette denne kommentaren?')) return
 
-    await supabase.from('comments').delete().eq('id', commentId)
+    // Verifiser eierskap før sletting
+    if (commentUserId !== currentUserId) {
+      alert('Du kan ikke slette denne kommentaren')
+      return
+    }
+
+    const { error } = await supabase.from('comments').delete().eq('id', commentId)
+
+    if (error) {
+      alert('Kunne ikke slette kommentar')
+      return
+    }
+
     fetchComments()
   }
 
@@ -181,7 +194,7 @@ export function CommentSection({ postId, currentUserId }: CommentSectionProps) {
                 </p>
                 {currentUserId === comment.user.id && (
                   <button
-                    onClick={() => handleDelete(comment.id)}
+                    onClick={() => handleDelete(comment.id, comment.user.id)}
                     className="text-xs text-red-500 hover:underline mt-1"
                   >
                     Slett

@@ -4,7 +4,8 @@ import { useState, useEffect, useMemo, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Card, CardContent } from '@/components/ui/card'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { MessageCircle } from 'lucide-react'
+import { MessageCircle, ArrowLeft } from 'lucide-react'
+import { ConversationView } from '@/components/messages/ConversationView'
 
 interface Conversation {
   id: string
@@ -29,6 +30,7 @@ export function MessagesListPanel({ onClose }: MessagesListPanelProps) {
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [loading, setLoading] = useState(true)
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
+  const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null)
   const supabase = useMemo(() => createClient(), [])
 
   // Get current user
@@ -132,6 +134,48 @@ export function MessagesListPanel({ onClose }: MessagesListPanelProps) {
     fetchData()
   }, [fetchData])
 
+  // Listen for messages-read event from ConversationView
+  useEffect(() => {
+    if (!currentUserId) return
+
+    const handleMessagesRead = () => {
+      console.log('📭 Messages marked as read, refreshing MessagesListPanel')
+      fetchData()
+    }
+
+    window.addEventListener('messages-read', handleMessagesRead)
+
+    return () => {
+      window.removeEventListener('messages-read', handleMessagesRead)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUserId]) // Intentionally not including fetchData to avoid re-subscribing
+
+  // Subscribe to realtime message updates
+  useEffect(() => {
+    if (!currentUserId) return
+
+    const channel = supabase
+      .channel('messages-list-updates')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'messages'
+        },
+        () => {
+          console.log('💬 New message detected in MessagesListPanel')
+          fetchData()
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [currentUserId, supabase, fetchData])
+
   const getInitials = (name: string | null) => {
     if (!name) return '?'
     return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
@@ -152,6 +196,50 @@ export function MessagesListPanel({ onClose }: MessagesListPanelProps) {
     return date.toLocaleDateString('nb-NO', { day: 'numeric', month: 'short' })
   }
 
+  // If conversation is selected, show ConversationView
+  if (selectedConversationId && currentUserId) {
+    const selectedConv = conversations.find(c => c.id === selectedConversationId)
+
+    return (
+      <div className="h-full flex flex-col">
+        {/* Header */}
+        <div className="flex items-center gap-3 pb-2 border-b border-gray-100">
+          <button
+            onClick={() => {
+              setSelectedConversationId(null)
+              fetchData() // Refresh to update unread counts
+            }}
+            className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+          {selectedConv && (
+            <>
+              <Avatar className="w-8 h-8">
+                <AvatarImage src={selectedConv.otherUser.avatar_url || undefined} />
+                <AvatarFallback className="bg-blue-100 text-blue-600 text-xs">
+                  {getInitials(selectedConv.otherUser.full_name)}
+                </AvatarFallback>
+              </Avatar>
+              <h2 className="text-xl font-bold text-gray-900">
+                {selectedConv.otherUser.full_name || 'Ukjent'}
+              </h2>
+            </>
+          )}
+        </div>
+
+        {/* Conversation */}
+        <div className="flex-1 overflow-hidden">
+          <ConversationView
+            conversationId={selectedConversationId}
+            currentUserId={currentUserId}
+          />
+        </div>
+      </div>
+    )
+  }
+
+  // Otherwise show conversations list
   return (
     <div className="space-y-4">
       {/* Header */}
@@ -189,11 +277,7 @@ export function MessagesListPanel({ onClose }: MessagesListPanelProps) {
                 conv.unreadCount > 0 ? 'border-blue-200 bg-blue-50/30' : ''
               }`}
               onClick={() => {
-                window.dispatchEvent(
-                  new CustomEvent('open-user-profile-panel', {
-                    detail: { userId: conv.otherUser.id }
-                  })
-                );
+                setSelectedConversationId(conv.id)
               }}
             >
               <div className="relative flex-shrink-0">

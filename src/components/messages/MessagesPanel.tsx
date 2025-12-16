@@ -213,6 +213,20 @@ export function MessagesPanel({ initialConversationUserId, onConversationSelect 
     }
   }, [currentUserId, supabase, fetchConversations])
 
+  // Listen for messages-read event from ConversationView
+  useEffect(() => {
+    const handleMessagesRead = () => {
+      // Refresh conversations to update unread counts
+      fetchConversations()
+    }
+
+    window.addEventListener('messages-read', handleMessagesRead)
+
+    return () => {
+      window.removeEventListener('messages-read', handleMessagesRead)
+    }
+  }, [fetchConversations])
+
   const handleSelectConversation = (conversation: ConversationWithDetails) => {
     setSelectedConversation(conversation)
     onConversationSelect?.(conversation.id)
