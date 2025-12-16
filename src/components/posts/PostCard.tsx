@@ -19,7 +19,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { Pencil, Trash2, MapPin, Share2, Bookmark, BookmarkCheck, Flag, Package, Briefcase, ExternalLink, Users, Building2, MoreVertical } from 'lucide-react'
+import { Pencil, Trash2, MapPin, Share2, Bookmark, BookmarkCheck, Flag, Package, Briefcase, ExternalLink, Users, Building2, MoreVertical, Pin, PinOff } from 'lucide-react'
 import { ProfileOverlay } from '@/components/profile/ProfileOverlay'
 import { RSVPButton } from '@/components/events/RSVPButton'
 import { ReportDialog } from '@/components/reports'
@@ -36,7 +36,7 @@ import { PostDialogContent } from './PostDialogContent'
 import { PostCardProps, categoryColors } from './types'
 import { getInitials, formatDate, formatEventDate } from './utils'
 
-export function PostCard({ post, currentUserId, onClick }: PostCardProps) {
+export function PostCard({ post, currentUserId, onClick, canPin, onPin }: PostCardProps) {
   const {
     // State
     liked,
@@ -236,6 +236,28 @@ export function PostCard({ post, currentUserId, onClick }: PostCardProps) {
                   </DropdownMenuItem>
                 )}
 
+                {/* Pin - for group admins/moderators */}
+                {canPin && onPin && (
+                  <DropdownMenuItem
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onPin(postData.id, !postData.pinned)
+                    }}
+                  >
+                    {postData.pinned ? (
+                      <>
+                        <PinOff className="w-4 h-4 mr-2" />
+                        Fjern fra toppen
+                      </>
+                    ) : (
+                      <>
+                        <Pin className="w-4 h-4 mr-2" />
+                        Fest til toppen
+                      </>
+                    )}
+                  </DropdownMenuItem>
+                )}
+
                 {/* Edit and Delete - for owner only */}
                 {isOwner && (
                   <>
@@ -271,9 +293,14 @@ export function PostCard({ post, currentUserId, onClick }: PostCardProps) {
 
           {/* Title - opens dialog */}
           <button onClick={openDialog} className="text-left w-full">
-            <h3 className="font-semibold text-base md:text-lg text-gray-900 hover:text-blue-600 transition-colors mb-1 break-words">
-              {postData.title}
-            </h3>
+            <div className="flex items-start gap-2">
+              {postData.pinned && (
+                <Pin className="w-4 h-4 text-blue-600 mt-1 flex-shrink-0" />
+              )}
+              <h3 className="font-semibold text-base md:text-lg text-gray-900 hover:text-blue-600 transition-colors mb-1 break-words">
+                {postData.title}
+              </h3>
+            </div>
           </button>
 
           {/* Event info (compact) */}

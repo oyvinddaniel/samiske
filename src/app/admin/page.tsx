@@ -18,6 +18,7 @@ import {
   StatisticsTab,
   EmergencyTab,
 } from '@/components/admin'
+import { BroadcastMessagesTab } from '@/components/admin/BroadcastMessagesTab'
 import type { User, Post, Stats, Feedback, Report, BugReportWithUser } from '@/components/admin'
 import type { BugReportPriority, BugReportStatus } from '@/lib/types/bug-reports'
 
@@ -424,10 +425,15 @@ export default function AdminPage() {
             </TabsTrigger>
             <TabsTrigger value="geography">Geografi</TabsTrigger>
             <TabsTrigger value="statistics">Statistikk</TabsTrigger>
+            <TabsTrigger value="broadcasts">Meldinger</TabsTrigger>
           </TabsList>
 
           <TabsContent value="emergency">
             <EmergencyTab />
+          </TabsContent>
+
+          <TabsContent value="broadcasts">
+            <BroadcastMessagesTab />
           </TabsContent>
 
           <TabsContent value="users">

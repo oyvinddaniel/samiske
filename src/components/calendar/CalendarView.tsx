@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { ChevronLeft, ChevronRight, Calendar, MapPin, Clock, X, ExternalLink, Video, Globe, Filter, Share2, Users } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Calendar, MapPin, Clock, X, ExternalLink, Video, Globe, Filter, Share2, Users, Plus } from 'lucide-react'
 import {
   Select,
   SelectContent,
@@ -265,6 +265,10 @@ interface CalendarViewProps {
   geographyType?: GeographyType
   geographyId?: string | null
   showFilter?: boolean
+  // For group context
+  groupName?: string
+  onCreateEvent?: () => void
+  hideBackButton?: boolean
 }
 
 export function CalendarView({
@@ -272,7 +276,10 @@ export function CalendarView({
   communityIds,
   geographyType: initialGeographyType,
   geographyId: initialGeographyId,
-  showFilter = true
+  showFilter = true,
+  groupName,
+  onCreateEvent,
+  hideBackButton = false
 }: CalendarViewProps = {}) {
   const [currentDate, setCurrentDate] = useState(new Date())
   const [events, setEvents] = useState<Event[]>([])
@@ -547,12 +554,25 @@ export function CalendarView({
       <Card>
         <CardHeader className="pb-2">
           <div className="flex flex-col gap-3">
+            {/* Group name header if in group context */}
+            {groupName && (
+              <div className="text-sm text-gray-500 font-medium">
+                Kalender for {groupName}
+              </div>
+            )}
             <div className="flex items-center justify-between">
               <CardTitle className="flex items-center gap-2">
                 <Calendar className="w-5 h-5 text-blue-600" />
                 {MONTHS[currentDate.getMonth()]} {currentDate.getFullYear()}
               </CardTitle>
               <div className="flex items-center gap-2">
+                {onCreateEvent && (
+                  <Button variant="default" size="sm" onClick={onCreateEvent} className="gap-1">
+                    <Plus className="w-4 h-4" />
+                    <span className="hidden sm:inline">Nytt arrangement</span>
+                    <span className="sm:hidden">Ny</span>
+                  </Button>
+                )}
                 <Button variant="outline" size="sm" onClick={goToToday}>
                   I dag
                 </Button>
@@ -782,12 +802,14 @@ export function CalendarView({
         />
       )}
 
-      {/* Back to feed link */}
-      <Link href="/">
-        <Button variant="outline" className="w-full">
-          Tilbake til feeden
-        </Button>
-      </Link>
+      {/* Back to feed link - hide when in group context */}
+      {!hideBackButton && (
+        <Link href="/">
+          <Button variant="outline" className="w-full">
+            Tilbake til feeden
+          </Button>
+        </Link>
+      )}
     </div>
   )
 }

@@ -2,10 +2,10 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Loader2, FileText, Calendar, Info, PenSquare } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { Loader2, FileText, Calendar, Info } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { GroupHeader } from './GroupHeader'
+import { WelcomeMessageModal } from './WelcomeMessageModal'
 import { Feed } from '@/components/feed/Feed'
 import { CalendarView } from '@/components/calendar/CalendarView'
 import { CreatePostSheet } from '@/components/posts/CreatePostSheet'
@@ -139,7 +139,13 @@ export function GroupFeedView({ groupId, onClose }: GroupFeedViewProps) {
         </TabsContent>
 
         <TabsContent value="calendar" className="mt-0">
-          <CalendarView groupId={groupId} />
+          <CalendarView
+            groupId={groupId}
+            groupName={group.name}
+            onCreateEvent={canViewContent && currentUserId ? () => setShowCreatePost(true) : undefined}
+            hideBackButton
+            showFilter={false}
+          />
         </TabsContent>
 
         <TabsContent value="about" className="mt-0">
@@ -185,6 +191,12 @@ export function GroupFeedView({ groupId, onClose }: GroupFeedViewProps) {
           }}
         />
       )}
+
+      {/* Welcome message modal for new members */}
+      <WelcomeMessageModal
+        group={group}
+        isMember={memberStatus === 'approved'}
+      />
     </div>
   )
 }

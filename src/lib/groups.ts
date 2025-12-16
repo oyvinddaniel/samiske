@@ -237,3 +237,217 @@ export function generateSlug(name: string): string {
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '')
 }
+
+// Delete a group (admin only)
+export async function deleteGroup(
+  groupId: string
+): Promise<{ success: boolean; error: string | null }> {
+  const supabase = createClient()
+
+  const { data, error } = await supabase.rpc('delete_group', {
+    p_group_id: groupId,
+  })
+
+  if (error) {
+    console.error('Error deleting group:', error)
+    return { success: false, error: error.message }
+  }
+
+  return { success: data === true, error: null }
+}
+
+// Remove a member from group (admin/moderator only)
+export async function removeGroupMember(
+  groupId: string,
+  userId: string
+): Promise<{ success: boolean; error: string | null }> {
+  const supabase = createClient()
+
+  const { data, error } = await supabase.rpc('remove_group_member', {
+    p_group_id: groupId,
+    p_user_id: userId,
+  })
+
+  if (error) {
+    console.error('Error removing member:', error)
+    return { success: false, error: error.message }
+  }
+
+  return { success: data === true, error: null }
+}
+
+// Transfer group ownership to another member (admin only)
+export async function transferGroupOwnership(
+  groupId: string,
+  newOwnerId: string
+): Promise<{ success: boolean; error: string | null }> {
+  const supabase = createClient()
+
+  const { data, error } = await supabase.rpc('transfer_group_ownership', {
+    p_group_id: groupId,
+    p_new_owner_id: newOwnerId,
+  })
+
+  if (error) {
+    console.error('Error transferring ownership:', error)
+    return { success: false, error: error.message }
+  }
+
+  return { success: data === true, error: null }
+}
+
+// Get group statistics (members only)
+export interface GroupStatistics {
+  member_count: number
+  post_count: number
+  event_count: number
+  members_this_week: number
+  posts_this_week: number
+  pending_members: number
+}
+
+export async function getGroupStatistics(
+  groupId: string
+): Promise<{ data: GroupStatistics | null; error: string | null }> {
+  const supabase = createClient()
+
+  const { data, error } = await supabase.rpc('get_group_statistics', {
+    p_group_id: groupId,
+  })
+
+  if (error) {
+    console.error('Error fetching group statistics:', error)
+    return { data: null, error: error.message }
+  }
+
+  return { data, error: null }
+}
+
+// Update group information (admin only)
+export async function updateGroup(
+  groupId: string,
+  updates: {
+    name?: string
+    description?: string
+    image_url?: string
+    group_type?: GroupType
+    welcome_message?: string
+  }
+): Promise<{ success: boolean; error: string | null }> {
+  const supabase = createClient()
+
+  const { data, error } = await supabase.rpc('update_group', {
+    p_group_id: groupId,
+    p_name: updates.name || null,
+    p_description: updates.description || null,
+    p_image_url: updates.image_url || null,
+    p_group_type: updates.group_type || null,
+    p_welcome_message: updates.welcome_message || null,
+  })
+
+  if (error) {
+    console.error('Error updating group:', error)
+    return { success: false, error: error.message }
+  }
+
+  return { success: data === true, error: null }
+}
+
+// Get/set group notification preferences
+export interface GroupNotificationPreferences {
+  notify_new_posts: boolean
+  notify_events: boolean
+  notify_comments_own_posts: boolean
+  notify_mentions: boolean
+  notification_frequency: 'instant' | 'daily' | 'weekly' | 'none'
+}
+
+export async function getGroupNotificationPreferences(
+  groupId: string
+): Promise<GroupNotificationPreferences | null> {
+  const supabase = createClient()
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return null
+
+  const { data, error } = await supabase
+    .from('group_notification_preferences')
+    .select('*')
+    .eq('group_id', groupId)
+    .eq('user_id', user.id)
+    .maybeSingle()
+
+  if (error) {
+    console.error('Error fetching notification preferences:', error)
+    return null
+  }
+
+  // Return defaults if no preferences exist
+  if (!data) {
+    return {
+      notify_new_posts: true,
+      notify_events: true,
+      notify_comments_own_posts: true,
+      notify_mentions: true,
+      notification_frequency: 'instant',
+    }
+  }
+
+  return data
+}
+
+export async function updateGroupNotificationPreferences(
+  groupId: string,
+  preferences: Partial<GroupNotificationPreferences>
+): Promise<boolean> {
+  const supabase = createClient()
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return false
+
+  const { error } = await supabase
+    .from('group_notification_preferences')
+    .upsert({
+      group_id: groupId,
+      user_id: user.id,
+      ...preferences,
+      updated_at: new Date().toISOString(),
+    }, {
+      onConflict: 'group_id,user_id',
+    })
+
+  return !error
+}
+
+// Check if user has seen welcome message
+export async function hasSeenWelcomeMessage(groupId: string): Promise<boolean> {
+  const supabase = createClient()
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return true // No user = don't show
+
+  const { data } = await supabase
+    .from('group_welcome_seen')
+    .select('id')
+    .eq('group_id', groupId)
+    .eq('user_id', user.id)
+    .maybeSingle()
+
+  return !!data
+}
+
+export async function markWelcomeMessageSeen(groupId: string): Promise<boolean> {
+  const supabase = createClient()
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return false
+
+  const { error } = await supabase
+    .from('group_welcome_seen')
+    .insert({
+      group_id: groupId,
+      user_id: user.id,
+    })
+
+  return !error
+}

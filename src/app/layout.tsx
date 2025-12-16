@@ -5,6 +5,7 @@ import { ServiceWorkerRegistration, InstallPrompt } from "@/components/pwa";
 import { FloatingSocialBubbles } from "@/components/social/FloatingSocialBubbles";
 import { FeedbackBubble } from "@/components/feedback/FeedbackBubble";
 import { BugReportBubble } from "@/components/bug-reports";
+import { BroadcastMessageModal } from "@/components/broadcast/BroadcastMessageModal";
 import { Toaster } from "@/components/ui/sonner";
 import { ResponsivePreview } from "@/components/dev/ResponsivePreview";
 import { Footer } from "@/components/layout/Footer";
@@ -69,6 +70,7 @@ export default function RootLayout({
           <FloatingSocialBubbles />
           <FeedbackBubble />
           <BugReportBubble />
+          <BroadcastMessageModal />
           <InstallPrompt />
         </ResponsivePreview>
         <Toaster richColors position="top-center" />

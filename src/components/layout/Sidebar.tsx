@@ -465,10 +465,28 @@ export function Sidebar({ currentCategory = '', activePanel = 'feed', selectedLo
         {/* Mine steder - only for logged in users */}
         {currentUserId && (
           <div className="mb-4 pb-4 border-b border-gray-100">
-            <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 px-3">
-              {sidebarConfig.labels.myPlaces}
-            </h2>
-            <ul className="space-y-1">
+            {/* Mine steder - clickable header that opens geography panel */}
+            <button
+              onClick={() => window.dispatchEvent(new CustomEvent('open-geography-panel'))}
+              className={cn(
+                'w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-semibold transition-colors mb-1',
+                activePanel === 'geography'
+                  ? 'bg-blue-50 text-blue-700'
+                  : 'text-gray-600 hover:bg-blue-50/50 hover:text-gray-700'
+              )}
+            >
+              <span className="flex items-center gap-3">
+                <MapPin className={cn(
+                  'w-4 h-4 transition-colors',
+                  activePanel === 'geography' ? 'text-blue-600' : 'text-green-500'
+                )} />
+                {sidebarConfig.labels.myPlaces}
+              </span>
+              <ChevronRight className="w-4 h-4 text-gray-400" />
+            </button>
+
+            {/* Child locations */}
+            <ul className="space-y-1 ml-4">
               {visibleLocations.map((location) => (
                 <li key={`${location.type}-${location.id}`}>
                   <button
@@ -512,22 +530,6 @@ export function Sidebar({ currentCategory = '', activePanel = 'feed', selectedLo
                   </Link>
                 </li>
               )}
-
-              {/* Legg til sted button */}
-              <li>
-                <button
-                  onClick={() => window.dispatchEvent(new CustomEvent('open-geography-panel'))}
-                  className={cn(
-                    'w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
-                    activePanel === 'geography'
-                      ? 'bg-blue-50 text-blue-700'
-                      : 'text-gray-500 hover:bg-blue-50/50 hover:text-gray-700'
-                  )}
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>{sidebarConfig.labels.addPlace}</span>
-                </button>
-              </li>
             </ul>
           </div>
         )}

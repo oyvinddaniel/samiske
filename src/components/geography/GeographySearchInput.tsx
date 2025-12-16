@@ -2,9 +2,10 @@
 
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Search, X, MapPin, Building2, Languages, Loader2 } from 'lucide-react'
+import { Search, X, MapPin, Building2, Languages, Loader2, Pencil } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
+import { SuggestChangeModal } from './SuggestChangeModal'
 
 export type GeographyType = 'language_area' | 'municipality' | 'place'
 
@@ -43,6 +44,11 @@ export function GeographySearchInput({
   const [isOpen, setIsOpen] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+
+  // Edit modal state
+  const [editModalOpen, setEditModalOpen] = useState(false)
+  const [selectedEntity, setSelectedEntity] = useState<any>(null)
+  const [selectedEntityType, setSelectedEntityType] = useState<GeographyType | null>(null)
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -174,6 +180,47 @@ export function GeographySearchInput({
     setResults([])
   }
 
+  const handleEdit = async (e: React.MouseEvent, result: SearchResult) => {
+    e.preventDefault()
+    e.stopPropagation()
+
+    try {
+      // Fetch full entity data from database
+      let entityData = null
+
+      if (result.type === 'language_area') {
+        const { data } = await supabase
+          .from('language_areas')
+          .select('id, name, name_sami, code, description')
+          .eq('id', result.id)
+          .single()
+        entityData = data
+      } else if (result.type === 'municipality') {
+        const { data } = await supabase
+          .from('municipalities')
+          .select('id, name, name_sami, slug, description, language_area_id, country_id')
+          .eq('id', result.id)
+          .single()
+        entityData = data
+      } else if (result.type === 'place') {
+        const { data } = await supabase
+          .from('places')
+          .select('id, name, name_sami, slug, description, municipality_id')
+          .eq('id', result.id)
+          .single()
+        entityData = data
+      }
+
+      if (entityData) {
+        setSelectedEntity(entityData)
+        setSelectedEntityType(result.type)
+        setEditModalOpen(true)
+      }
+    } catch (error) {
+      console.error('Error fetching entity data:', error)
+    }
+  }
+
   const getIcon = (type: GeographyType) => {
     switch (type) {
       case 'language_area': return <MapPin className="w-4 h-4 text-blue-500" />
@@ -242,34 +289,63 @@ export function GeographySearchInput({
             </div>
           ) : (
             results.map((result) => (
-              <button
+              <div
                 key={`${result.type}-${result.id}`}
-                type="button"
-                onClick={() => handleSelect(result)}
-                className="w-full flex items-center gap-3 px-3 py-2 hover:bg-gray-50 transition-colors text-left border-b border-gray-100 last:border-0"
+                className="relative group"
               >
-                {getIcon(result.type)}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium text-gray-900 truncate">{result.name}</span>
-                    {result.name_sami && result.name_sami !== result.name && (
-                      <span className="text-gray-500 text-sm truncate">({result.name_sami})</span>
-                    )}
+                <button
+                  type="button"
+                  onClick={() => handleSelect(result)}
+                  className="w-full flex items-center gap-3 px-3 py-2 pr-12 hover:bg-gray-50 transition-colors text-left border-b border-gray-100 last:border-0"
+                >
+                  {getIcon(result.type)}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-gray-900 truncate">{result.name}</span>
+                      {result.name_sami && result.name_sami !== result.name && (
+                        <span className="text-gray-500 text-sm truncate">({result.name_sami})</span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1 text-xs text-gray-400">
+                      <span>{getTypeLabel(result.type)}</span>
+                      {result.parent_name && (
+                        <>
+                          <span>·</span>
+                          <span>{result.parent_name}</span>
+                        </>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1 text-xs text-gray-400">
-                    <span>{getTypeLabel(result.type)}</span>
-                    {result.parent_name && (
-                      <>
-                        <span>·</span>
-                        <span>{result.parent_name}</span>
-                      </>
-                    )}
-                  </div>
-                </div>
-              </button>
+                </button>
+                {/* Edit button */}
+                <button
+                  type="button"
+                  onClick={(e) => handleEdit(e, result)}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-lg hover:bg-gray-200 transition-colors opacity-0 group-hover:opacity-100 z-10"
+                  title="Rediger"
+                  aria-label="Rediger"
+                >
+                  <Pencil className="w-4 h-4 text-gray-600" />
+                </button>
+              </div>
             ))
           )}
         </div>
+      )}
+
+      {/* Edit Modal */}
+      {selectedEntity && selectedEntityType && (
+        <SuggestChangeModal
+          open={editModalOpen}
+          onOpenChange={setEditModalOpen}
+          entityType={selectedEntityType}
+          entity={selectedEntity}
+          suggestionType="edit_name"
+          onSuccess={() => {
+            // Refresh search results
+            search(query)
+          }}
+        />
       )}
     </div>
   )

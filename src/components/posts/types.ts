@@ -38,6 +38,7 @@ export interface PostData {
   image_url?: string | null
   type: 'standard' | 'event'
   visibility: 'public' | 'members'
+  pinned?: boolean
   event_date?: string | null
   event_time?: string | null
   event_location?: string | null
@@ -99,6 +100,9 @@ export interface PostCardProps {
   post: PostData
   currentUserId?: string | null
   onClick?: () => void
+  // Pin functionality for group admins/moderators
+  canPin?: boolean
+  onPin?: (postId: string, pinned: boolean) => Promise<void>
 }
 
 export const categoryColors: Record<string, string> = {
