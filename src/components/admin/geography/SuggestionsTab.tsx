@@ -1,6 +1,6 @@
 'use client'
 
-import { MessageSquare, Languages, Building2, MapPin, Check, XCircle, Clock } from 'lucide-react'
+import { MessageSquare, MapPin, Check, XCircle, Clock } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -101,9 +101,9 @@ export function SuggestionsTab({
         <div className="space-y-3">
           {pendingSuggestions.map(suggestion => {
             const entityIcon = suggestion.entity_type === 'language_area' ? (
-              <Languages className="w-5 h-5 text-blue-600" />
+              <MapPin className="w-5 h-5 text-blue-600" />
             ) : suggestion.entity_type === 'municipality' ? (
-              <Building2 className="w-5 h-5 text-orange-600" />
+              <MapPin className="w-5 h-5 text-orange-600" />
             ) : (
               <MapPin className="w-5 h-5 text-purple-600" />
             )

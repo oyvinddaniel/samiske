@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Globe, Pencil, Save, X } from 'lucide-react'
+import { MapPin, Pencil, Save, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -102,7 +102,7 @@ export function CountriesTab({ countries, supabase, onDataChange }: CountriesTab
               ) : (
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <Globe className="w-5 h-5 text-green-600" />
+                    <MapPin className="w-5 h-5 text-green-600" />
                     <div>
                       <p className="font-medium">{country.name}</p>
                       <p className="text-xs text-gray-500">

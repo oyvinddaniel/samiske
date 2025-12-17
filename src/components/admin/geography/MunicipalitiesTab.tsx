@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Plus, Pencil, Trash2, Save, X, Building2 } from 'lucide-react'
+import { Plus, Pencil, Trash2, Save, X, MapPin } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -293,7 +293,7 @@ export function MunicipalitiesTab({
               ) : (
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <Building2 className="w-5 h-5 text-orange-600" />
+                    <MapPin className="w-5 h-5 text-orange-600" />
                     <div>
                       <p className="font-medium">{municipality.name}</p>
                       <p className="text-xs text-gray-500">

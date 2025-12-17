@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { MessageSquare, Languages, Globe, Building2, MapPin } from 'lucide-react'
+import { MessageSquare, MapPin } from 'lucide-react'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useGeographyData } from './geography/useGeographyData'
 import { CountriesTab } from './geography/CountriesTab'
@@ -56,15 +56,15 @@ export function GeographyTab() {
             )}
           </TabsTrigger>
           <TabsTrigger value="language_areas" className="flex items-center gap-2">
-            <Languages className="w-4 h-4" />
+            <MapPin className="w-4 h-4" />
             Språkområder
           </TabsTrigger>
           <TabsTrigger value="countries" className="flex items-center gap-2">
-            <Globe className="w-4 h-4" />
+            <MapPin className="w-4 h-4" />
             Land
           </TabsTrigger>
           <TabsTrigger value="municipalities" className="flex items-center gap-2">
-            <Building2 className="w-4 h-4" />
+            <MapPin className="w-4 h-4" />
             Kommuner
           </TabsTrigger>
           <TabsTrigger value="places" className="flex items-center gap-2">
