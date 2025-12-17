@@ -1,6 +1,33 @@
 # Prosjektstatus: samiske.no
 
-## Sist oppdatert: 2025-12-14
+## Sist oppdatert: 2025-12-17
+
+---
+
+## PÅGÅENDE: SPA-konvertering (startet 16. desember 2025)
+
+Konverterer appen til Single Page Application for bedre brukeropplevelse.
+
+**Status:** Fase 1 av 6 fullført
+**Detaljer:** Se `agent_docs/spa-conversion.md`
+
+| Fase | Beskrivelse | Status |
+|------|-------------|--------|
+| 1 | Kalender | ✅ Fullført |
+| 2 | Bokmerker, grupper, innlegg | ⏳ Planlagt |
+| 3 | Profiler, gruppe-detalj, geografi | ⏳ Planlagt |
+| 4 | Samfunn, geografi-hierarki | ⏳ Planlagt |
+| 5 | Polering og UX | ⏳ Planlagt |
+| 6 | Testing | ⏳ Planlagt |
+
+---
+
+## NYE FUNKSJONER (15-17. desember 2025)
+
+- ✅ **Changelog-system** - Brukere kan se "Hva er nytt?"
+- ✅ **Brukeraktivitetslogging** - Admin kan se brukeraktivitet
+- ✅ **Navbar redesign** - Ny gradient og Sámi Circle Glow
+- ✅ **Bug-rapporteringssystem** - Forbedret med screenshots
 
 ---
 
@@ -187,15 +214,42 @@ Se NEXT-STEPS.md for gjenstående oppgaver.
 - [x] UI for aktivering/deaktivering i innstillinger
 - [ ] VAPID secrets må konfigureres i Supabase Dashboard
 
+### Fase 19: Sapmi-transformasjon FULLFØRT (2025-12-13)
+- [x] Fase 1-8: Geografi, grupper, samfunn, vennesirkler, feed-redesign, RSVP
+- [x] Fase 9: Universelt søk (8 kategorier)
+- **Detaljer:** Se `docs/sapmi/MASTER-PLAN.md`
+
+### Fase 20: Søkesystem (8 kategorier) FULLFØRT (2025-12-13)
+- [x] Brukere, innlegg, arrangementer, kommentarer
+- [x] Geografi, samfunn, tjenester, produkter
+- [x] Caching med 5 min TTL
+- [x] Tastaturnavigasjon
+- **Detaljer:** Se `agent_docs/search.md`
+
+### Fase 21: SPA-konvertering PÅGÅENDE (startet 2025-12-16)
+- [x] Fase 1: Kalender fungerer som SPA
+- [ ] Fase 2-6: Se `agent_docs/spa-conversion.md`
+
+### Fase 22: GeographyTab refaktorering (2025-12-17)
+- [x] Backup av originalfil
+- [x] SuggestionsTab.tsx ekstrahert (217 linjer)
+- [x] MunicipalitiesTab.tsx ekstrahert (269 linjer)
+- [x] PlacesTab.tsx ekstrahert (202 linjer)
+- [x] GeographyTabNew.tsx komplett med alle imports
+- [x] Build verifisert
+- [ ] Manuell testing
+- [ ] Rydding av gamle filer
+- **Resultat:** 1175 linjer → 109 linjer (91% reduksjon)
+
 ---
 
 ## Nåværende status
 
 **LIVE PÅ samiske.no** - Sikkerhet og kodekvalitet forbedret!
 
-### Fullført: Fase 1-4 av sikkerhetsplanen
+**Pågående:** SPA-konvertering (Fase 1 av 6 fullført)
 
-**Neste steg:** Fase 5 - E-postbekreftelse (kan tas når behov oppstår)
+**Neste steg:** SPA Fase 2 - Bokmerker, grupper, innlegg
 
 ---
 
