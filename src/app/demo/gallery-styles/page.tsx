@@ -79,6 +79,9 @@ export default function GalleryStylesDemo() {
   const [selectedPreview, setSelectedPreview] = useState<string | null>(null)
   const [zoomLevel, setZoomLevel] = useState(1)
   const [isMobile, setIsMobile] = useState(false)
+  const [dragOffset, setDragOffset] = useState(0)
+  const [isDragging, setIsDragging] = useState(false)
+  const [isDismissing, setIsDismissing] = useState(false)
 
   // Detect mobile
   useEffect(() => {
@@ -332,7 +335,9 @@ export default function GalleryStylesDemo() {
   const MasonryViewer = () => {
     if (!activeViewer) return null
 
-    // Mobile swipe handlers
+    // Mobile swipe handlers with drag animation
+    const DISMISS_THRESHOLD = 150 // Må dra 150px for å lukke
+
     const handleTouchStart = (e: React.TouchEvent, context: 'single' | 'gallery') => {
       const touch = e.touches[0]
       const target = e.currentTarget as HTMLElement
@@ -342,6 +347,20 @@ export default function GalleryStylesDemo() {
       // Check if at top of scroll
       const scrollContainer = target.querySelector('[data-scroll-container]') as HTMLElement
       target.dataset.atTop = scrollContainer ? (scrollContainer.scrollTop <= 0).toString() : 'true'
+      setIsDragging(true)
+    }
+
+    const handleTouchMove = (e: React.TouchEvent) => {
+      const target = e.currentTarget as HTMLElement
+      const startY = parseFloat(target.dataset.startY || '0')
+      const currentY = e.touches[0].clientY
+      const diffY = currentY - startY // Positive = dragging down
+      const atTop = target.dataset.atTop === 'true'
+
+      // Only allow drag down when at top
+      if (atTop && diffY > 0) {
+        setDragOffset(diffY)
+      }
     }
 
     const handleTouchEnd = (e: React.TouchEvent) => {
@@ -355,8 +374,11 @@ export default function GalleryStylesDemo() {
       const context = target.dataset.context
       const atTop = target.dataset.atTop === 'true'
 
+      setIsDragging(false)
+
       // Horizontal swipe - change image with loop (only in single view)
       if (context === 'single' && Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 50) {
+        setDragOffset(0)
         if (diffX > 0) {
           // Swipe left - next image (loop to first)
           setCurrentIndex(i => (i + 1) % demoImages.length)
@@ -368,12 +390,21 @@ export default function GalleryStylesDemo() {
       }
 
       // Vertical swipe down at top - go back/close (pull down to dismiss)
-      if (atTop && diffY < -80) {
-        if (context === 'single') {
-          setViewerState('masonry')
-        } else if (context === 'gallery') {
-          setActiveViewer(null)
-        }
+      if (atTop && dragOffset > DISMISS_THRESHOLD) {
+        // Animate away then close
+        setIsDismissing(true)
+        setTimeout(() => {
+          if (context === 'single') {
+            setViewerState('masonry')
+          } else if (context === 'gallery') {
+            setActiveViewer(null)
+          }
+          setDragOffset(0)
+          setIsDismissing(false)
+        }, 200)
+      } else {
+        // Snap back
+        setDragOffset(0)
       }
     }
 
@@ -381,10 +412,17 @@ export default function GalleryStylesDemo() {
     if (isMobile) {
       // Mobile: Single image view with caption and comments below
       if (viewerState === 'single') {
+        const dismissProgress = isDismissing ? 1 : Math.min(dragOffset / 300, 1)
         return (
           <div
             className="fixed inset-0 bg-black z-50 flex flex-col"
+            style={{
+              transform: `translateY(${isDismissing ? '100%' : `${dragOffset}px`})`,
+              opacity: 1 - dismissProgress * 0.5,
+              transition: isDragging ? 'none' : 'transform 0.2s ease-out, opacity 0.2s ease-out',
+            }}
             onTouchStart={(e) => handleTouchStart(e, 'single')}
+            onTouchMove={handleTouchMove}
             onTouchEnd={handleTouchEnd}
           >
             {/* Swipe handle */}
@@ -493,10 +531,17 @@ export default function GalleryStylesDemo() {
       }
 
       // Mobile: Masonry gallery view with post info at bottom
+      const dismissProgress = isDismissing ? 1 : Math.min(dragOffset / 300, 1)
       return (
         <div
           className="fixed inset-0 bg-black z-50 flex flex-col"
+          style={{
+            transform: `translateY(${isDismissing ? '100%' : `${dragOffset}px`})`,
+            opacity: 1 - dismissProgress * 0.5,
+            transition: isDragging ? 'none' : 'transform 0.2s ease-out, opacity 0.2s ease-out',
+          }}
           onTouchStart={(e) => handleTouchStart(e, 'gallery')}
+          onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
         >
           {/* Swipe handle */}
