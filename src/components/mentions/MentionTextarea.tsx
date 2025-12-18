@@ -4,18 +4,20 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { cn } from '@/lib/utils'
-import { User, Users, MapPin, Building2 } from 'lucide-react'
+import { User, Users, MapPin, Building2, Globe, Languages } from 'lucide-react'
 
 // Mention types that can be extended
-export type MentionType = 'user' | 'community' | 'place' | 'group'
+export type MentionType = 'user' | 'community' | 'place' | 'municipality' | 'language_area' | 'group'
 
 interface MentionResult {
   id: string
   type: MentionType
   name: string
+  displayName: string // What gets inserted
   subtitle?: string
   avatar_url?: string | null
   icon?: React.ReactNode
+  isFullName?: boolean // For user full name option
 }
 
 interface MentionTextareaProps {
@@ -40,6 +42,8 @@ const TYPE_ICONS: Record<MentionType, React.ReactNode> = {
   user: <User className="w-4 h-4 text-blue-600" />,
   community: <Building2 className="w-4 h-4 text-purple-600" />,
   place: <MapPin className="w-4 h-4 text-green-600" />,
+  municipality: <MapPin className="w-4 h-4 text-emerald-600" />,
+  language_area: <Languages className="w-4 h-4 text-teal-600" />,
   group: <Users className="w-4 h-4 text-orange-600" />,
 }
 
@@ -47,6 +51,8 @@ const TYPE_LABELS: Record<MentionType, string> = {
   user: 'Brukere',
   community: 'Samfunn',
   place: 'Steder',
+  municipality: 'Kommuner',
+  language_area: 'Språkområder',
   group: 'Grupper',
 }
 
@@ -58,7 +64,7 @@ export function MentionTextarea({
   className,
   required,
   id,
-  enabledTypes = ['user', 'community', 'place', 'group'],
+  enabledTypes = ['user', 'community', 'place', 'municipality', 'language_area', 'group'],
 }: MentionTextareaProps) {
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [suggestions, setSuggestions] = useState<MentionResult[]>([])
@@ -86,7 +92,7 @@ export function MentionTextarea({
       try {
         const searches: Promise<void>[] = []
 
-        // Search users
+        // Search users - show both first name (recommended) and full name options
         if (enabledTypes.includes('user')) {
           searches.push(
             (async () => {
@@ -96,13 +102,33 @@ export function MentionTextarea({
                 .ilike('full_name', `%${mentionQuery}%`)
                 .limit(3)
               data?.forEach(user => {
+                const firstName = user.full_name.split(' ')[0]
+                const hasLastName = user.full_name.includes(' ')
+
+                // First name option (recommended)
                 results.push({
                   id: user.id,
                   type: 'user',
                   name: user.full_name,
+                  displayName: firstName,
+                  subtitle: hasLastName ? 'Fornavn (anbefalt)' : undefined,
                   avatar_url: user.avatar_url,
                   icon: TYPE_ICONS.user,
                 })
+
+                // Full name option (only if they have a last name)
+                if (hasLastName) {
+                  results.push({
+                    id: user.id,
+                    type: 'user',
+                    name: user.full_name,
+                    displayName: user.full_name,
+                    subtitle: 'Fullt navn (formelt)',
+                    avatar_url: user.avatar_url,
+                    icon: TYPE_ICONS.user,
+                    isFullName: true,
+                  })
+                }
               })
             })()
           )
@@ -123,6 +149,7 @@ export function MentionTextarea({
                   id: community.id,
                   type: 'community',
                   name: community.name,
+                  displayName: community.name,
                   subtitle: community.category,
                   avatar_url: community.logo_url,
                   icon: TYPE_ICONS.community,
@@ -145,12 +172,78 @@ export function MentionTextarea({
                 const municipality = Array.isArray(place.municipality)
                   ? place.municipality[0]
                   : place.municipality
+                const placeName = place.name_sami || place.name
                 results.push({
                   id: place.id,
                   type: 'place',
-                  name: place.name_sami || place.name,
-                  subtitle: municipality?.name,
+                  name: placeName,
+                  displayName: placeName,
+                  subtitle: municipality?.name ? `Sted i ${municipality.name}` : 'Sted',
                   icon: TYPE_ICONS.place,
+                })
+              })
+            })()
+          )
+        }
+
+        // Search municipalities (kommuner)
+        if (enabledTypes.includes('municipality')) {
+          searches.push(
+            (async () => {
+              const { data } = await supabase
+                .from('municipalities')
+                .select('id, name, name_sami, country:countries(name)')
+                .or(`name.ilike.%${mentionQuery}%,name_sami.ilike.%${mentionQuery}%`)
+                .limit(3)
+              data?.forEach(muni => {
+                const country = Array.isArray(muni.country)
+                  ? muni.country[0]
+                  : muni.country
+                const muniName = muni.name_sami || muni.name
+                results.push({
+                  id: muni.id,
+                  type: 'municipality',
+                  name: muniName,
+                  displayName: muniName,
+                  subtitle: country?.name ? `Kommune i ${country.name}` : 'Kommune',
+                  icon: TYPE_ICONS.municipality,
+                })
+              })
+            })()
+          )
+        }
+
+        // Search language areas (språkområder) + Sápmi
+        if (enabledTypes.includes('language_area')) {
+          searches.push(
+            (async () => {
+              // Add Sápmi as a special option if query matches
+              const samiTerms = ['sápmi', 'sapmi', 'sameland', 'sami']
+              if (samiTerms.some(term => term.includes(mentionQuery.toLowerCase()) || mentionQuery.toLowerCase().includes(term.slice(0, 2)))) {
+                results.push({
+                  id: 'sapmi',
+                  type: 'language_area',
+                  name: 'Sápmi',
+                  displayName: 'Sápmi',
+                  subtitle: 'Hele det samiske området',
+                  icon: <Globe className="w-4 h-4 text-teal-600" />,
+                })
+              }
+
+              const { data } = await supabase
+                .from('language_areas')
+                .select('id, name, name_sami')
+                .or(`name.ilike.%${mentionQuery}%,name_sami.ilike.%${mentionQuery}%`)
+                .limit(3)
+              data?.forEach(area => {
+                const areaName = area.name_sami || area.name
+                results.push({
+                  id: area.id,
+                  type: 'language_area',
+                  name: areaName,
+                  displayName: areaName,
+                  subtitle: 'Språkområde',
+                  icon: TYPE_ICONS.language_area,
                 })
               })
             })()
@@ -171,6 +264,7 @@ export function MentionTextarea({
                   id: group.id,
                   type: 'group',
                   name: group.name,
+                  displayName: group.name,
                   avatar_url: group.avatar_url,
                   icon: TYPE_ICONS.group,
                 })
@@ -234,18 +328,19 @@ export function MentionTextarea({
     const beforeMention = value.slice(0, mentionStart)
     const afterMention = value.slice(cursorPos)
 
-    // Use first name only for cleaner text, but track full info
-    const firstName = result.name.split(' ')[0]
-    const mentionText = `@${firstName} `
+    // Use displayName from the result (can be first name or full name for users)
+    const mentionText = `@${result.displayName} `
     const newValue = beforeMention + mentionText + afterMention
 
-    // Track this mention with first name as the key for matching
-    const key = `${result.type}:${result.id}`
+    // Track this mention - use unique key including fullName flag for users
+    const key = result.isFullName
+      ? `${result.type}:${result.id}:full`
+      : `${result.type}:${result.id}`
     const newMentions = new Map(mentions)
     newMentions.set(key, {
       id: result.id,
       type: result.type,
-      name: firstName, // Store first name for tracking
+      name: result.displayName,
     })
     setMentions(newMentions)
 
