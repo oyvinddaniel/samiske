@@ -367,8 +367,8 @@ export default function GalleryStylesDemo() {
         return
       }
 
-      // Vertical swipe up at top - go back/close
-      if (atTop && diffY > 80) {
+      // Vertical swipe down at top - go back/close (pull down to dismiss)
+      if (atTop && diffY < -80) {
         if (context === 'single') {
           setViewerState('masonry')
         } else if (context === 'gallery') {
