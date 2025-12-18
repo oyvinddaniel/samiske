@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
 import { Card, CardContent } from '@/components/ui/card'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -31,12 +32,16 @@ import { PostActions } from './PostActions'
 import { PostComments } from './PostComments'
 import { EditPostDialog } from './EditPostDialog'
 import { PostDialogContent } from './PostDialogContent'
+import { ImageGalleryPreview, ImageGalleryViewer } from './ImageGallery'
 
 // Import types and utils
 import { PostCardProps, categoryColors } from './types'
 import { getInitials, formatDate, formatEventDate } from './utils'
 
 export function PostCard({ post, currentUserId, onClick, canPin, onPin }: PostCardProps) {
+  const [showImageViewer, setShowImageViewer] = useState(false)
+  const [imageViewerIndex, setImageViewerIndex] = useState(0)
+
   const {
     // State
     liked,
@@ -422,19 +427,18 @@ export function PostCard({ post, currentUserId, onClick, canPin, onPin }: PostCa
             </div>
           )}
 
-          {/* Image */}
+          {/* Image Gallery */}
           {postData.image_url && (
-            <button
-              onClick={openDialog}
-              className="w-full overflow-hidden rounded-md bg-gray-100 mb-1.5 focus-visible:ring-2 focus-visible:ring-blue-500"
-              aria-label={`Åpne innlegg: ${postData.title}`}
-            >
-              <img
-                src={postData.image_url}
+            <div className="mb-1.5">
+              <ImageGalleryPreview
+                images={[postData.image_url]}
                 alt={postData.title}
-                className="w-full h-auto max-w-full"
+                onImageClick={(index) => {
+                  setImageViewerIndex(index)
+                  setShowImageViewer(true)
+                }}
               />
-            </button>
+            </div>
           )}
 
           {/* Actions */}
@@ -568,6 +572,16 @@ export function PostCard({ post, currentUserId, onClick, canPin, onPin }: PostCa
             )}
           </div>
         </BottomSheet>
+      )}
+
+      {/* Image Gallery Viewer */}
+      {showImageViewer && postData.image_url && (
+        <ImageGalleryViewer
+          images={[postData.image_url]}
+          initialIndex={imageViewerIndex}
+          onClose={() => setShowImageViewer(false)}
+          postTitle={postData.title}
+        />
       )}
     </>
   )
