@@ -239,17 +239,27 @@ Se NEXT-STEPS.md for gjenstående oppgaver.
 - [x] Build verifisert
 - **Resultat:** 1175 linjer → 109 linjer (91% reduksjon)
 
-### Fase 23: Galleri/Album-system (2025-12-18) - DEMO KLAR
-Demo tilgjengelig på `/demo/gallery-styles` for testing.
-- [x] 7 preview-stiler for feed (grid, featured, asymmetric, magazine, etc.)
+### Fase 23: Galleri/Album-system (2025-12-18) - FULLFØRT
+- [x] 7 preview-stiler for feed (demo på `/demo/gallery-styles`)
 - [x] Masonry viewer med sidebar (desktop)
 - [x] Fullskjerm med swipe-navigasjon (mobil)
 - [x] Loop-navigasjon (første ↔ siste bilde)
 - [x] Swipe ned for å lukke viewer
 - [x] Body scroll lock når viewer er åpen
-- [x] Separate kommentarseksjoner (galleri vs enkeltbilde)
-- [ ] Integrere i PostCard
-- **Status:** Demo klar for bruker-testing
+- [x] ImageGallery.tsx komponent (ImageGalleryPreview + ImageGalleryViewer)
+- [x] Integrert i PostCard - live i produksjon
+- **Status:** Fullført - klar for fremtidig utvidelse med flere bilder
+
+### Fase 24: @mention/tagging av brukere (2025-12-18) - FULLFØRT
+- [x] MentionTextarea komponent med autocomplete dropdown
+- [x] Bruker-søk ved @ tegn med debounce
+- [x] Tastaturnavigasjon (piltaster, Enter, Tab, Escape)
+- [x] MentionText for å vise mentions som klikkbare lenker
+- [x] Varsling til nevnte brukere via notifications-system
+- [x] Integrert i CreatePostSheet og NewPostSheet
+- [x] Støtte i PostCard og PostComments for visning
+- [x] Database-migrasjon for 'mention' notification type
+- **Status:** Live i produksjon
 
 ---
 
@@ -258,10 +268,13 @@ Demo tilgjengelig på `/demo/gallery-styles` for testing.
 **LIVE PÅ samiske.no** - Sikkerhet og kodekvalitet forbedret!
 
 **Pågående:**
-- Galleri/Album-system (demo klar på `/demo/gallery-styles`)
 - SPA-konvertering (Fase 1 av 6 fullført)
 
-**Neste steg:** Integrere galleri i PostCard, deretter SPA Fase 2
+**Nylig fullført:**
+- @mention/tagging av brukere (Fase 24)
+- Galleri/Album-system integrert i PostCard (Fase 23)
+
+**Neste steg:** SPA Fase 2 - Bokmerker, grupper, innlegg
 
 ---
 

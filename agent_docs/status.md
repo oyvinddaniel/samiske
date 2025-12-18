@@ -14,16 +14,25 @@
 
 ## Pågående arbeid
 
-### Galleri/Album-system for bilder (18. desember 2025) - DEMO KLAR
-Demo tilgjengelig på `/demo/gallery-styles` for testing.
-- **Status:** Demo ferdig, klar for integrasjon
-- [x] 7 preview-stiler for feed
+### @mention/tagging av brukere (18. desember 2025) - FULLFØRT
+- **Status:** Live i produksjon
+- [x] MentionTextarea komponent med autocomplete
+- [x] Bruker-søk når man skriver @
+- [x] Tastaturnavigasjon (piltaster, Enter, Tab)
+- [x] Mentions vises som klikkbare lenker
+- [x] Varsling til nevnte brukere
+- [x] Støtte i innlegg og kommentarer
+
+### Galleri/Album-system for bilder (18. desember 2025) - INTEGRERT
+- **Status:** Integrert i PostCard, live i produksjon
+- [x] 7 preview-stiler for feed (demo på `/demo/gallery-styles`)
 - [x] Masonry viewer med sidebar (desktop)
 - [x] Fullskjerm med swipe-navigasjon (mobil)
 - [x] Loop-navigasjon (første ↔ siste bilde)
 - [x] Swipe ned for å lukke
-- [x] Separate kommentarseksjoner (galleri vs enkeltbilde)
-- [ ] Integrere i PostCard
+- [x] ImageGallery.tsx komponent opprettet
+- [x] Integrert i PostCard
+- [ ] Database-støtte for flere bilder per innlegg (fremtidig)
 
 ### GeographyTab refaktorering (17. desember 2025) - FULLFØRT
 Splittet admin-panelet fra 1175 linjer til 8 separate filer.
@@ -61,6 +70,7 @@ Konverterer appen til Single Page Application for bedre brukeropplevelse.
 - [x] Dele innlegg (Web Share API)
 - [x] Bokmerke innlegg
 - [x] Søkefunksjon (Cmd+K)
+- [x] @mention/tagging av brukere (nytt 18. des)
 
 ### Søkesystem (8 kategorier) - FULLFØRT
 - [x] Søk i brukere, innlegg, arrangementer, kommentarer
