@@ -33,6 +33,7 @@ import { PostComments } from './PostComments'
 import { EditPostDialog } from './EditPostDialog'
 import { PostDialogContent } from './PostDialogContent'
 import { ImageGalleryPreview, ImageGalleryViewer } from './ImageGallery'
+import { MentionText } from '@/components/mentions'
 
 // Import types and utils
 import { PostCardProps, categoryColors } from './types'
@@ -328,7 +329,9 @@ export function PostCard({ post, currentUserId, onClick, canPin, onPin }: PostCa
           )}
 
           {/* Content preview */}
-          <p className="text-gray-600 text-base line-clamp-2 mb-1.5 break-words">{postData.content}</p>
+          <p className="text-gray-600 text-base line-clamp-2 mb-1.5 break-words">
+            <MentionText content={postData.content} />
+          </p>
 
           {/* Promoted Product */}
           {postData.product && postData.product_id && (

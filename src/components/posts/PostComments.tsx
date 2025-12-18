@@ -19,6 +19,7 @@ import {
 import { MoreVertical, MessageCircle, Pencil, Trash2, Heart } from 'lucide-react'
 import { Comment, CommentLikeUser } from './types'
 import { getInitials, formatDate } from './utils'
+import { MentionText } from '@/components/mentions'
 
 interface CommentLikeData {
   count: number
@@ -88,7 +89,11 @@ export function PostComments({
     return (
       <div key={comment.id} className={`${depth > 0 ? 'ml-4 border-l-2 border-gray-100 pl-2' : ''}`}>
         <div className="flex gap-1.5">
-          <button onClick={() => onProfileClick(comment.user.id)} className="focus:outline-none flex-shrink-0">
+          <button
+            onClick={() => onProfileClick(comment.user.id)}
+            className="focus:outline-none flex-shrink-0"
+            aria-label={`Vis profil for ${comment.user.full_name || 'Ukjent'}`}
+          >
             <Avatar className="w-5 h-5 cursor-pointer hover:ring-2 hover:ring-blue-200 transition-all">
               <AvatarImage src={comment.user.avatar_url || undefined} />
               <AvatarFallback className="bg-blue-100 text-blue-600 text-[8px]">
@@ -135,11 +140,12 @@ export function PostComments({
                       <button
                         onClick={() => onProfileClick(comment.user.id)}
                         className="text-xs font-medium text-gray-900 hover:text-blue-600 transition-colors focus:outline-none truncate max-w-[150px] sm:max-w-[200px] md:max-w-none"
+                        aria-label={`Vis profil for ${comment.user.full_name || 'Ukjent'}`}
                       >
                         {comment.user.full_name || 'Ukjent'}
                       </button>
                       <p className="text-sm text-gray-700 whitespace-pre-wrap break-words">
-                        {comment.content}
+                        <MentionText content={comment.content} />
                       </p>
                     </div>
 
@@ -190,6 +196,7 @@ export function PostComments({
                           className={`text-[9px] hover:underline flex items-center gap-0.5 ${
                             likeData.liked ? 'text-red-500' : likeData.count > 0 ? 'text-red-500' : 'text-gray-400'
                           }`}
+                          aria-label={likeData.liked ? 'Fjern like fra kommentar' : 'Lik kommentar'}
                         >
                           <Heart className={`w-3 h-3 ${likeData.liked ? 'fill-current' : ''}`} />
                           {likeData.count > 0 && <span>{likeData.count}</span>}
@@ -216,6 +223,7 @@ export function PostComments({
                     <button
                       onClick={() => onReplyingToChange(replyingTo === comment.id ? null : comment.id)}
                       className="text-[9px] text-gray-400 hover:underline"
+                      aria-label={`Svar på kommentar fra ${comment.user.full_name || 'Ukjent'}`}
                     >
                       Svar
                     </button>
@@ -270,7 +278,11 @@ export function PostComments({
 
             return (
               <div key={comment.id} className="flex gap-1.5">
-                <button onClick={() => onProfileClick(comment.user.id)} className="focus:outline-none flex-shrink-0">
+                <button
+                  onClick={() => onProfileClick(comment.user.id)}
+                  className="focus:outline-none flex-shrink-0"
+                  aria-label={`Vis profil for ${comment.user.full_name || 'Ukjent'}`}
+                >
                   <Avatar className="w-5 h-5 cursor-pointer hover:ring-2 hover:ring-blue-200 transition-all">
                     <AvatarImage src={comment.user.avatar_url || undefined} />
                     <AvatarFallback className="bg-blue-100 text-blue-600 text-[8px]">
@@ -285,11 +297,12 @@ export function PostComments({
                         <button
                           onClick={() => onProfileClick(comment.user.id)}
                           className="text-xs font-medium text-gray-900 hover:text-blue-600 transition-colors focus:outline-none"
+                          aria-label={`Vis profil for ${comment.user.full_name || 'Ukjent'}`}
                         >
                           {comment.user.full_name || 'Ukjent'}
                         </button>
                         <p className="text-sm text-gray-700 line-clamp-2">
-                          {comment.content}
+                          <MentionText content={comment.content} />
                         </p>
                       </div>
 
@@ -339,6 +352,7 @@ export function PostComments({
                             className={`text-[9px] hover:underline flex items-center gap-0.5 ${
                               likeData.liked ? 'text-red-500' : likeData.count > 0 ? 'text-red-500' : 'text-gray-400'
                             }`}
+                            aria-label={likeData.liked ? 'Fjern like fra kommentar' : 'Lik kommentar'}
                           >
                             <Heart className={`w-3 h-3 ${likeData.liked ? 'fill-current' : ''}`} />
                             {likeData.count > 0 && <span>{likeData.count}</span>}
@@ -365,6 +379,7 @@ export function PostComments({
                       <button
                         onClick={() => onReplyingToChange(replyingTo === comment.id ? null : comment.id)}
                         className="text-[9px] text-gray-400 hover:underline"
+                        aria-label={`Svar på kommentar fra ${comment.user.full_name || 'Ukjent'}`}
                       >
                         Svar
                       </button>
@@ -378,6 +393,7 @@ export function PostComments({
             <button
               onClick={onToggleComments}
               className="text-xs text-gray-500 hover:text-gray-700"
+              aria-label={`Se alle ${commentCount} kommentarer`}
             >
               Se alle {commentCount} kommentarer
             </button>

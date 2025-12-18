@@ -11,7 +11,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { Bell, FileText, MessageCircle, Heart, CheckCheck } from 'lucide-react'
+import { Bell, FileText, MessageCircle, Heart, CheckCheck, AtSign } from 'lucide-react'
 
 interface NotificationCounts {
   newPosts: number
@@ -22,7 +22,7 @@ interface NotificationCounts {
 
 interface NotificationItem {
   id: string
-  type: 'new_post' | 'comment_on_my_post' | 'comment_on_followed' | 'like_on_my_post' | 'new_message'
+  type: 'new_post' | 'comment_on_my_post' | 'comment_on_followed' | 'like_on_my_post' | 'new_message' | 'mention'
   message: string
   postId?: string
   postTitle?: string
@@ -171,8 +171,6 @@ export function NotificationBell({ userId }: NotificationBellProps) {
 
   // Realtime subscriptions for instant updates
   useEffect(() => {
-    console.log('🔔 Setting up Realtime subscription for notifications')
-
     const channel = supabase
       .channel('notifications-' + userId)
       .on(
@@ -183,8 +181,7 @@ export function NotificationBell({ userId }: NotificationBellProps) {
           table: 'notifications',
           filter: `recipient_id=eq.${userId}`,
         },
-        (payload) => {
-          console.log('📬 New notification received:', payload.new)
+        () => {
           // Fetch immediately - no debounce for instant updates
           fetchNotifications()
         }
@@ -198,7 +195,6 @@ export function NotificationBell({ userId }: NotificationBellProps) {
           filter: `recipient_id=eq.${userId}`,
         },
         (payload) => {
-          console.log('📝 Notification updated:', payload.new)
           // Update local state directly for instant feedback
           const updatedNotif = payload.new as any
           setNotifications((prev) =>
@@ -233,7 +229,6 @@ export function NotificationBell({ userId }: NotificationBellProps) {
           filter: `recipient_id=eq.${userId}`,
         },
         (payload) => {
-          console.log('🗑️ Notification deleted:', payload.old)
           // Remove notification from local state immediately
           const deletedNotif = payload.old as any
           setNotifications((prev) => {
@@ -256,12 +251,9 @@ export function NotificationBell({ userId }: NotificationBellProps) {
           })
         }
       )
-      .subscribe((status) => {
-        console.log('📡 Notification subscription status:', status)
-      })
+      .subscribe()
 
     return () => {
-      console.log('🔌 Cleaning up notification subscription')
       supabase.removeChannel(channel)
     }
   }, [supabase, userId, fetchNotifications])
@@ -383,6 +375,8 @@ export function NotificationBell({ userId }: NotificationBellProps) {
         return <Heart className="w-3 h-3 text-red-500 fill-red-500" />
       case 'new_message':
         return <MessageCircle className="w-3 h-3 text-purple-600 fill-purple-600" />
+      case 'mention':
+        return <AtSign className="w-3 h-3 text-orange-600" />
       default:
         return <Bell className="w-3 h-3 text-gray-600" />
     }

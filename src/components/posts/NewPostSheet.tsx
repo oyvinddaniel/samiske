@@ -6,8 +6,8 @@ import { createClient } from '@/lib/supabase/client'
 import { compressPostImage } from '@/lib/imageCompression'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
+import { MentionTextarea } from '@/components/mentions'
 import { BottomSheet } from '@/components/ui/bottom-sheet'
 
 interface Category {
@@ -38,6 +38,7 @@ export function NewPostSheet({ open, onClose }: NewPostSheetProps) {
   const [eventTime, setEventTime] = useState('')
   const [eventEndTime, setEventEndTime] = useState('')
   const [eventLocation, setEventLocation] = useState('')
+  const [mentionedUserIds, setMentionedUserIds] = useState<string[]>([])
 
   // Image state
   const [imageFile, setImageFile] = useState<File | null>(null)
@@ -101,6 +102,7 @@ export function NewPostSheet({ open, onClose }: NewPostSheetProps) {
     setEventLocation('')
     setImageFile(null)
     setImagePreview(null)
+    setMentionedUserIds([])
     setError(null)
   }
 
@@ -202,12 +204,27 @@ export function NewPostSheet({ open, onClose }: NewPostSheetProps) {
       event_location: type === 'event' ? eventLocation : null,
     }
 
-    const { error } = await supabase.from('posts').insert(postData)
+    const { data: newPost, error } = await supabase
+      .from('posts')
+      .insert(postData)
+      .select('id')
+      .single()
 
     if (error) {
       setError(error.message)
       setLoading(false)
     } else {
+      // Create notifications for mentioned users
+      if (mentionedUserIds.length > 0 && newPost && userId) {
+        for (const mentionedUserId of mentionedUserIds) {
+          await supabase.rpc('create_mention_notification', {
+            p_actor_id: userId,
+            p_mentioned_user_id: mentionedUserId,
+            p_post_id: newPost.id,
+          })
+        }
+      }
+
       resetForm()
       onClose()
       router.refresh()
@@ -273,11 +290,14 @@ export function NewPostSheet({ open, onClose }: NewPostSheetProps) {
         {/* Content */}
         <div className="space-y-2">
           <Label htmlFor="contentMobile">Innhold *</Label>
-          <Textarea
+          <MentionTextarea
             id="contentMobile"
             value={content}
-            onChange={(e) => setContent(e.target.value)}
-            placeholder="Skriv innholdet her..."
+            onChange={(newContent, userIds) => {
+              setContent(newContent)
+              setMentionedUserIds(userIds)
+            }}
+            placeholder="Skriv innholdet her... Bruk @ for å nevne noen"
             rows={4}
             required
           />

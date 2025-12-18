@@ -5,8 +5,8 @@ import { createClient } from '@/lib/supabase/client'
 import { compressPostImage } from '@/lib/imageCompression'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
+import { MentionTextarea } from '@/components/mentions'
 import { BottomSheet } from '@/components/ui/bottom-sheet'
 import { VisibilityPicker } from '@/components/circles'
 import { setPostCircleVisibility } from '@/lib/circles'
@@ -55,6 +55,7 @@ export function CreatePostSheet({ open, onClose, onSuccess, userId, defaultGeogr
   const [eventEndTime, setEventEndTime] = useState('')
   const [eventLocation, setEventLocation] = useState('')
   const [selectedGeography, setSelectedGeography] = useState<GeographySelection | null>(null)
+  const [mentionedUserIds, setMentionedUserIds] = useState<string[]>([])
 
   // Image state
   const [imageFile, setImageFile] = useState<File | null>(null)
@@ -77,6 +78,7 @@ export function CreatePostSheet({ open, onClose, onSuccess, userId, defaultGeogr
     setEventLocation('')
     setImageFile(null)
     setImagePreview(null)
+    setMentionedUserIds([])
     setError(null)
     // Set geography from default if provided
     if (defaultGeography) {
@@ -253,6 +255,17 @@ export function CreatePostSheet({ open, onClose, onSuccess, userId, defaultGeogr
         await setPostCircleVisibility(newPost.id, selectedCircles)
       }
 
+      // Create notifications for mentioned users
+      if (mentionedUserIds.length > 0 && newPost) {
+        for (const mentionedUserId of mentionedUserIds) {
+          await supabase.rpc('create_mention_notification', {
+            p_actor_id: userId,
+            p_mentioned_user_id: mentionedUserId,
+            p_post_id: newPost.id,
+          })
+        }
+      }
+
       resetForm()
       onSuccess?.()
       onClose()
@@ -318,13 +331,16 @@ export function CreatePostSheet({ open, onClose, onSuccess, userId, defaultGeogr
 
         {/* Content */}
         <div className="space-y-1">
-          <Textarea
+          <MentionTextarea
             value={content}
-            onChange={(e) => setContent(e.target.value)}
-            placeholder="Hva vil du dele?"
+            onChange={(newContent, userIds) => {
+              setContent(newContent)
+              setMentionedUserIds(userIds)
+            }}
+            placeholder="Hva vil du dele? Bruk @ for å nevne noen"
             rows={3}
             required
-            className="text-base resize-none"
+            className="text-base"
           />
         </div>
 

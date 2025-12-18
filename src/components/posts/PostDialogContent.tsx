@@ -23,6 +23,7 @@ import { PostData, Comment, CommentLikeUser, categoryColors } from './types'
 import { getInitials, formatDate, formatEventDate } from './utils'
 import { RSVPButton } from '@/components/events/RSVPButton'
 import { ShareEventDialog } from '@/components/events/ShareEventDialog'
+import { MentionText } from '@/components/mentions'
 
 interface CommentLikeData {
   count: number
@@ -327,7 +328,9 @@ export function PostDialogContent({
       )}
 
       {/* Full content */}
-      <p className="text-gray-700 whitespace-pre-wrap">{postData.content}</p>
+      <p className="text-gray-700 whitespace-pre-wrap">
+        <MentionText content={postData.content} />
+      </p>
 
       {/* Image */}
       {postData.image_url && (
