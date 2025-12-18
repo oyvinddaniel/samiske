@@ -1,6 +1,5 @@
 'use client'
 
-import Link from 'next/link'
 import { Fragment } from 'react'
 
 interface MentionTextProps {
@@ -8,30 +7,35 @@ interface MentionTextProps {
   className?: string
 }
 
-// Pattern for @[Name](userId)
-const MENTION_PATTERN = /@\[([^\]]+)\]\(([^)]+)\)/g
+// Patterns for both old format @[Name](id) and new format @Name
+const OLD_MENTION_PATTERN = /@\[([^\]]+)\]\(([^)]+)\)/g
+const NEW_MENTION_PATTERN = /@([\wæøåÆØÅ]+(?:\s[\wæøåÆØÅ]+)?)/gi
 
 interface ParsedPart {
   type: 'text' | 'mention'
   content: string
-  userId?: string
   name?: string
 }
 
 function parseMentions(text: string): ParsedPart[] {
   const parts: ParsedPart[] = []
+  let remaining = text
   let lastIndex = 0
+
+  // First, handle old format @[Name](id) - convert to just the name
+  OLD_MENTION_PATTERN.lastIndex = 0
+  remaining = text.replace(OLD_MENTION_PATTERN, '@$1')
+
+  // Now parse @Name mentions
+  NEW_MENTION_PATTERN.lastIndex = 0
   let match
 
-  // Reset regex state
-  MENTION_PATTERN.lastIndex = 0
-
-  while ((match = MENTION_PATTERN.exec(text)) !== null) {
+  while ((match = NEW_MENTION_PATTERN.exec(remaining)) !== null) {
     // Add text before mention
     if (match.index > lastIndex) {
       parts.push({
         type: 'text',
-        content: text.slice(lastIndex, match.index),
+        content: remaining.slice(lastIndex, match.index),
       })
     }
 
@@ -40,17 +44,16 @@ function parseMentions(text: string): ParsedPart[] {
       type: 'mention',
       content: match[0],
       name: match[1],
-      userId: match[2],
     })
 
     lastIndex = match.index + match[0].length
   }
 
   // Add remaining text
-  if (lastIndex < text.length) {
+  if (lastIndex < remaining.length) {
     parts.push({
       type: 'text',
-      content: text.slice(lastIndex),
+      content: remaining.slice(lastIndex),
     })
   }
 
@@ -67,16 +70,14 @@ export function MentionText({ content, className }: MentionTextProps) {
   return (
     <span className={className}>
       {parts.map((part, index) => {
-        if (part.type === 'mention' && part.userId && part.name) {
+        if (part.type === 'mention' && part.name) {
           return (
-            <Link
+            <span
               key={index}
-              href={`/bruker/${part.userId}`}
-              className="text-blue-600 hover:text-blue-800 hover:underline font-medium"
-              onClick={(e) => e.stopPropagation()}
+              className="text-blue-600 font-medium"
             >
               @{part.name}
-            </Link>
+            </span>
           )
         }
         return <Fragment key={index}>{part.content}</Fragment>
@@ -87,6 +88,7 @@ export function MentionText({ content, className }: MentionTextProps) {
 
 // Check if content contains mentions
 export function hasMentions(content: string): boolean {
-  MENTION_PATTERN.lastIndex = 0
-  return MENTION_PATTERN.test(content)
+  OLD_MENTION_PATTERN.lastIndex = 0
+  NEW_MENTION_PATTERN.lastIndex = 0
+  return OLD_MENTION_PATTERN.test(content) || NEW_MENTION_PATTERN.test(content)
 }

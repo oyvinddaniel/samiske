@@ -9,7 +9,6 @@ interface MentionUser {
   id: string
   full_name: string
   avatar_url: string | null
-  username?: string
 }
 
 interface MentionTextareaProps {
@@ -37,7 +36,8 @@ export function MentionTextarea({
   const [mentionQuery, setMentionQuery] = useState('')
   const [mentionStart, setMentionStart] = useState<number | null>(null)
   const [loading, setLoading] = useState(false)
-  const [mentionedUserIds, setMentionedUserIds] = useState<string[]>([])
+  // Track mentioned users with their IDs
+  const [mentionedUsers, setMentionedUsers] = useState<Map<string, string>>(new Map())
 
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const suggestionsRef = useRef<HTMLDivElement>(null)
@@ -85,7 +85,7 @@ export function MentionTextarea({
 
     // Check if we're typing a mention
     const textBeforeCursor = newValue.slice(0, cursorPos)
-    const mentionMatch = textBeforeCursor.match(/@(\w*)$/)
+    const mentionMatch = textBeforeCursor.match(/@([\wæøåÆØÅ]*)$/i)
 
     if (mentionMatch) {
       setMentionStart(cursorPos - mentionMatch[0].length)
@@ -97,16 +97,16 @@ export function MentionTextarea({
       setMentionStart(null)
     }
 
-    // Extract mentioned user IDs from the content
-    const mentionPattern = /@\[([^\]]+)\]\(([^)]+)\)/g
-    const newMentionedIds: string[] = []
-    let match
-    while ((match = mentionPattern.exec(newValue)) !== null) {
-      newMentionedIds.push(match[2])
-    }
-    setMentionedUserIds(newMentionedIds)
+    // Check which mentions are still in the text and update tracked users
+    const newMentionedUsers = new Map<string, string>()
+    mentionedUsers.forEach((userId, name) => {
+      if (newValue.includes(`@${name}`)) {
+        newMentionedUsers.set(name, userId)
+      }
+    })
+    setMentionedUsers(newMentionedUsers)
 
-    onChange(newValue, newMentionedIds)
+    onChange(newValue, Array.from(newMentionedUsers.values()))
   }
 
   // Insert selected user mention
@@ -118,18 +118,16 @@ export function MentionTextarea({
     const beforeMention = value.slice(0, mentionStart)
     const afterMention = value.slice(cursorPos)
 
-    // Use markdown-style mention: @[Name](id)
-    const mentionText = `@[${user.full_name}](${user.id}) `
+    // Just insert @Name (clean format)
+    const mentionText = `@${user.full_name} `
     const newValue = beforeMention + mentionText + afterMention
 
-    // Update mentioned user IDs
-    const newMentionedIds = [...mentionedUserIds]
-    if (!newMentionedIds.includes(user.id)) {
-      newMentionedIds.push(user.id)
-    }
-    setMentionedUserIds(newMentionedIds)
+    // Track this mentioned user
+    const newMentionedUsers = new Map(mentionedUsers)
+    newMentionedUsers.set(user.full_name, user.id)
+    setMentionedUsers(newMentionedUsers)
 
-    onChange(newValue, newMentionedIds)
+    onChange(newValue, Array.from(newMentionedUsers.values()))
 
     // Reset state
     setShowSuggestions(false)
@@ -142,7 +140,7 @@ export function MentionTextarea({
       textarea.focus()
       textarea.setSelectionRange(newCursorPos, newCursorPos)
     }, 0)
-  }, [mentionStart, value, mentionedUserIds, onChange])
+  }, [mentionStart, value, mentionedUsers, onChange])
 
   // Keyboard navigation
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -262,7 +260,18 @@ export function MentionTextarea({
   )
 }
 
-// Helper to get mentioned user IDs from content
+// Helper to extract @mentions from text (just names, for display styling)
+export function extractMentions(content: string): string[] {
+  const mentionPattern = /@([\wæøåÆØÅ]+(?:\s+[\wæøåÆØÅ]+)*)/gi
+  const mentions: string[] = []
+  let match
+  while ((match = mentionPattern.exec(content)) !== null) {
+    mentions.push(match[1])
+  }
+  return mentions
+}
+
+// For backwards compatibility - extract IDs from old format
 export function extractMentionIds(content: string): string[] {
   const mentionPattern = /@\[([^\]]+)\]\(([^)]+)\)/g
   const ids: string[] = []
@@ -273,7 +282,6 @@ export function extractMentionIds(content: string): string[] {
   return ids
 }
 
-// Export mention data type
 export interface MentionData {
   userId: string
   name: string
