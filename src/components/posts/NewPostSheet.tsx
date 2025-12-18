@@ -7,7 +7,7 @@ import { compressPostImage } from '@/lib/imageCompression'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { MentionTextarea } from '@/components/mentions'
+import { MentionTextarea, type MentionData } from '@/components/mentions'
 import { BottomSheet } from '@/components/ui/bottom-sheet'
 
 interface Category {
@@ -38,7 +38,7 @@ export function NewPostSheet({ open, onClose }: NewPostSheetProps) {
   const [eventTime, setEventTime] = useState('')
   const [eventEndTime, setEventEndTime] = useState('')
   const [eventLocation, setEventLocation] = useState('')
-  const [mentionedUserIds, setMentionedUserIds] = useState<string[]>([])
+  const [mentions, setMentions] = useState<MentionData[]>([])
 
   // Image state
   const [imageFile, setImageFile] = useState<File | null>(null)
@@ -102,7 +102,7 @@ export function NewPostSheet({ open, onClose }: NewPostSheetProps) {
     setEventLocation('')
     setImageFile(null)
     setImagePreview(null)
-    setMentionedUserIds([])
+    setMentions([])
     setError(null)
   }
 
@@ -215,13 +215,15 @@ export function NewPostSheet({ open, onClose }: NewPostSheetProps) {
       setLoading(false)
     } else {
       // Create notifications for mentioned users
-      if (mentionedUserIds.length > 0 && newPost && userId) {
-        for (const mentionedUserId of mentionedUserIds) {
-          await supabase.rpc('create_mention_notification', {
-            p_actor_id: userId,
-            p_mentioned_user_id: mentionedUserId,
-            p_post_id: newPost.id,
-          })
+      if (mentions.length > 0 && newPost && userId) {
+        for (const mention of mentions) {
+          if (mention.type === 'user') {
+            await supabase.rpc('create_mention_notification', {
+              p_actor_id: userId,
+              p_mentioned_user_id: mention.id,
+              p_post_id: newPost.id,
+            })
+          }
         }
       }
 
@@ -293,9 +295,9 @@ export function NewPostSheet({ open, onClose }: NewPostSheetProps) {
           <MentionTextarea
             id="contentMobile"
             value={content}
-            onChange={(newContent, userIds) => {
+            onChange={(newContent, mentionData) => {
               setContent(newContent)
-              setMentionedUserIds(userIds)
+              setMentions(mentionData)
             }}
             placeholder="Skriv innholdet her... Bruk @ for å nevne noen"
             rows={4}

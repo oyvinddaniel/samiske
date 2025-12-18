@@ -6,7 +6,7 @@ import { compressPostImage } from '@/lib/imageCompression'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { MentionTextarea } from '@/components/mentions'
+import { MentionTextarea, type MentionData } from '@/components/mentions'
 import { BottomSheet } from '@/components/ui/bottom-sheet'
 import { VisibilityPicker } from '@/components/circles'
 import { setPostCircleVisibility } from '@/lib/circles'
@@ -55,7 +55,7 @@ export function CreatePostSheet({ open, onClose, onSuccess, userId, defaultGeogr
   const [eventEndTime, setEventEndTime] = useState('')
   const [eventLocation, setEventLocation] = useState('')
   const [selectedGeography, setSelectedGeography] = useState<GeographySelection | null>(null)
-  const [mentionedUserIds, setMentionedUserIds] = useState<string[]>([])
+  const [mentions, setMentions] = useState<MentionData[]>([])
 
   // Image state
   const [imageFile, setImageFile] = useState<File | null>(null)
@@ -78,7 +78,7 @@ export function CreatePostSheet({ open, onClose, onSuccess, userId, defaultGeogr
     setEventLocation('')
     setImageFile(null)
     setImagePreview(null)
-    setMentionedUserIds([])
+    setMentions([])
     setError(null)
     // Set geography from default if provided
     if (defaultGeography) {
@@ -256,13 +256,16 @@ export function CreatePostSheet({ open, onClose, onSuccess, userId, defaultGeogr
       }
 
       // Create notifications for mentioned users
-      if (mentionedUserIds.length > 0 && newPost) {
-        for (const mentionedUserId of mentionedUserIds) {
-          await supabase.rpc('create_mention_notification', {
-            p_actor_id: userId,
-            p_mentioned_user_id: mentionedUserId,
-            p_post_id: newPost.id,
-          })
+      if (mentions.length > 0 && newPost) {
+        for (const mention of mentions) {
+          // Only notify users, not communities/places/groups
+          if (mention.type === 'user') {
+            await supabase.rpc('create_mention_notification', {
+              p_actor_id: userId,
+              p_mentioned_user_id: mention.id,
+              p_post_id: newPost.id,
+            })
+          }
         }
       }
 
@@ -333,9 +336,9 @@ export function CreatePostSheet({ open, onClose, onSuccess, userId, defaultGeogr
         <div className="space-y-1">
           <MentionTextarea
             value={content}
-            onChange={(newContent, userIds) => {
+            onChange={(newContent, mentionData) => {
               setContent(newContent)
-              setMentionedUserIds(userIds)
+              setMentions(mentionData)
             }}
             placeholder="Hva vil du dele? Bruk @ for å nevne noen"
             rows={3}
