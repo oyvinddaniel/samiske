@@ -79,9 +79,10 @@ export default function GalleryStylesDemo() {
   const [selectedPreview, setSelectedPreview] = useState<string | null>(null)
   const [zoomLevel, setZoomLevel] = useState(1)
   const [isMobile, setIsMobile] = useState(false)
-  const [dragOffset, setDragOffset] = useState(0)
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 })
   const [isDragging, setIsDragging] = useState(false)
   const [isDismissing, setIsDismissing] = useState(false)
+  const [imageScale, setImageScale] = useState(1)
 
   // Detect mobile
   useEffect(() => {
@@ -360,110 +361,131 @@ export default function GalleryStylesDemo() {
   const MasonryViewer = () => {
     if (!activeViewer) return null
 
-    // Mobile swipe handlers with drag animation
-    const DISMISS_THRESHOLD = 150 // Må dra 150px for å lukke
-    const DRAG_START_THRESHOLD = 10 // Må dra 10px før drag-modus aktiveres
+    // Mobile swipe handlers - Facebook-style image drag
+    const DISMISS_THRESHOLD = 120 // Avstand fra senter for å lukke
+    const VELOCITY_THRESHOLD = 0.5 // Hastighet for å "kaste" bildet
 
-    const handleTouchStart = (e: React.TouchEvent, context: 'single' | 'gallery') => {
+    // Image drag handlers (for single view - Facebook style)
+    const handleImageTouchStart = (e: React.TouchEvent) => {
       const touch = e.touches[0]
       const target = e.currentTarget as HTMLElement
       target.dataset.startX = touch.clientX.toString()
       target.dataset.startY = touch.clientY.toString()
-      target.dataset.context = context
-      target.dataset.dragActivated = 'false'
+      target.dataset.lastX = touch.clientX.toString()
+      target.dataset.lastY = touch.clientY.toString()
+      target.dataset.lastTime = Date.now().toString()
+      setIsDragging(true)
     }
 
-    const handleTouchMove = (e: React.TouchEvent) => {
-      const target = e.currentTarget as HTMLElement
-      const startY = parseFloat(target.dataset.startY || '0')
-      const currentY = e.touches[0].clientY
-      const diffY = currentY - startY // Positive = dragging down
-
-      // Check scroll position in real-time
-      const scrollContainer = target.querySelector('[data-scroll-container]') as HTMLElement
-      const atTop = scrollContainer ? scrollContainer.scrollTop <= 0 : true
-
-      // Only activate drag mode if at top and dragging down past threshold
-      if (atTop && diffY > DRAG_START_THRESHOLD) {
-        target.dataset.dragActivated = 'true'
-        setIsDragging(true)
-        setDragOffset(diffY - DRAG_START_THRESHOLD)
-      } else if (target.dataset.dragActivated !== 'true') {
-        // Normal scrolling - don't interfere
-        setDragOffset(0)
-      }
-    }
-
-    const handleTouchEnd = (e: React.TouchEvent) => {
+    const handleImageTouchMove = (e: React.TouchEvent) => {
+      if (!isDragging) return
+      const touch = e.touches[0]
       const target = e.currentTarget as HTMLElement
       const startX = parseFloat(target.dataset.startX || '0')
       const startY = parseFloat(target.dataset.startY || '0')
+      const diffX = touch.clientX - startX
+      const diffY = touch.clientY - startY
+
+      // Track for velocity calculation
+      target.dataset.lastX = touch.clientX.toString()
+      target.dataset.lastY = touch.clientY.toString()
+      target.dataset.lastTime = Date.now().toString()
+
+      setDragOffset({ x: diffX, y: diffY })
+
+      // Scale down as you drag away from center
+      const distance = Math.sqrt(diffX * diffX + diffY * diffY)
+      const scale = Math.max(0.8, 1 - distance / 500)
+      setImageScale(scale)
+    }
+
+    const handleImageTouchEnd = (e: React.TouchEvent) => {
+      const target = e.currentTarget as HTMLElement
       const endX = e.changedTouches[0].clientX
       const endY = e.changedTouches[0].clientY
-      const diffX = startX - endX
-      const context = target.dataset.context
-      const wasDragging = target.dataset.dragActivated === 'true'
+      const lastX = parseFloat(target.dataset.lastX || '0')
+      const lastY = parseFloat(target.dataset.lastY || '0')
+      const lastTime = parseFloat(target.dataset.lastTime || '0')
+      const timeDiff = Date.now() - lastTime
+
+      // Calculate velocity
+      const velocityX = (endX - lastX) / Math.max(timeDiff, 1)
+      const velocityY = (endY - lastY) / Math.max(timeDiff, 1)
+      const velocity = Math.sqrt(velocityX * velocityX + velocityY * velocityY)
+
+      // Calculate distance from center
+      const distance = Math.sqrt(dragOffset.x * dragOffset.x + dragOffset.y * dragOffset.y)
 
       setIsDragging(false)
 
-      // Horizontal swipe - change image with loop (only in single view)
-      if (context === 'single' && Math.abs(diffX) > Math.abs(endY - startY) && Math.abs(diffX) > 50) {
-        setDragOffset(0)
-        if (diffX > 0) {
-          // Swipe left - next image (loop to first)
-          setCurrentIndex(i => (i + 1) % demoImages.length)
-        } else {
-          // Swipe right - previous image (loop to last)
-          setCurrentIndex(i => (i - 1 + demoImages.length) % demoImages.length)
-        }
-        return
-      }
-
-      // Vertical swipe down - go back/close (pull down to dismiss)
-      if (wasDragging && dragOffset > DISMISS_THRESHOLD) {
-        // Animate away then close
+      // Dismiss if dragged far enough OR thrown fast enough
+      if (distance > DISMISS_THRESHOLD || velocity > VELOCITY_THRESHOLD) {
+        // Calculate throw direction for animation
+        const throwX = dragOffset.x + velocityX * 200
+        const throwY = dragOffset.y + velocityY * 200
+        setDragOffset({ x: throwX, y: throwY })
+        setImageScale(0.5)
         setIsDismissing(true)
+
         setTimeout(() => {
-          if (context === 'single') {
-            setViewerState('masonry')
-          } else if (context === 'gallery') {
-            setActiveViewer(null)
-          }
-          setDragOffset(0)
+          setViewerState('masonry')
+          setDragOffset({ x: 0, y: 0 })
+          setImageScale(1)
           setIsDismissing(false)
         }, 200)
       } else {
         // Snap back
-        setDragOffset(0)
+        setDragOffset({ x: 0, y: 0 })
+        setImageScale(1)
+      }
+    }
+
+    // Gallery container swipe handlers (for masonry view)
+    const handleGalleryTouchStart = (e: React.TouchEvent) => {
+      const touch = e.touches[0]
+      const target = e.currentTarget as HTMLElement
+      target.dataset.startY = touch.clientY.toString()
+    }
+
+    const handleGalleryTouchEnd = (e: React.TouchEvent) => {
+      const target = e.currentTarget as HTMLElement
+      const startY = parseFloat(target.dataset.startY || '0')
+      const endY = e.changedTouches[0].clientY
+      const diffY = endY - startY
+
+      // Check if at top
+      const scrollContainer = target.querySelector('[data-scroll-container]') as HTMLElement
+      const atTop = scrollContainer ? scrollContainer.scrollTop <= 0 : true
+
+      // Swipe down at top to close
+      if (atTop && diffY > 150) {
+        setActiveViewer(null)
       }
     }
 
     // Mobile view - redesigned
     if (isMobile) {
-      // Mobile: Single image view with caption and comments below
+      // Mobile: Single image view - Facebook-style floating image
       if (viewerState === 'single') {
-        const dismissProgress = isDismissing ? 1 : Math.min(dragOffset / 300, 1)
-        return (
-          <div
-            className="fixed inset-0 bg-black z-50 flex flex-col"
-            style={{
-              transform: `translateY(${isDismissing ? '100%' : `${dragOffset}px`})`,
-              opacity: 1 - dismissProgress * 0.5,
-              transition: isDragging ? 'none' : 'transform 0.2s ease-out, opacity 0.2s ease-out',
-            }}
-            onTouchStart={(e) => handleTouchStart(e, 'single')}
-            onTouchMove={handleTouchMove}
-            onTouchEnd={handleTouchEnd}
-          >
-            {/* Swipe handle */}
-            <div className="flex justify-center pt-2 pb-1">
-              <div className="w-10 h-1 bg-white/30 rounded-full" />
-            </div>
+        const distance = Math.sqrt(dragOffset.x * dragOffset.x + dragOffset.y * dragOffset.y)
+        const bgOpacity = Math.max(0, 1 - distance / 300)
 
-            {/* Header */}
-            <div className="flex-shrink-0 px-4 pb-3 flex items-center justify-between">
-              <button onClick={() => setViewerState('masonry')} className="text-white/70 text-sm">← Galleri</button>
-              <div className="flex gap-1.5">
+        return (
+          <div className="fixed inset-0 z-50">
+            {/* Semi-transparent background that fades as you drag */}
+            <div
+              className="absolute inset-0 bg-black"
+              style={{
+                opacity: isDismissing ? 0 : bgOpacity,
+                transition: isDragging ? 'none' : 'opacity 0.2s ease-out',
+              }}
+              onClick={() => setViewerState('masonry')}
+            />
+
+            {/* Header - fixed at top */}
+            <div className="absolute top-0 left-0 right-0 z-10 px-4 py-3 flex items-center justify-between">
+              <button onClick={() => setViewerState('masonry')} className="text-white/70 text-sm bg-black/50 px-3 py-1.5 rounded-full">← Galleri</button>
+              <div className="flex gap-1.5 bg-black/50 px-3 py-1.5 rounded-full">
                 {demoImages.map((_, i) => (
                   <button
                     key={i}
@@ -472,88 +494,65 @@ export default function GalleryStylesDemo() {
                   />
                 ))}
               </div>
-              <button onClick={() => setActiveViewer(null)} className="text-white/70 text-xl">✕</button>
+              <button onClick={() => setActiveViewer(null)} className="text-white/70 text-xl bg-black/50 w-8 h-8 rounded-full flex items-center justify-center">✕</button>
             </div>
 
-            {/* Scrollable content */}
-            <div className="flex-1 overflow-auto" data-scroll-container>
-              {/* Image with 3% space on each side (94% width) */}
-              <div className="pt-2 pb-4 flex justify-center">
-                <div className="relative" style={{ width: '94%' }}>
-                  <img
-                    src={currentImage.url}
-                    alt=""
-                    className="w-full rounded-2xl object-cover"
-                  />
-                  {/* Navigation arrows on image - always visible, loops */}
-                  <button
-                    onClick={() => setCurrentIndex(i => (i - 1 + demoImages.length) % demoImages.length)}
-                    className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center bg-black/60 rounded-full text-white"
-                  >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                    </svg>
-                  </button>
-                  <button
-                    onClick={() => setCurrentIndex(i => (i + 1) % demoImages.length)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center bg-black/60 rounded-full text-white"
-                  >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                    </svg>
-                  </button>
-                </div>
-              </div>
-
-              {/* Image caption and info - same 94% width */}
-              <div className="pb-4 mx-auto" style={{ width: '94%' }}>
-                <p className="text-white text-base mb-3">{currentImage.caption}</p>
-
-                {/* Likes row */}
-                <div className="flex items-center gap-4 py-3 border-y border-white/10 mb-4">
-                  <button className="flex items-center gap-2 text-white/70">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                    </svg>
-                    <span className="text-sm">{currentImage.likes}</span>
-                  </button>
-                  <span className="text-white/50 text-sm">{currentImage.comments.length} kommentarer</span>
-                </div>
-
-                {/* Comments */}
-                {currentImage.comments.length === 0 ? (
-                  <p className="text-white/40 text-sm">Ingen kommentarer på dette bildet</p>
-                ) : (
-                  <div className="space-y-4">
-                    {currentImage.comments.map((comment) => (
-                      <div key={comment.id} className="flex gap-3">
-                        <img src={comment.avatar} alt="" className="w-8 h-8 rounded-full flex-shrink-0" />
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="text-white text-sm font-medium">{comment.author}</span>
-                            <span className="text-white/40 text-xs">{comment.time}</span>
-                          </div>
-                          <p className="text-white/80 text-sm">{comment.text}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {/* Bottom spacer for scroll */}
-                <div style={{ minHeight: '20vh' }} />
-              </div>
-            </div>
-
-            {/* Comment input - fixed */}
-            <div className="flex-shrink-0 p-4 border-t border-white/10 bg-black">
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  placeholder="Kommenter på bildet..."
-                  className="flex-1 bg-white/10 rounded-lg px-4 py-2.5 text-white placeholder-white/40 text-sm focus:outline-none"
+            {/* Floating draggable image */}
+            <div
+              className="absolute inset-0 flex items-center justify-center p-4"
+              style={{
+                transform: `translate(${dragOffset.x}px, ${dragOffset.y}px) scale(${imageScale})`,
+                transition: isDragging ? 'none' : 'transform 0.3s ease-out',
+                opacity: isDismissing ? 0 : 1,
+              }}
+              onTouchStart={handleImageTouchStart}
+              onTouchMove={handleImageTouchMove}
+              onTouchEnd={handleImageTouchEnd}
+            >
+              <div className="relative max-w-full max-h-full">
+                <img
+                  src={currentImage.url}
+                  alt=""
+                  className="max-w-full max-h-[70vh] rounded-2xl object-contain shadow-2xl"
+                  draggable={false}
                 />
-                <button className="px-4 py-2.5 bg-blue-600 text-white rounded-lg text-sm">Send</button>
+                {/* Navigation arrows */}
+                <button
+                  onClick={(e) => { e.stopPropagation(); setCurrentIndex(i => (i - 1 + demoImages.length) % demoImages.length); }}
+                  className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center bg-black/60 rounded-full text-white"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  </svg>
+                </button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); setCurrentIndex(i => (i + 1) % demoImages.length); }}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center bg-black/60 rounded-full text-white"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            {/* Caption at bottom */}
+            <div
+              className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/80 to-transparent"
+              style={{
+                opacity: isDragging || isDismissing ? 0 : 1,
+                transition: 'opacity 0.2s ease-out',
+              }}
+            >
+              <p className="text-white text-base mb-2">{currentImage.caption}</p>
+              <div className="flex items-center gap-4">
+                <span className="text-white/70 text-sm flex items-center gap-1">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                  </svg>
+                  {currentImage.likes}
+                </span>
+                <span className="text-white/50 text-sm">{currentImage.comments.length} kommentarer</span>
               </div>
             </div>
           </div>
@@ -561,18 +560,11 @@ export default function GalleryStylesDemo() {
       }
 
       // Mobile: Masonry gallery view with post info at bottom
-      const dismissProgress = isDismissing ? 1 : Math.min(dragOffset / 300, 1)
       return (
         <div
           className="fixed inset-0 bg-black z-50 flex flex-col"
-          style={{
-            transform: `translateY(${isDismissing ? '100%' : `${dragOffset}px`})`,
-            opacity: 1 - dismissProgress * 0.5,
-            transition: isDragging ? 'none' : 'transform 0.2s ease-out, opacity 0.2s ease-out',
-          }}
-          onTouchStart={(e) => handleTouchStart(e, 'gallery')}
-          onTouchMove={handleTouchMove}
-          onTouchEnd={handleTouchEnd}
+          onTouchStart={handleGalleryTouchStart}
+          onTouchEnd={handleGalleryTouchEnd}
         >
           {/* Swipe handle */}
           <div className="flex justify-center pt-2 pb-1">
