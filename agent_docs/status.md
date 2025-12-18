@@ -14,12 +14,21 @@
 
 ## Pågående arbeid
 
-### @mention/tagging av brukere (18. desember 2025) - FULLFØRT
+### @mention/tagging-system (18. desember 2025) - FULLFØRT
 - **Status:** Live i produksjon
 - [x] MentionTextarea komponent med autocomplete
-- [x] Bruker-søk når man skriver @
-- [x] Tastaturnavigasjon (piltaster, Enter, Tab)
-- [x] Mentions vises som klikkbare lenker
+- [x] Støtte for flere entitetstyper:
+  - Brukere (blå ikon)
+  - Samfunn (lilla ikon)
+  - Steder (grønn ikon)
+  - Kommuner (emerald ikon)
+  - Språkområder (teal ikon)
+  - Grupper (oransje ikon)
+  - Sápmi (hele det samiske området)
+- [x] Smart navneinnsetting - fullt navn med markør etter fornavn
+- [x] Dropdown vises ved bare @ (uten å skrive noe)
+- [x] Tastaturnavigasjon (piltaster, Enter, Tab, Escape)
+- [x] Mentions vises med blå styling
 - [x] Varsling til nevnte brukere
 - [x] Støtte i innlegg og kommentarer
 
@@ -70,7 +79,7 @@ Konverterer appen til Single Page Application for bedre brukeropplevelse.
 - [x] Dele innlegg (Web Share API)
 - [x] Bokmerke innlegg
 - [x] Søkefunksjon (Cmd+K)
-- [x] @mention/tagging av brukere (nytt 18. des)
+- [x] @mention-system med 7 entitetstyper (18. des)
 
 ### Søkesystem (8 kategorier) - FULLFØRT
 - [x] Søk i brukere, innlegg, arrangementer, kommentarer
