@@ -71,23 +71,23 @@ export function MentionTextarea({
   const [selectedIndex, setSelectedIndex] = useState(0)
   const [mentionQuery, setMentionQuery] = useState('')
   const [mentionStart, setMentionStart] = useState<number | null>(null)
-  const [loading, setLoading] = useState(false)
   const [mentions, setMentions] = useState<Map<string, MentionData>>(new Map())
 
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const suggestionsRef = useRef<HTMLDivElement>(null)
+  const searchIdRef = useRef(0) // To prevent race conditions
   const supabase = createClient()
 
   // Search all enabled entity types
   useEffect(() => {
     // Allow search with empty query (just @) - will show recent/popular
     if (mentionStart === null) {
-      setSuggestions([])
-      return
+      return // Don't clear suggestions immediately to prevent flicker
     }
 
+    const currentSearchId = ++searchIdRef.current
+
     const searchEntities = async () => {
-      setLoading(true)
       const results: MentionResult[] = []
 
       try {
@@ -273,12 +273,15 @@ export function MentionTextarea({
         }
 
         await Promise.all(searches)
-        setSuggestions(results)
+        // Only update if this is still the latest search
+        if (currentSearchId === searchIdRef.current) {
+          setSuggestions(results)
+        }
       } catch (err) {
         console.error('Error searching entities:', err)
-        setSuggestions([])
-      } finally {
-        setLoading(false)
+        if (currentSearchId === searchIdRef.current) {
+          setSuggestions([])
+        }
       }
     }
 
@@ -302,9 +305,12 @@ export function MentionTextarea({
       setMentionQuery(mentionMatch[1])
       setShowSuggestions(true)
     } else {
-      setShowSuggestions(false)
-      setMentionQuery('')
-      setMentionStart(null)
+      if (showSuggestions) {
+        setShowSuggestions(false)
+        setMentionQuery('')
+        setMentionStart(null)
+        setSuggestions([]) // Clear when closing
+      }
     }
 
     // Update tracked mentions
@@ -346,6 +352,7 @@ export function MentionTextarea({
     setShowSuggestions(false)
     setMentionQuery('')
     setMentionStart(null)
+    setSuggestions([]) // Clear to prevent stale data
 
     // For users with first name, place cursor after first name and select the rest
     // So if user continues typing, the last name gets replaced
@@ -388,6 +395,7 @@ export function MentionTextarea({
         setShowSuggestions(false)
         setMentionQuery('')
         setMentionStart(null)
+        setSuggestions([])
         break
       case 'Tab':
         if (showSuggestions && suggestions[selectedIndex]) {
@@ -407,6 +415,8 @@ export function MentionTextarea({
         !textareaRef.current.contains(e.target as Node)
       ) {
         setShowSuggestions(false)
+        setMentionStart(null)
+        setSuggestions([])
       }
     }
 
@@ -452,11 +462,9 @@ export function MentionTextarea({
           ref={suggestionsRef}
           className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-72 overflow-y-auto"
         >
-          {loading ? (
-            <div className="px-4 py-3 text-sm text-gray-500">Søker...</div>
-          ) : suggestions.length === 0 ? (
+          {suggestions.length === 0 ? (
             <div className="px-4 py-3 text-sm text-gray-500">
-              {mentionQuery ? `Ingen resultater for "${mentionQuery}"` : 'Begynn å skrive for å søke...'}
+              {mentionQuery ? `Ingen resultater for "${mentionQuery}"` : 'Søker...'}
             </div>
           ) : (
             Object.entries(groupedSuggestions).map(([type, items]) => (
