@@ -122,13 +122,13 @@ export function FeatureRequestDropdown() {
         </button>
       </DropdownMenuTrigger>
 
-      <DropdownMenuContent align="end" className="w-80">
-        <div className="px-3 py-2 border-b border-gray-100 flex items-center justify-between">
-          <p className="font-semibold text-sm">Forslag</p>
+      <DropdownMenuContent align="end" className="w-96">
+        <div className="px-3 py-3 border-b border-gray-100">
+          <p className="font-semibold text-sm leading-snug">Har du forslag til endringer, nye funksjoner - eller store nye konsepter/idéer du har lyst skal legges til?</p>
           {!isAdding && (
             <button
               onClick={() => setIsAdding(true)}
-              className="px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+              className="mt-3 px-4 py-2 text-xs bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors"
             >
               Nytt forslag
             </button>
