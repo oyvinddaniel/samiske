@@ -102,13 +102,13 @@ export default function GalleryStylesDemo() {
         setZoomLevel(1)
       }
     }
-    // Arrow key navigation in single view
+    // Arrow key navigation in single view (loops)
     if (viewerState === 'single' && activeViewer) {
       if (e.key === 'ArrowLeft') {
-        setCurrentIndex(i => Math.max(0, i - 1))
+        setCurrentIndex(i => (i - 1 + imageUrls.length) % imageUrls.length)
         setZoomLevel(1)
       } else if (e.key === 'ArrowRight') {
-        setCurrentIndex(i => Math.min(imageUrls.length - 1, i + 1))
+        setCurrentIndex(i => (i + 1) % imageUrls.length)
         setZoomLevel(1)
       }
     }
@@ -355,12 +355,14 @@ export default function GalleryStylesDemo() {
       const context = target.dataset.context
       const atTop = target.dataset.atTop === 'true'
 
-      // Horizontal swipe - change image (only in single view)
+      // Horizontal swipe - change image with loop (only in single view)
       if (context === 'single' && Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 50) {
-        if (diffX > 0 && currentIndex < demoImages.length - 1) {
-          setCurrentIndex(i => i + 1)
-        } else if (diffX < 0 && currentIndex > 0) {
-          setCurrentIndex(i => i - 1)
+        if (diffX > 0) {
+          // Swipe left - next image (loop to first)
+          setCurrentIndex(i => (i + 1) % demoImages.length)
+        } else {
+          // Swipe right - previous image (loop to last)
+          setCurrentIndex(i => (i - 1 + demoImages.length) % demoImages.length)
         }
         return
       }
@@ -415,27 +417,23 @@ export default function GalleryStylesDemo() {
                     alt=""
                     className="w-full rounded-2xl object-cover"
                   />
-                  {/* Navigation arrows on image */}
-                  {currentIndex > 0 && (
-                    <button
-                      onClick={() => setCurrentIndex(i => i - 1)}
-                      className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center bg-black/60 rounded-full text-white"
-                    >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                      </svg>
-                    </button>
-                  )}
-                  {currentIndex < demoImages.length - 1 && (
-                    <button
-                      onClick={() => setCurrentIndex(i => i + 1)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center bg-black/60 rounded-full text-white"
-                    >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                      </svg>
-                    </button>
-                  )}
+                  {/* Navigation arrows on image - always visible, loops */}
+                  <button
+                    onClick={() => setCurrentIndex(i => (i - 1 + demoImages.length) % demoImages.length)}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center bg-black/60 rounded-full text-white"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                    </svg>
+                  </button>
+                  <button
+                    onClick={() => setCurrentIndex(i => (i + 1) % demoImages.length)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center bg-black/60 rounded-full text-white"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
                 </div>
               </div>
 
@@ -602,29 +600,25 @@ export default function GalleryStylesDemo() {
 
           {/* Image area */}
           <div className="flex-1 flex items-center justify-center p-8 relative" onClick={() => setViewerState('masonry')}>
-            {/* Navigation arrows - Left */}
-            {currentIndex > 0 && (
-              <button
-                onClick={(e) => { e.stopPropagation(); setCurrentIndex(i => Math.max(0, i - 1)); setZoomLevel(1); }}
-                className="absolute left-6 top-1/2 -translate-y-1/2 w-14 h-14 flex items-center justify-center bg-black/50 hover:bg-black/70 backdrop-blur-sm rounded-full text-white text-3xl transition-all shadow-lg border border-white/10"
-              >
-                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                </svg>
-              </button>
-            )}
+            {/* Navigation arrows - Left (loops) */}
+            <button
+              onClick={(e) => { e.stopPropagation(); setCurrentIndex(i => (i - 1 + imageUrls.length) % imageUrls.length); setZoomLevel(1); }}
+              className="absolute left-6 top-1/2 -translate-y-1/2 w-14 h-14 flex items-center justify-center bg-black/50 hover:bg-black/70 backdrop-blur-sm rounded-full text-white text-3xl transition-all shadow-lg border border-white/10"
+            >
+              <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
 
-            {/* Navigation arrows - Right */}
-            {currentIndex < imageUrls.length - 1 && (
-              <button
-                onClick={(e) => { e.stopPropagation(); setCurrentIndex(i => Math.min(imageUrls.length - 1, i + 1)); setZoomLevel(1); }}
-                className="absolute right-6 top-1/2 -translate-y-1/2 w-14 h-14 flex items-center justify-center bg-black/50 hover:bg-black/70 backdrop-blur-sm rounded-full text-white text-3xl transition-all shadow-lg border border-white/10"
-              >
-                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-              </button>
-            )}
+            {/* Navigation arrows - Right (loops) */}
+            <button
+              onClick={(e) => { e.stopPropagation(); setCurrentIndex(i => (i + 1) % imageUrls.length); setZoomLevel(1); }}
+              className="absolute right-6 top-1/2 -translate-y-1/2 w-14 h-14 flex items-center justify-center bg-black/50 hover:bg-black/70 backdrop-blur-sm rounded-full text-white text-3xl transition-all shadow-lg border border-white/10"
+            >
+              <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
 
             {/* Image counter */}
             <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-black/50 backdrop-blur-sm px-4 py-2 rounded-full text-white text-sm border border-white/10">
