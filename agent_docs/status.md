@@ -1,6 +1,6 @@
 # Prosjektstatus - samiske.no
 
-> Sist oppdatert: 2025-12-17
+> Sist oppdatert: 2025-12-18
 
 ## Nåværende status
 
@@ -14,16 +14,20 @@
 
 ## Pågående arbeid
 
-### GeographyTab refaktorering (17. desember 2025) - NESTEN FULLFØRT
+### Galleri/Album-system for bilder (18. desember 2025) - DEMO KLAR
+Demo tilgjengelig på `/demo/gallery-styles` for testing.
+- **Status:** Demo ferdig, klar for integrasjon
+- [x] 7 preview-stiler for feed
+- [x] Masonry viewer med sidebar (desktop)
+- [x] Fullskjerm med swipe-navigasjon (mobil)
+- [x] Loop-navigasjon (første ↔ siste bilde)
+- [x] Swipe ned for å lukke
+- [x] Separate kommentarseksjoner (galleri vs enkeltbilde)
+- [ ] Integrere i PostCard
+
+### GeographyTab refaktorering (17. desember 2025) - FULLFØRT
 Splittet admin-panelet fra 1175 linjer til 8 separate filer.
-- **Status:** 6 av 9 steg fullført
-- **Detaljer:** Se `docs/REFACTORING-GEOGRAPHYTAB.md`
-- [x] SuggestionsTab.tsx ekstrahert
-- [x] MunicipalitiesTab.tsx ekstrahert
-- [x] PlacesTab.tsx ekstrahert
-- [x] Build verifisert
-- [ ] Manuell testing
-- [ ] Rydding av gamle filer
+- **Status:** Fullført og verifisert
 - **Resultat:** 91% reduksjon (1175 → 109 linjer)
 
 ### SPA-konvertering (startet 16. desember 2025)

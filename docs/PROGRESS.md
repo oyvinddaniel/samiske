@@ -1,6 +1,6 @@
 # Prosjektstatus: samiske.no
 
-## Sist oppdatert: 2025-12-17
+## Sist oppdatert: 2025-12-18
 
 ---
 
@@ -230,16 +230,26 @@ Se NEXT-STEPS.md for gjenstående oppgaver.
 - [x] Fase 1: Kalender fungerer som SPA
 - [ ] Fase 2-6: Se `agent_docs/spa-conversion.md`
 
-### Fase 22: GeographyTab refaktorering (2025-12-17)
+### Fase 22: GeographyTab refaktorering (2025-12-17) - FULLFØRT
 - [x] Backup av originalfil
 - [x] SuggestionsTab.tsx ekstrahert (217 linjer)
 - [x] MunicipalitiesTab.tsx ekstrahert (269 linjer)
 - [x] PlacesTab.tsx ekstrahert (202 linjer)
 - [x] GeographyTabNew.tsx komplett med alle imports
 - [x] Build verifisert
-- [ ] Manuell testing
-- [ ] Rydding av gamle filer
 - **Resultat:** 1175 linjer → 109 linjer (91% reduksjon)
+
+### Fase 23: Galleri/Album-system (2025-12-18) - DEMO KLAR
+Demo tilgjengelig på `/demo/gallery-styles` for testing.
+- [x] 7 preview-stiler for feed (grid, featured, asymmetric, magazine, etc.)
+- [x] Masonry viewer med sidebar (desktop)
+- [x] Fullskjerm med swipe-navigasjon (mobil)
+- [x] Loop-navigasjon (første ↔ siste bilde)
+- [x] Swipe ned for å lukke viewer
+- [x] Body scroll lock når viewer er åpen
+- [x] Separate kommentarseksjoner (galleri vs enkeltbilde)
+- [ ] Integrere i PostCard
+- **Status:** Demo klar for bruker-testing
 
 ---
 
@@ -247,9 +257,11 @@ Se NEXT-STEPS.md for gjenstående oppgaver.
 
 **LIVE PÅ samiske.no** - Sikkerhet og kodekvalitet forbedret!
 
-**Pågående:** SPA-konvertering (Fase 1 av 6 fullført)
+**Pågående:**
+- Galleri/Album-system (demo klar på `/demo/gallery-styles`)
+- SPA-konvertering (Fase 1 av 6 fullført)
 
-**Neste steg:** SPA Fase 2 - Bokmerker, grupper, innlegg
+**Neste steg:** Integrere galleri i PostCard, deretter SPA Fase 2
 
 ---
 
