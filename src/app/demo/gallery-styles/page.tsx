@@ -337,6 +337,7 @@ export default function GalleryStylesDemo() {
 
     // Mobile swipe handlers with drag animation
     const DISMISS_THRESHOLD = 150 // Må dra 150px for å lukke
+    const DRAG_START_THRESHOLD = 10 // Må dra 10px før drag-modus aktiveres
 
     const handleTouchStart = (e: React.TouchEvent, context: 'single' | 'gallery') => {
       const touch = e.touches[0]
@@ -344,10 +345,7 @@ export default function GalleryStylesDemo() {
       target.dataset.startX = touch.clientX.toString()
       target.dataset.startY = touch.clientY.toString()
       target.dataset.context = context
-      // Check if at top of scroll
-      const scrollContainer = target.querySelector('[data-scroll-container]') as HTMLElement
-      target.dataset.atTop = scrollContainer ? (scrollContainer.scrollTop <= 0).toString() : 'true'
-      setIsDragging(true)
+      target.dataset.dragActivated = 'false'
     }
 
     const handleTouchMove = (e: React.TouchEvent) => {
@@ -355,11 +353,19 @@ export default function GalleryStylesDemo() {
       const startY = parseFloat(target.dataset.startY || '0')
       const currentY = e.touches[0].clientY
       const diffY = currentY - startY // Positive = dragging down
-      const atTop = target.dataset.atTop === 'true'
 
-      // Only allow drag down when at top
-      if (atTop && diffY > 0) {
-        setDragOffset(diffY)
+      // Check scroll position in real-time
+      const scrollContainer = target.querySelector('[data-scroll-container]') as HTMLElement
+      const atTop = scrollContainer ? scrollContainer.scrollTop <= 0 : true
+
+      // Only activate drag mode if at top and dragging down past threshold
+      if (atTop && diffY > DRAG_START_THRESHOLD) {
+        target.dataset.dragActivated = 'true'
+        setIsDragging(true)
+        setDragOffset(diffY - DRAG_START_THRESHOLD)
+      } else if (target.dataset.dragActivated !== 'true') {
+        // Normal scrolling - don't interfere
+        setDragOffset(0)
       }
     }
 
@@ -370,14 +376,13 @@ export default function GalleryStylesDemo() {
       const endX = e.changedTouches[0].clientX
       const endY = e.changedTouches[0].clientY
       const diffX = startX - endX
-      const diffY = startY - endY
       const context = target.dataset.context
-      const atTop = target.dataset.atTop === 'true'
+      const wasDragging = target.dataset.dragActivated === 'true'
 
       setIsDragging(false)
 
       // Horizontal swipe - change image with loop (only in single view)
-      if (context === 'single' && Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 50) {
+      if (context === 'single' && Math.abs(diffX) > Math.abs(endY - startY) && Math.abs(diffX) > 50) {
         setDragOffset(0)
         if (diffX > 0) {
           // Swipe left - next image (loop to first)
@@ -389,8 +394,8 @@ export default function GalleryStylesDemo() {
         return
       }
 
-      // Vertical swipe down at top - go back/close (pull down to dismiss)
-      if (atTop && dragOffset > DISMISS_THRESHOLD) {
+      // Vertical swipe down - go back/close (pull down to dismiss)
+      if (wasDragging && dragOffset > DISMISS_THRESHOLD) {
         // Animate away then close
         setIsDismissing(true)
         setTimeout(() => {
