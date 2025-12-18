@@ -5,13 +5,23 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { RefreshCw, AlertTriangle } from 'lucide-react'
+import { cn } from '@/lib/utils'
+import {
+  RefreshCw,
+  AlertTriangle,
+  LayoutDashboard,
+  Users,
+  FileText,
+  Flag,
+  Bug,
+  Globe,
+  Megaphone,
+  Lightbulb,
+} from 'lucide-react'
 import {
   UsersTab,
   PostsTab,
   ReportsTab,
-  FeedbackTab,
   BugReportsTab,
   GeographyTab,
   StatsCards,
@@ -19,16 +29,33 @@ import {
   AdminDashboard,
 } from '@/components/admin'
 import { BroadcastMessagesTab } from '@/components/admin/BroadcastMessagesTab'
-import type { User, Post, Stats, Feedback, Report, BugReportWithUser } from '@/components/admin'
+import { FeatureRequestsTab, type FeatureRequestWithUser, type FeatureRequestStatus } from '@/components/admin/FeatureRequestsTab'
+import type { User, Post, Stats, Report, BugReportWithUser } from '@/components/admin'
 import type { BugReportPriority, BugReportStatus } from '@/lib/types/bug-reports'
 
+type TabValue = 'emergency' | 'dashboard' | 'users' | 'posts' | 'reports' | 'bugs' | 'feature-requests' | 'geography' | 'broadcasts'
+
+interface NavItem {
+  value: TabValue
+  label: string
+  icon: React.ElementType
+  badge?: number
+  danger?: boolean
+}
+
+interface NavCategory {
+  title: string
+  items: NavItem[]
+}
+
 export default function AdminPage() {
+  const [activeTab, setActiveTab] = useState<TabValue>('dashboard')
   const [currentUser, setCurrentUser] = useState<User | null>(null)
   const [users, setUsers] = useState<User[]>([])
   const [posts, setPosts] = useState<Post[]>([])
-  const [feedback, setFeedback] = useState<Feedback[]>([])
   const [reports, setReports] = useState<Report[]>([])
   const [bugReports, setBugReports] = useState<BugReportWithUser[]>([])
+  const [featureRequests, setFeatureRequests] = useState<FeatureRequestWithUser[]>([])
   const [stats, setStats] = useState<Stats>({ totalUsers: 0, totalPosts: 0, totalComments: 0, totalLikes: 0, totalFeedback: 0, totalBugReports: 0 })
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
@@ -83,35 +110,6 @@ export default function AdminPage() {
       setPosts(formattedPosts)
     }
     if (count !== null) setStats(prev => ({ ...prev, totalPosts: count }))
-  }, [supabase])
-
-  const fetchFeedback = useCallback(async () => {
-    const { data, error } = await supabase
-      .from('feedback')
-      .select(`
-        id,
-        message,
-        created_at,
-        user:profiles (
-          id,
-          full_name,
-          email
-        )
-      `)
-      .order('created_at', { ascending: false })
-
-    if (error) {
-      console.error('Error fetching feedback:', error)
-      return
-    }
-
-    if (data) {
-      const formattedFeedback = data.map((f) => ({
-        ...f,
-        user: Array.isArray(f.user) ? f.user[0] : f.user,
-      }))
-      setFeedback(formattedFeedback as Feedback[])
-    }
   }, [supabase])
 
   const fetchReports = useCallback(async () => {
@@ -178,13 +176,39 @@ export default function AdminPage() {
     }
   }, [supabase])
 
+  const fetchFeatureRequests = useCallback(async () => {
+    const { data, error } = await supabase
+      .from('feature_requests')
+      .select(`
+        *,
+        user:profiles!feature_requests_user_id_fkey (
+          id,
+          full_name,
+          email
+        )
+      `)
+      .order('created_at', { ascending: false })
+
+    if (error) {
+      console.error('Error fetching feature requests:', error)
+      return
+    }
+
+    if (data) {
+      const formattedRequests = data.map((fr) => ({
+        ...fr,
+        user: Array.isArray(fr.user) ? fr.user[0] : fr.user,
+      }))
+      setFeatureRequests(formattedRequests as FeatureRequestWithUser[])
+    }
+  }, [supabase])
+
   const fetchStats = useCallback(async () => {
-    const [usersResult, postsResult, commentsResult, likesResult, feedbackResult, bugReportsResult] = await Promise.all([
+    const [usersResult, postsResult, commentsResult, likesResult, bugReportsResult] = await Promise.all([
       supabase.rpc('get_auth_users_count'),
       supabase.from('posts').select('*', { count: 'exact', head: true }),
       supabase.from('comments').select('*', { count: 'exact', head: true }),
       supabase.from('likes').select('*', { count: 'exact', head: true }),
-      supabase.from('feedback').select('*', { count: 'exact', head: true }),
       supabase.from('bug_reports').select('*', { count: 'exact', head: true }),
     ])
 
@@ -193,7 +217,7 @@ export default function AdminPage() {
       totalPosts: postsResult.count || 0,
       totalComments: commentsResult.count || 0,
       totalLikes: likesResult.count || 0,
-      totalFeedback: feedbackResult.count || 0,
+      totalFeedback: 0,
       totalBugReports: bugReportsResult.count || 0,
     })
   }, [supabase])
@@ -203,9 +227,9 @@ export default function AdminPage() {
     await Promise.all([
       fetchUsers(),
       fetchPosts(),
-      fetchFeedback(),
       fetchReports(),
       fetchBugReports(),
+      fetchFeatureRequests(),
       fetchStats(),
     ])
     setRefreshing(false)
@@ -238,9 +262,9 @@ export default function AdminPage() {
       await Promise.all([
         fetchUsers(),
         fetchPosts(),
-        fetchFeedback(),
         fetchReports(),
         fetchBugReports(),
+        fetchFeatureRequests(),
         fetchStats(),
       ])
 
@@ -248,7 +272,7 @@ export default function AdminPage() {
     }
 
     checkAdminAndFetchData()
-  }, [router, supabase, fetchUsers, fetchPosts, fetchFeedback, fetchReports, fetchBugReports, fetchStats])
+  }, [router, supabase, fetchUsers, fetchPosts, fetchReports, fetchBugReports, fetchFeatureRequests, fetchStats])
 
   // Real-time subscription
   useEffect(() => {
@@ -266,21 +290,18 @@ export default function AdminPage() {
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'comments' }, fetchStats)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'likes' }, fetchStats)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'feedback' }, () => {
-        fetchFeedback()
-        fetchStats()
-      })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'reports' }, fetchReports)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'bug_reports' }, () => {
         fetchBugReports()
         fetchStats()
       })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'feature_requests' }, fetchFeatureRequests)
       .subscribe()
 
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [supabase, isAdmin, fetchUsers, fetchPosts, fetchFeedback, fetchReports, fetchBugReports, fetchStats])
+  }, [supabase, isAdmin, fetchUsers, fetchPosts, fetchReports, fetchBugReports, fetchFeatureRequests, fetchStats])
 
   // Handlers
   const handleRoleChange = async (userId: string, newRole: string) => {
@@ -300,15 +321,6 @@ export default function AdminPage() {
     if (!error) {
       setPosts(posts.filter((p) => p.id !== postId))
       setStats((prev) => ({ ...prev, totalPosts: prev.totalPosts - 1 }))
-    }
-  }
-
-  const handleDeleteFeedback = async (feedbackId: string) => {
-    const { error } = await supabase.from('feedback').delete().eq('id', feedbackId)
-
-    if (!error) {
-      setFeedback(feedback.filter((f) => f.id !== feedbackId))
-      setStats((prev) => ({ ...prev, totalFeedback: prev.totalFeedback - 1 }))
     }
   }
 
@@ -352,6 +364,57 @@ export default function AdminPage() {
     }
   }
 
+  const handleUpdateFeatureRequest = async (
+    requestId: string,
+    updates: { status?: FeatureRequestStatus; admin_notes?: string }
+  ) => {
+    const { error } = await supabase
+      .from('feature_requests')
+      .update(updates)
+      .eq('id', requestId)
+
+    if (!error) {
+      setFeatureRequests(
+        featureRequests.map((fr) =>
+          fr.id === requestId ? { ...fr, ...updates } : fr
+        )
+      )
+    }
+  }
+
+  // Navigation categories
+  const navCategories: NavCategory[] = [
+    {
+      title: 'Oversikt',
+      items: [
+        { value: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+        { value: 'emergency', label: 'Nødstopp', icon: AlertTriangle, danger: true },
+      ]
+    },
+    {
+      title: 'Innhold',
+      items: [
+        { value: 'posts', label: 'Innlegg', icon: FileText, badge: posts.length },
+        { value: 'reports', label: 'Rapporter', icon: Flag, badge: reports.filter(r => r.status === 'pending').length },
+      ]
+    },
+    {
+      title: 'Brukere',
+      items: [
+        { value: 'users', label: 'Brukere', icon: Users, badge: users.length },
+      ]
+    },
+    {
+      title: 'System',
+      items: [
+        { value: 'feature-requests', label: 'Forslag', icon: Lightbulb, badge: featureRequests.filter(fr => fr.status === 'new').length },
+        { value: 'bugs', label: 'Bug-rapporter', icon: Bug, badge: bugReports.filter(br => br.status === 'new').length },
+        { value: 'broadcasts', label: 'Meldinger', icon: Megaphone },
+        { value: 'geography', label: 'Geografi', icon: Globe },
+      ]
+    },
+  ]
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 py-8 px-4">
@@ -377,100 +440,116 @@ export default function AdminPage() {
   if (!isAdmin) return null
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4">
-      <div className="max-w-6xl mx-auto">
-        {/* Back link */}
-        <div className="mb-6">
-          <Link href="/" className="text-blue-600 hover:underline text-sm">
-            ← Tilbake til forsiden
-          </Link>
-        </div>
-
-        {/* Header */}
-        <div className="mb-8 flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Admin-panel</h1>
-            <p className="text-gray-500 mt-1">Administrer brukere og innhold</p>
+    <div className="min-h-screen bg-gray-100">
+      <div className="flex">
+        {/* Sidebar */}
+        <aside className="w-64 min-h-screen bg-gray-900 text-white flex-shrink-0 sticky top-0">
+          <div className="p-4 border-b border-gray-800">
+            <Link href="/" className="text-sm text-gray-400 hover:text-white">
+              ← Tilbake
+            </Link>
+            <h1 className="text-xl font-bold mt-2">Admin</h1>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleRefresh}
-            disabled={refreshing}
-            className="flex items-center gap-2"
-          >
-            <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
-            {refreshing ? 'Oppdaterer...' : 'Oppdater'}
-          </Button>
-        </div>
 
-        {/* Stats */}
-        <StatsCards stats={stats} />
+          <nav className="p-4 space-y-6">
+            {navCategories.map((category) => (
+              <div key={category.title}>
+                <h3 className="text-xs uppercase text-gray-500 font-semibold mb-2 px-2">
+                  {category.title}
+                </h3>
+                <div className="space-y-1">
+                  {category.items.map((item) => {
+                    const Icon = item.icon
+                    const isActive = activeTab === item.value
+                    return (
+                      <button
+                        key={item.value}
+                        onClick={() => setActiveTab(item.value)}
+                        className={cn(
+                          'w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-colors',
+                          isActive
+                            ? item.danger
+                              ? 'bg-red-600 text-white'
+                              : 'bg-blue-600 text-white'
+                            : item.danger
+                              ? 'text-red-400 hover:bg-red-900/30'
+                              : 'text-gray-300 hover:bg-gray-800'
+                        )}
+                      >
+                        <span className="flex items-center gap-2">
+                          <Icon className="w-4 h-4" />
+                          {item.label}
+                        </span>
+                        {item.badge !== undefined && item.badge > 0 && (
+                          <span className={cn(
+                            'text-xs px-2 py-0.5 rounded-full',
+                            isActive ? 'bg-white/20' : 'bg-gray-700'
+                          )}>
+                            {item.badge}
+                          </span>
+                        )}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            ))}
+          </nav>
+        </aside>
 
-        {/* Tabs */}
-        <Tabs defaultValue="dashboard" className="space-y-4">
-          <TabsList className="flex-wrap h-auto gap-1">
-            <TabsTrigger value="emergency" className="text-red-600 data-[state=active]:bg-red-100">
-              <AlertTriangle className="w-4 h-4 mr-1" />
-              Nødstopp
-            </TabsTrigger>
-            <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
-            <TabsTrigger value="users">Brukere ({users.length})</TabsTrigger>
-            <TabsTrigger value="posts">Innlegg ({posts.length})</TabsTrigger>
-            <TabsTrigger value="reports">
-              Rapporter ({reports.filter(r => r.status === 'pending').length})
-            </TabsTrigger>
-            <TabsTrigger value="feedback">Tilbakemeldinger ({feedback.length})</TabsTrigger>
-            <TabsTrigger value="bugs">
-              Bug-rapporter ({bugReports.filter(br => br.status === 'new').length})
-            </TabsTrigger>
-            <TabsTrigger value="geography">Geografi</TabsTrigger>
-            <TabsTrigger value="broadcasts">Meldinger</TabsTrigger>
-          </TabsList>
+        {/* Main Content */}
+        <main className="flex-1 p-6">
+          {/* Header */}
+          <div className="mb-6 flex items-center justify-between">
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900">
+                {navCategories.flatMap(c => c.items).find(i => i.value === activeTab)?.label}
+              </h2>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRefresh}
+              disabled={refreshing}
+              className="flex items-center gap-2"
+            >
+              <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+              {refreshing ? 'Oppdaterer...' : 'Oppdater'}
+            </Button>
+          </div>
 
-          <TabsContent value="emergency">
-            <EmergencyTab />
-          </TabsContent>
+          {/* Stats - only show on dashboard */}
+          {activeTab === 'dashboard' && <StatsCards stats={stats} />}
 
-          <TabsContent value="dashboard">
-            <AdminDashboard />
-          </TabsContent>
-
-          <TabsContent value="broadcasts">
-            <BroadcastMessagesTab />
-          </TabsContent>
-
-          <TabsContent value="users">
-            <UsersTab
-              users={users}
-              currentUserId={currentUser?.id}
-              onRoleChange={handleRoleChange}
-            />
-          </TabsContent>
-
-          <TabsContent value="posts">
-            <PostsTab posts={posts} onDeletePost={handleDeletePost} />
-          </TabsContent>
-
-          <TabsContent value="reports">
-            <ReportsTab reports={reports} onUpdateStatus={handleUpdateReportStatus} />
-          </TabsContent>
-
-          <TabsContent value="feedback">
-            <FeedbackTab feedback={feedback} onDeleteFeedback={handleDeleteFeedback} />
-          </TabsContent>
-
-          <TabsContent value="bugs">
-            <BugReportsTab
-              bugReports={bugReports}
-              onUpdateBugReport={handleUpdateBugReport}
-            />
-          </TabsContent>
-
-          <TabsContent value="geography">
-            <GeographyTab />
-          </TabsContent>
-        </Tabs>
+          {/* Content */}
+          <div className="mt-6">
+            {activeTab === 'emergency' && <EmergencyTab />}
+            {activeTab === 'dashboard' && <AdminDashboard />}
+            {activeTab === 'broadcasts' && <BroadcastMessagesTab />}
+            {activeTab === 'users' && (
+              <UsersTab
+                users={users}
+                currentUserId={currentUser?.id}
+                onRoleChange={handleRoleChange}
+              />
+            )}
+            {activeTab === 'posts' && <PostsTab posts={posts} onDeletePost={handleDeletePost} />}
+            {activeTab === 'reports' && <ReportsTab reports={reports} onUpdateStatus={handleUpdateReportStatus} />}
+            {activeTab === 'bugs' && (
+              <BugReportsTab
+                bugReports={bugReports}
+                onUpdateBugReport={handleUpdateBugReport}
+              />
+            )}
+            {activeTab === 'feature-requests' && (
+              <FeatureRequestsTab
+                featureRequests={featureRequests}
+                onUpdateFeatureRequest={handleUpdateFeatureRequest}
+              />
+            )}
+            {activeTab === 'geography' && <GeographyTab />}
+          </div>
+        </main>
       </div>
     </div>
   )

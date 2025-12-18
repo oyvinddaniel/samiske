@@ -37,17 +37,6 @@ export interface Stats {
   totalBugReports: number
 }
 
-export interface Feedback {
-  id: string
-  message: string
-  created_at: string
-  user: {
-    id: string
-    full_name: string | null
-    email: string
-  } | null
-}
-
 export interface Report {
   id: string
   reason: string

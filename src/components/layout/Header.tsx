@@ -18,6 +18,7 @@ import { MobileNav } from './MobileNav'
 import { NotificationBell } from '@/components/notifications/NotificationBell'
 import { BroadcastBadge } from '@/components/broadcast/BroadcastBadge'
 import { ChangelogDropdown } from '@/components/changelog/ChangelogDropdown'
+import { FeatureRequestDropdown } from '@/components/feature-requests/FeatureRequestDropdown'
 import { SocialPanel } from '@/components/social/SocialPanel'
 import { Users, X, Search, LogOut, User as UserIcon, Bell, Settings } from 'lucide-react'
 import { UnifiedSearchBar } from '@/components/search/UnifiedSearchBar'
@@ -148,34 +149,49 @@ export function Header({ currentCategory }: HeaderProps) {
           <UnifiedSearchBar />
         </div>
 
-        {/* Right: Icons */}
-        <div className="flex items-center gap-1 flex-shrink-0 ml-auto min-[500px]:ml-0">
+        {/* Right: Icons - Two groups */}
+        <div className="flex items-center gap-3 flex-shrink-0 ml-auto min-[500px]:ml-0">
           {loading ? (
             <div className="w-9 h-9 rounded-full bg-white/20 animate-pulse" />
           ) : user ? (
             <>
-              {/* Social button - desktop only */}
-              <button
-                onClick={() => setShowSocialPanel(true)}
-                className="hidden lg:flex p-2.5 text-white/80 hover:text-white hover:bg-white/20 rounded-xl transition-all"
-                title="Venner og meldinger"
-              >
-                <Users className="w-5 h-5" />
-              </button>
+              {/* Group 1: Changelog + Feature Requests - with labels */}
+              <div className="hidden sm:flex items-center gap-2 mr-5">
+                <div className="flex flex-col items-center">
+                  <ChangelogDropdown isAdmin={profile?.role === 'admin'} userId={user.id} />
+                  <span className="text-[9px] text-white/60 mt-0.5">Nytt</span>
+                </div>
+                <div className="flex flex-col items-center">
+                  <FeatureRequestDropdown />
+                  <span className="text-[9px] text-white/60 mt-0.5">Foreslå</span>
+                </div>
+              </div>
 
-              {/* Notifications */}
-              <NotificationBell userId={user.id} />
+              {/* Divider */}
+              <div className="hidden sm:block w-px h-6 bg-white/20 mr-5" />
 
-              {/* Broadcast */}
-              <BroadcastBadge />
+              {/* Group 2: Social + Notifications + Avatar - no labels */}
+              <div className="flex items-center gap-1">
+                {/* Social button - desktop only */}
+                <button
+                  onClick={() => setShowSocialPanel(true)}
+                  className="hidden lg:flex p-2 text-white/80 hover:text-white hover:bg-white/10 rounded-full transition-all"
+                  title="Venner og meldinger"
+                  aria-label="Åpne venner og meldinger"
+                >
+                  <Users className="w-5 h-5" />
+                </button>
 
-              {/* Changelog - admin only */}
-              <ChangelogDropdown isAdmin={profile?.role === 'admin'} userId={user.id} />
+                {/* Notifications */}
+                <NotificationBell userId={user.id} />
 
-              {/* User avatar dropdown */}
-              <DropdownMenu>
+                {/* Broadcast */}
+                <BroadcastBadge />
+
+                {/* User avatar dropdown */}
+                <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <button className="ml-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-white rounded-full">
+                  <button className="ml-5 focus:outline-none focus-visible:ring-2 focus-visible:ring-white rounded-full" aria-label="Åpne brukermeny">
                     <Avatar className="w-9 h-9 ring-2 ring-white/30 hover:ring-white/60 transition-all">
                       <AvatarImage src={profile?.avatar_url || undefined} />
                       <AvatarFallback className="bg-white/90 text-gray-800 text-sm font-semibold">
@@ -222,6 +238,7 @@ export function Header({ currentCategory }: HeaderProps) {
                   </div>
                 </DropdownMenuContent>
               </DropdownMenu>
+              </div>
             </>
           ) : (
             <div className="flex items-center gap-2">
@@ -276,6 +293,7 @@ export function Header({ currentCategory }: HeaderProps) {
               <button
                 onClick={() => setShowSocialPanel(false)}
                 className="p-1.5 text-gray-500 hover:text-gray-700 rounded-lg hover:bg-gray-100"
+                aria-label="Lukk sosial panel"
               >
                 <X className="w-5 h-5" />
               </button>
