@@ -9,13 +9,13 @@ const demoImages = [
     caption: 'Soloppgang over fjellene - magisk start på dagen!',
     likes: 23,
     comments: [
-      { id: 1, author: 'Lars Erik', avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&h=100&fit=crop', text: 'Utrolig vakkert lys!', time: '45 min siden', likes: 3 },
+      { id: 1, author: 'Lars', avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&h=100&fit=crop', text: 'Utrolig vakkert lys!', time: '45 min siden', likes: 3 },
       { id: 2, author: 'Kristin', avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop', text: 'Hvor er dette tatt? 😍', time: '30 min siden', likes: 1 },
     ]
   },
   {
     url: 'https://images.unsplash.com/photo-1469474968028-56623f02e42e?w=800&h=1000&fit=crop',
-    caption: 'Stien videre innover vidda',
+    caption: 'Stien videre innover fjellet',
     likes: 18,
     comments: [
       { id: 1, author: 'Ole', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop', text: 'Ser ut som en fin tur!', time: '1t siden', likes: 2 },
@@ -23,17 +23,17 @@ const demoImages = [
   },
   {
     url: 'https://images.unsplash.com/photo-1426604966848-d7adac402bff?w=800&h=600&fit=crop',
-    caption: 'Reinsdyrflokken vi møtte underveis 🦌',
+    caption: 'Den vakre utsikten fra toppen 🏔️',
     likes: 45,
     comments: [
-      { id: 1, author: 'Anna', avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&h=100&fit=crop', text: 'Så nydelig! Hvor mange var det?', time: '2t siden', likes: 4 },
-      { id: 2, author: 'Per', avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop', text: 'Fantastisk å se dem så nærme!', time: '1t siden', likes: 2 },
+      { id: 1, author: 'Anna', avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&h=100&fit=crop', text: 'Så nydelig!', time: '2t siden', likes: 4 },
+      { id: 2, author: 'Per', avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop', text: 'Fantastisk utsikt!', time: '1t siden', likes: 2 },
       { id: 3, author: 'Silje', avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100&h=100&fit=crop', text: 'Dette er det beste bildet! 🥰', time: '45 min siden', likes: 5 },
     ]
   },
   {
     url: 'https://images.unsplash.com/photo-1472214103451-9374bd1c798e?w=800&h=1200&fit=crop',
-    caption: 'Utsikt fra toppen',
+    caption: 'Panorama fra fjelltoppen',
     likes: 31,
     comments: []
   },
@@ -138,18 +138,18 @@ export default function GalleryStylesDemo() {
 
   // Demo post data
   const demoPost = {
-    title: 'Fantastisk tur i Finnmark',
-    content: 'Vi hadde en utrolig fin tur til Finnmarksvidda i helgen. Været var perfekt og vi fikk sett masse reinsdyr! 🦌',
-    author: 'Máret Ánne',
+    title: 'Helgetur i fjellet',
+    content: 'Vi hadde en utrolig fin tur i fjellet i helgen. Været var perfekt og utsikten fantastisk! 🏔️',
+    author: 'Maria Hansen',
     authorAvatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop',
     likes: 47,
     comments: [
-      { id: 1, author: 'Johan Aslak', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop', text: 'Så flott! Var dere på Iešjávri?', time: '1t siden', likes: 5 },
-      { id: 2, author: 'Sara Eira', avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&h=100&fit=crop', text: 'Nydelige bilder! 😍 Reinsdyrene ser så fredelige ut.', time: '45 min siden', likes: 3 },
-      { id: 3, author: 'Nils Petter', avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop', text: 'Beste tiden på året for vidda!', time: '30 min siden', likes: 2 },
-      { id: 4, author: 'Inga Márjá', avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100&h=100&fit=crop', text: 'Vi var der forrige helg også. Fantastisk vær!', time: '15 min siden', likes: 1 },
+      { id: 1, author: 'Erik Larsen', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop', text: 'Så flott! Hvilken hytte bodde dere på?', time: '1t siden', likes: 5 },
+      { id: 2, author: 'Sara Berg', avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&h=100&fit=crop', text: 'Nydelige bilder! 😍', time: '45 min siden', likes: 3 },
+      { id: 3, author: 'Nils Olsen', avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop', text: 'Beste tiden på året for fjellturer!', time: '30 min siden', likes: 2 },
+      { id: 4, author: 'Ingrid Moe', avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100&h=100&fit=crop', text: 'Vi var der forrige helg også. Fantastisk vær!', time: '15 min siden', likes: 1 },
     ],
-    tags: ['#finnmark', '#reinsdyr', '#sápmi', '#natur'],
+    tags: ['#fjelltur', '#natur', '#friluftsliv', '#utsikt'],
     isPinned: true,
     timestamp: '2 timer siden',
   }
