@@ -20,7 +20,7 @@ import { BroadcastBadge } from '@/components/broadcast/BroadcastBadge'
 import { ChangelogDropdown } from '@/components/changelog/ChangelogDropdown'
 import { FeatureRequestDropdown } from '@/components/feature-requests/FeatureRequestDropdown'
 import { SocialPanel } from '@/components/social/SocialPanel'
-import { Users, X, Search, LogOut, User as UserIcon, Bell, Settings } from 'lucide-react'
+import { Users, X, Search, LogOut, User as UserIcon, Settings } from 'lucide-react'
 import { UnifiedSearchBar } from '@/components/search/UnifiedSearchBar'
 import { cn } from '@/lib/utils'
 import { formatVersionString } from '@/lib/version'
@@ -215,8 +215,8 @@ export function Header({ currentCategory }: HeaderProps) {
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
                     <Link href="/innstillinger" className="cursor-pointer">
-                      <Bell className="w-4 h-4 mr-2" />
-                      Varsler
+                      <Settings className="w-4 h-4 mr-2" />
+                      Innstillinger
                     </Link>
                   </DropdownMenuItem>
                   {profile?.role === 'admin' && (

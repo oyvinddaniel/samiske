@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -10,7 +9,6 @@ import {
   RefreshCw,
   AlertTriangle,
   LayoutDashboard,
-  Users,
   FileText,
   Flag,
   Bug,
@@ -19,7 +17,6 @@ import {
   Lightbulb,
 } from 'lucide-react'
 import {
-  UsersTab,
   PostsTab,
   ReportsTab,
   BugReportsTab,
@@ -29,15 +26,17 @@ import {
   AdminDashboard,
 } from '@/components/admin'
 import { BroadcastMessagesTab } from '@/components/admin/BroadcastMessagesTab'
+import { Header } from '@/components/layout/Header'
 import { FeatureRequestsTab, type FeatureRequestWithUser, type FeatureRequestStatus } from '@/components/admin/FeatureRequestsTab'
 import type { User, Post, Stats, Report, BugReportWithUser } from '@/components/admin'
 import type { BugReportPriority, BugReportStatus } from '@/lib/types/bug-reports'
 
-type TabValue = 'emergency' | 'dashboard' | 'users' | 'posts' | 'reports' | 'bugs' | 'feature-requests' | 'geography' | 'broadcasts'
+type TabValue = 'emergency' | 'dashboard' | 'posts' | 'reports' | 'bugs' | 'feature-requests' | 'geography' | 'broadcasts'
 
 interface NavItem {
   value: TabValue
   label: string
+  subtitle?: string
   icon: React.ElementType
   badge?: number
   danger?: boolean
@@ -394,22 +393,16 @@ export default function AdminPage() {
     {
       title: 'Innhold',
       items: [
-        { value: 'posts', label: 'Innlegg', icon: FileText, badge: posts.length },
-        { value: 'reports', label: 'Rapporter', icon: Flag, badge: reports.filter(r => r.status === 'pending').length },
-      ]
-    },
-    {
-      title: 'Brukere',
-      items: [
-        { value: 'users', label: 'Brukere', icon: Users, badge: users.length },
+        { value: 'posts', label: 'Alle innlegg globalt', icon: FileText, badge: posts.length },
+        { value: 'reports', label: 'Innrapportert', icon: Flag, badge: reports.filter(r => r.status === 'pending').length },
       ]
     },
     {
       title: 'System',
       items: [
-        { value: 'feature-requests', label: 'Forslag', icon: Lightbulb, badge: featureRequests.filter(fr => fr.status === 'new').length },
+        { value: 'feature-requests', label: 'Forslag', subtitle: 'Innsendt til forslagskasse', icon: Lightbulb, badge: featureRequests.filter(fr => fr.status === 'new').length },
         { value: 'bugs', label: 'Bug-rapporter', icon: Bug, badge: bugReports.filter(br => br.status === 'new').length },
-        { value: 'broadcasts', label: 'Meldinger', icon: Megaphone },
+        { value: 'broadcasts', label: 'Logg inn-meldinger', subtitle: 'Broadcast popups til brukerne ved innlogging', icon: Megaphone },
         { value: 'geography', label: 'Geografi', icon: Globe },
       ]
     },
@@ -441,14 +434,14 @@ export default function AdminPage() {
 
   return (
     <div className="min-h-screen bg-gray-100">
+      {/* Global Header/Navbar */}
+      <Header />
+
       <div className="flex">
         {/* Sidebar */}
-        <aside className="w-64 min-h-screen bg-gray-900 text-white flex-shrink-0 sticky top-0">
+        <aside className="w-64 min-h-screen bg-gray-900 text-white flex-shrink-0 sticky top-16">
           <div className="p-4 border-b border-gray-800">
-            <Link href="/" className="text-sm text-gray-400 hover:text-white">
-              ← Tilbake
-            </Link>
-            <h1 className="text-xl font-bold mt-2">Admin</h1>
+            <h1 className="text-xl font-bold">Admin</h1>
           </div>
 
           <nav className="p-4 space-y-6">
@@ -466,7 +459,7 @@ export default function AdminPage() {
                         key={item.value}
                         onClick={() => setActiveTab(item.value)}
                         className={cn(
-                          'w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-colors',
+                          'w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-colors text-left',
                           isActive
                             ? item.danger
                               ? 'bg-red-600 text-white'
@@ -476,13 +469,23 @@ export default function AdminPage() {
                               : 'text-gray-300 hover:bg-gray-800'
                         )}
                       >
-                        <span className="flex items-center gap-2">
-                          <Icon className="w-4 h-4" />
-                          {item.label}
-                        </span>
+                        <div className="flex items-start gap-2 flex-1 min-w-0">
+                          <Icon className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                          <div className="min-w-0">
+                            <span className="block">{item.label}</span>
+                            {item.subtitle && (
+                              <span className={cn(
+                                'block text-[10px] mt-0.5 truncate',
+                                isActive ? 'text-white/70' : 'text-gray-500'
+                              )}>
+                                {item.subtitle}
+                              </span>
+                            )}
+                          </div>
+                        </div>
                         {item.badge !== undefined && item.badge > 0 && (
                           <span className={cn(
-                            'text-xs px-2 py-0.5 rounded-full',
+                            'text-xs px-2 py-0.5 rounded-full flex-shrink-0',
                             isActive ? 'bg-white/20' : 'bg-gray-700'
                           )}>
                             {item.badge}
@@ -524,15 +527,14 @@ export default function AdminPage() {
           {/* Content */}
           <div className="mt-6">
             {activeTab === 'emergency' && <EmergencyTab />}
-            {activeTab === 'dashboard' && <AdminDashboard />}
-            {activeTab === 'broadcasts' && <BroadcastMessagesTab />}
-            {activeTab === 'users' && (
-              <UsersTab
+            {activeTab === 'dashboard' && (
+              <AdminDashboard
                 users={users}
                 currentUserId={currentUser?.id}
                 onRoleChange={handleRoleChange}
               />
             )}
+            {activeTab === 'broadcasts' && <BroadcastMessagesTab />}
             {activeTab === 'posts' && <PostsTab posts={posts} onDeletePost={handleDeletePost} />}
             {activeTab === 'reports' && <ReportsTab reports={reports} onUpdateStatus={handleUpdateReportStatus} />}
             {activeTab === 'bugs' && (

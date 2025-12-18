@@ -22,7 +22,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { Lightbulb, MessageCircle, Send, Loader2 } from 'lucide-react'
+import { Lightbulb, MessageCircle, Send, Loader2, Archive, Eye } from 'lucide-react'
 import { toast } from 'sonner'
 import { formatDate } from './utils'
 
@@ -51,11 +51,15 @@ interface FeatureRequestsTabProps {
 
 export function FeatureRequestsTab({ featureRequests, onUpdateFeatureRequest }: FeatureRequestsTabProps) {
   const [filterStatus, setFilterStatus] = useState<FeatureRequestStatus | 'all'>('all')
+  const [showArchived, setShowArchived] = useState(false)
   const [selectedRequest, setSelectedRequest] = useState<FeatureRequestWithUser | null>(null)
   const [adminNotes, setAdminNotes] = useState('')
   const [replyMessage, setReplyMessage] = useState('')
   const [sendingReply, setSendingReply] = useState(false)
   const supabase = useMemo(() => createClient(), [])
+
+  // Archived statuses
+  const archivedStatuses: FeatureRequestStatus[] = ['completed', 'rejected']
 
   const getStatusBadge = (status: FeatureRequestStatus) => {
     switch (status) {
@@ -76,8 +80,13 @@ export function FeatureRequestsTab({ featureRequests, onUpdateFeatureRequest }: 
 
   const filteredRequests = featureRequests.filter((request) => {
     if (filterStatus !== 'all' && request.status !== filterStatus) return false
+    // Hide archived if not showing them
+    if (!showArchived && archivedStatuses.includes(request.status)) return false
     return true
   })
+
+  // Count archived items for badge
+  const archivedCount = featureRequests.filter(r => archivedStatuses.includes(r.status)).length
 
   // Sort by created_at DESC
   const sortedRequests = [...filteredRequests].sort((a, b) => {
@@ -207,7 +216,7 @@ export function FeatureRequestsTab({ featureRequests, onUpdateFeatureRequest }: 
           </CardDescription>
 
           {/* Filters */}
-          <div className="flex gap-2 mt-4">
+          <div className="flex items-center gap-2 mt-4">
             <Select value={filterStatus} onValueChange={(value) => setFilterStatus(value as FeatureRequestStatus | 'all')}>
               <SelectTrigger className="w-40">
                 <SelectValue />
@@ -221,6 +230,25 @@ export function FeatureRequestsTab({ featureRequests, onUpdateFeatureRequest }: 
                 <SelectItem value="on_hold">På vent</SelectItem>
               </SelectContent>
             </Select>
+
+            <Button
+              variant={showArchived ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setShowArchived(!showArchived)}
+              className="ml-auto"
+            >
+              {showArchived ? (
+                <>
+                  <Eye className="w-4 h-4 mr-2" />
+                  Skjul arkivert ({archivedCount})
+                </>
+              ) : (
+                <>
+                  <Archive className="w-4 h-4 mr-2" />
+                  Vis arkivert ({archivedCount})
+                </>
+              )}
+            </Button>
           </div>
         </CardHeader>
 

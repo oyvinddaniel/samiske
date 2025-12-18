@@ -22,7 +22,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { Bug, Lightbulb, HelpCircle, MoreHorizontal, ExternalLink, Image as ImageIcon, MessageCircle, Send, Loader2 } from 'lucide-react'
+import { Bug, Lightbulb, HelpCircle, MoreHorizontal, ExternalLink, Image as ImageIcon, MessageCircle, Send, Loader2, Archive, Eye } from 'lucide-react'
 import { toast } from 'sonner'
 import type { BugReportWithUser } from '@/lib/types/bug-reports'
 import type { BugReportPriority, BugReportStatus, BugReportCategory } from '@/lib/types/bug-reports'
@@ -43,11 +43,15 @@ const CATEGORY_CONFIG = {
 export function BugReportsTab({ bugReports, onUpdateBugReport }: BugReportsTabProps) {
   const [filterStatus, setFilterStatus] = useState<BugReportStatus | 'all'>('all')
   const [filterPriority, setFilterPriority] = useState<BugReportPriority | 'all'>('all')
+  const [showArchived, setShowArchived] = useState(false)
   const [selectedReport, setSelectedReport] = useState<BugReportWithUser | null>(null)
   const [adminNotes, setAdminNotes] = useState('')
   const [replyMessage, setReplyMessage] = useState('')
   const [sendingReply, setSendingReply] = useState(false)
   const supabase = useMemo(() => createClient(), [])
+
+  // Archived statuses
+  const archivedStatuses: BugReportStatus[] = ['resolved', 'dismissed']
 
   const getStatusBadge = (status: BugReportStatus) => {
     switch (status) {
@@ -93,8 +97,13 @@ export function BugReportsTab({ bugReports, onUpdateBugReport }: BugReportsTabPr
   const filteredReports = bugReports.filter((report) => {
     if (filterStatus !== 'all' && report.status !== filterStatus) return false
     if (filterPriority !== 'all' && report.priority !== filterPriority) return false
+    // Hide archived if not showing them
+    if (!showArchived && archivedStatuses.includes(report.status)) return false
     return true
   })
+
+  // Count archived items for badge
+  const archivedCount = bugReports.filter(r => archivedStatuses.includes(r.status)).length
 
   // Sort: critical first, then by created_at DESC
   const sortedReports = [...filteredReports].sort((a, b) => {
@@ -232,7 +241,7 @@ export function BugReportsTab({ bugReports, onUpdateBugReport }: BugReportsTabPr
           </CardDescription>
 
           {/* Filters */}
-          <div className="flex gap-2 mt-4">
+          <div className="flex items-center gap-2 mt-4">
             <Select value={filterStatus} onValueChange={(value) => setFilterStatus(value as BugReportStatus | 'all')}>
               <SelectTrigger className="w-40">
                 <SelectValue />
@@ -258,6 +267,25 @@ export function BugReportsTab({ bugReports, onUpdateBugReport }: BugReportsTabPr
                 <SelectItem value="low">Lav</SelectItem>
               </SelectContent>
             </Select>
+
+            <Button
+              variant={showArchived ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setShowArchived(!showArchived)}
+              className="ml-auto"
+            >
+              {showArchived ? (
+                <>
+                  <Eye className="w-4 h-4 mr-2" />
+                  Skjul arkivert ({archivedCount})
+                </>
+              ) : (
+                <>
+                  <Archive className="w-4 h-4 mr-2" />
+                  Vis arkivert ({archivedCount})
+                </>
+              )}
+            </Button>
           </div>
         </CardHeader>
 

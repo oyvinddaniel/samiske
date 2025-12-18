@@ -18,10 +18,29 @@ import {
   RefreshCw,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   Eye,
   Calendar,
   BarChart3,
+  Shield,
+  ShieldCheck,
+  User as UserIcon,
+  AlertTriangle,
+  CheckCircle,
 } from 'lucide-react'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible'
+import type { User } from './types'
 
 // Types
 interface ActivityEntry {
@@ -50,7 +69,13 @@ interface RegistrationTrend {
 // Constants
 const PAGE_SIZE = 30
 
-export function AdminDashboard() {
+interface AdminDashboardProps {
+  users?: User[]
+  currentUserId?: string
+  onRoleChange?: (userId: string, newRole: string) => void
+}
+
+export function AdminDashboard({ users = [], currentUserId, onRoleChange }: AdminDashboardProps) {
   const supabase = useMemo(() => createClient(), [])
 
   // Core stats
@@ -59,6 +84,12 @@ export function AdminDashboard() {
     totalPosts: 0,
     totalComments: 0,
     totalLikes: 0,
+  })
+
+  // Auth vs Profiles comparison
+  const [userComparison, setUserComparison] = useState({
+    authUsersCount: 0,
+    profilesCount: 0,
   })
 
   // User stats
@@ -104,6 +135,10 @@ export function AdminDashboard() {
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
 
+  // Users list state
+  const [usersOpen, setUsersOpen] = useState(false)
+  const [usersLimit, setUsersLimit] = useState(5)
+
   // Fetch all dashboard data
   const fetchDashboardData = useCallback(async (showLoading = true) => {
     if (showLoading) setLoading(true)
@@ -121,6 +156,7 @@ export function AdminDashboard() {
       const [
         // Core stats
         usersCountResult,
+        profilesCountResult,
         postsCountResult,
         commentsCountResult,
         likesCountResult,
@@ -146,6 +182,7 @@ export function AdminDashboard() {
       ] = await Promise.all([
         // Core stats
         supabase.rpc('get_auth_users_count'),
+        supabase.from('profiles').select('*', { count: 'exact', head: true }),
         supabase.from('posts').select('*', { count: 'exact', head: true }),
         supabase.from('comments').select('*', { count: 'exact', head: true }),
         supabase.from('likes').select('*', { count: 'exact', head: true }),
@@ -179,6 +216,12 @@ export function AdminDashboard() {
         totalPosts: postsCountResult.count || 0,
         totalComments: commentsCountResult.count || 0,
         totalLikes: likesCountResult.count || 0,
+      })
+
+      // Set user comparison
+      setUserComparison({
+        authUsersCount: usersCountResult.data || 0,
+        profilesCount: profilesCountResult.count || 0,
       })
 
       // Set user stats
@@ -410,6 +453,57 @@ export function AdminDashboard() {
         </div>
       </div>
 
+      {/* === AUTH VS PROFILES DEBUG === */}
+      {userComparison.authUsersCount !== userComparison.profilesCount && (
+        <Card className="bg-gradient-to-br from-amber-50 to-amber-100 border-amber-300">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2 text-amber-800">
+              <AlertTriangle className="w-5 h-5" />
+              Bruker-differanse oppdaget
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-3 gap-4 mb-4">
+              <div className="text-center p-3 bg-white/50 rounded-lg">
+                <p className="text-2xl font-bold text-amber-700">{userComparison.authUsersCount}</p>
+                <p className="text-xs text-gray-600">auth.users</p>
+              </div>
+              <div className="text-center p-3 bg-white/50 rounded-lg">
+                <p className="text-2xl font-bold text-amber-700">{userComparison.profilesCount}</p>
+                <p className="text-xs text-gray-600">profiles</p>
+              </div>
+              <div className="text-center p-3 bg-white/50 rounded-lg">
+                <p className="text-2xl font-bold text-red-600">
+                  {Math.abs(userComparison.authUsersCount - userComparison.profilesCount)}
+                </p>
+                <p className="text-xs text-gray-600">Differanse</p>
+              </div>
+            </div>
+            <p className="text-sm text-amber-800">
+              {userComparison.authUsersCount > userComparison.profilesCount
+                ? `Det finnes ${userComparison.authUsersCount - userComparison.profilesCount} brukere i auth.users uten tilhørende profil. Dette kan skyldes ufullendte registreringer eller manuelt slettede profiler.`
+                : `Det finnes ${userComparison.profilesCount - userComparison.authUsersCount} profiler uten tilhørende auth-bruker. Dette kan skyldes slettede kontoer der profilen ikke ble ryddet opp.`}
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {userComparison.authUsersCount === userComparison.profilesCount && userComparison.authUsersCount > 0 && (
+        <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-3">
+              <CheckCircle className="w-6 h-6 text-green-600" />
+              <div>
+                <p className="font-medium text-green-800">Ingen bruker-differanse</p>
+                <p className="text-sm text-green-700">
+                  Alle {userComparison.authUsersCount} brukere i auth.users har tilhørende profil.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* === SEKSJON 2: AKTIVITET & VEKST === */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Aktive brukere */}
@@ -543,6 +637,86 @@ export function AdminDashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* === SEKSJON: ALLE BRUKERE (kollapserbar) === */}
+      {users.length > 0 && onRoleChange && (
+        <Collapsible open={usersOpen} onOpenChange={setUsersOpen}>
+          <Card>
+            <CollapsibleTrigger asChild>
+              <CardHeader className="cursor-pointer hover:bg-gray-50 transition-colors">
+                <CardTitle className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Users className="w-5 h-5 text-blue-600" />
+                    Alle brukere
+                    <Badge variant="outline" className="ml-2">{users.length}</Badge>
+                  </div>
+                  <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform ${usersOpen ? 'rotate-180' : ''}`} />
+                </CardTitle>
+              </CardHeader>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <CardContent className="pt-0">
+                <div className="space-y-2">
+                  {users.slice(0, usersLimit).map((user) => (
+                    <div
+                      key={user.id}
+                      className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+                          {user.role === 'admin' ? (
+                            <ShieldCheck className="w-4 h-4 text-blue-600" />
+                          ) : user.role === 'moderator' ? (
+                            <Shield className="w-4 h-4 text-green-600" />
+                          ) : (
+                            <UserIcon className="w-4 h-4 text-gray-600" />
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="font-medium text-sm truncate">{user.full_name || 'Ukjent'}</p>
+                          <p className="text-xs text-gray-500 truncate">{user.email}</p>
+                        </div>
+                      </div>
+                      <Select
+                        value={user.role}
+                        onValueChange={(value) => onRoleChange(user.id, value)}
+                        disabled={user.id === currentUserId}
+                      >
+                        <SelectTrigger className="w-28 h-8 text-xs">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="user">Bruker</SelectItem>
+                          <SelectItem value="moderator">Moderator</SelectItem>
+                          <SelectItem value="admin">Admin</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  ))}
+                </div>
+                {users.length > usersLimit && (
+                  <Button
+                    variant="ghost"
+                    className="w-full mt-3 text-sm"
+                    onClick={() => setUsersLimit(prev => prev + 10)}
+                  >
+                    Vis flere (+10)
+                  </Button>
+                )}
+                {usersLimit > 5 && (
+                  <Button
+                    variant="ghost"
+                    className="w-full mt-1 text-sm text-gray-500"
+                    onClick={() => setUsersLimit(5)}
+                  >
+                    Vis færre
+                  </Button>
+                )}
+              </CardContent>
+            </CollapsibleContent>
+          </Card>
+        </Collapsible>
+      )}
 
       {/* === SEKSJON 4: REGISTRERINGSTREND === */}
       <Card>
