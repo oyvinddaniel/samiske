@@ -22,6 +22,9 @@ ALTER TABLE notifications ADD CONSTRAINT notifications_type_check
 
 -- 2. OPPDATER get_notifications FUNKSJON
 -- =====================================================
+-- Drop eksisterende funksjon først (return type endres)
+DROP FUNCTION IF EXISTS get_notifications(UUID, INTEGER, INTEGER, BOOLEAN);
+
 CREATE OR REPLACE FUNCTION get_notifications(
   p_user_id UUID,
   p_limit INTEGER DEFAULT 50,
