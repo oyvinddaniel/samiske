@@ -14,10 +14,10 @@ interface MentionResult {
   type: MentionType
   name: string
   displayName: string // What gets inserted
+  firstName?: string // For users - cursor position after this
   subtitle?: string
   avatar_url?: string | null
   icon?: React.ReactNode
-  isFullName?: boolean // For user full name option
 }
 
 interface MentionTextareaProps {
@@ -80,7 +80,8 @@ export function MentionTextarea({
 
   // Search all enabled entity types
   useEffect(() => {
-    if (!mentionQuery || mentionQuery.length < 1) {
+    // Allow search with empty query (just @) - will show recent/popular
+    if (mentionStart === null) {
       setSuggestions([])
       return
     }
@@ -91,44 +92,32 @@ export function MentionTextarea({
 
       try {
         const searches: Promise<void>[] = []
+        const hasQuery = mentionQuery.length > 0
 
-        // Search users - show both first name (recommended) and full name options
+        // Search users - insert full name but cursor after first name
         if (enabledTypes.includes('user')) {
           searches.push(
             (async () => {
-              const { data } = await supabase
+              let query = supabase
                 .from('profiles')
                 .select('id, full_name, avatar_url')
-                .ilike('full_name', `%${mentionQuery}%`)
-                .limit(3)
+
+              if (hasQuery) {
+                query = query.ilike('full_name', `%${mentionQuery}%`)
+              }
+
+              const { data } = await query.limit(5)
               data?.forEach(user => {
                 const firstName = user.full_name.split(' ')[0]
-                const hasLastName = user.full_name.includes(' ')
-
-                // First name option (recommended)
                 results.push({
                   id: user.id,
                   type: 'user',
                   name: user.full_name,
-                  displayName: firstName,
-                  subtitle: hasLastName ? 'Fornavn (anbefalt)' : undefined,
+                  displayName: user.full_name,
+                  firstName: firstName, // Cursor will be placed after this
                   avatar_url: user.avatar_url,
                   icon: TYPE_ICONS.user,
                 })
-
-                // Full name option (only if they have a last name)
-                if (hasLastName) {
-                  results.push({
-                    id: user.id,
-                    type: 'user',
-                    name: user.full_name,
-                    displayName: user.full_name,
-                    subtitle: 'Fullt navn (formelt)',
-                    avatar_url: user.avatar_url,
-                    icon: TYPE_ICONS.user,
-                    isFullName: true,
-                  })
-                }
               })
             })()
           )
@@ -138,12 +127,16 @@ export function MentionTextarea({
         if (enabledTypes.includes('community')) {
           searches.push(
             (async () => {
-              const { data } = await supabase
+              let query = supabase
                 .from('communities')
                 .select('id, name, logo_url, category')
                 .eq('is_active', true)
-                .ilike('name', `%${mentionQuery}%`)
-                .limit(3)
+
+              if (hasQuery) {
+                query = query.ilike('name', `%${mentionQuery}%`)
+              }
+
+              const { data } = await query.limit(3)
               data?.forEach(community => {
                 results.push({
                   id: community.id,
@@ -160,7 +153,7 @@ export function MentionTextarea({
         }
 
         // Search places
-        if (enabledTypes.includes('place')) {
+        if (enabledTypes.includes('place') && hasQuery) {
           searches.push(
             (async () => {
               const { data } = await supabase
@@ -187,7 +180,7 @@ export function MentionTextarea({
         }
 
         // Search municipalities (kommuner)
-        if (enabledTypes.includes('municipality')) {
+        if (enabledTypes.includes('municipality') && hasQuery) {
           searches.push(
             (async () => {
               const { data } = await supabase
@@ -217,9 +210,9 @@ export function MentionTextarea({
         if (enabledTypes.includes('language_area')) {
           searches.push(
             (async () => {
-              // Add Sápmi as a special option if query matches
+              // Add Sápmi as a special option if no query or query matches
               const samiTerms = ['sápmi', 'sapmi', 'sameland', 'sami']
-              if (samiTerms.some(term => term.includes(mentionQuery.toLowerCase()) || mentionQuery.toLowerCase().includes(term.slice(0, 2)))) {
+              if (!hasQuery || samiTerms.some(term => term.includes(mentionQuery.toLowerCase()) || mentionQuery.toLowerCase().includes(term.slice(0, 2)))) {
                 results.push({
                   id: 'sapmi',
                   type: 'language_area',
@@ -230,22 +223,24 @@ export function MentionTextarea({
                 })
               }
 
-              const { data } = await supabase
-                .from('language_areas')
-                .select('id, name, name_sami')
-                .or(`name.ilike.%${mentionQuery}%,name_sami.ilike.%${mentionQuery}%`)
-                .limit(3)
-              data?.forEach(area => {
-                const areaName = area.name_sami || area.name
-                results.push({
-                  id: area.id,
-                  type: 'language_area',
-                  name: areaName,
-                  displayName: areaName,
-                  subtitle: 'Språkområde',
-                  icon: TYPE_ICONS.language_area,
+              if (hasQuery) {
+                const { data } = await supabase
+                  .from('language_areas')
+                  .select('id, name, name_sami')
+                  .or(`name.ilike.%${mentionQuery}%,name_sami.ilike.%${mentionQuery}%`)
+                  .limit(3)
+                data?.forEach(area => {
+                  const areaName = area.name_sami || area.name
+                  results.push({
+                    id: area.id,
+                    type: 'language_area',
+                    name: areaName,
+                    displayName: areaName,
+                    subtitle: 'Språkområde',
+                    icon: TYPE_ICONS.language_area,
+                  })
                 })
-              })
+              }
             })()
           )
         }
@@ -254,11 +249,15 @@ export function MentionTextarea({
         if (enabledTypes.includes('group')) {
           searches.push(
             (async () => {
-              const { data } = await supabase
+              let query = supabase
                 .from('groups')
                 .select('id, name, avatar_url')
-                .ilike('name', `%${mentionQuery}%`)
-                .limit(3)
+
+              if (hasQuery) {
+                query = query.ilike('name', `%${mentionQuery}%`)
+              }
+
+              const { data } = await query.limit(3)
               data?.forEach(group => {
                 results.push({
                   id: group.id,
@@ -285,7 +284,7 @@ export function MentionTextarea({
 
     const debounce = setTimeout(searchEntities, 150)
     return () => clearTimeout(debounce)
-  }, [mentionQuery, supabase, enabledTypes])
+  }, [mentionQuery, mentionStart, supabase, enabledTypes])
 
   useEffect(() => {
     setSelectedIndex(0)
@@ -328,14 +327,12 @@ export function MentionTextarea({
     const beforeMention = value.slice(0, mentionStart)
     const afterMention = value.slice(cursorPos)
 
-    // Use displayName from the result (can be first name or full name for users)
+    // Insert full name, but for users we'll select the last name part
     const mentionText = `@${result.displayName} `
     const newValue = beforeMention + mentionText + afterMention
 
-    // Track this mention - use unique key including fullName flag for users
-    const key = result.isFullName
-      ? `${result.type}:${result.id}:full`
-      : `${result.type}:${result.id}`
+    // Track this mention
+    const key = `${result.type}:${result.id}`
     const newMentions = new Map(mentions)
     newMentions.set(key, {
       id: result.id,
@@ -350,10 +347,21 @@ export function MentionTextarea({
     setMentionQuery('')
     setMentionStart(null)
 
-    const newCursorPos = mentionStart + mentionText.length
+    // For users with first name, place cursor after first name and select the rest
+    // So if user continues typing, the last name gets replaced
     setTimeout(() => {
       textarea.focus()
-      textarea.setSelectionRange(newCursorPos, newCursorPos)
+      if (result.firstName && result.displayName !== result.firstName) {
+        // Position: @FirstName |LastName
+        // Select from after firstName to before the trailing space
+        const cursorAfterFirstName = mentionStart + 1 + result.firstName.length // +1 for @
+        const endOfLastName = mentionStart + mentionText.length - 1 // -1 for trailing space
+        textarea.setSelectionRange(cursorAfterFirstName, endOfLastName)
+      } else {
+        // No last name or not a user - just place cursor at end
+        const newCursorPos = mentionStart + mentionText.length
+        textarea.setSelectionRange(newCursorPos, newCursorPos)
+      }
     }, 0)
   }, [mentionStart, value, mentions, onChange])
 
@@ -439,7 +447,7 @@ export function MentionTextarea({
         )}
       />
 
-      {showSuggestions && (mentionQuery.length >= 1 || loading) && (
+      {showSuggestions && mentionStart !== null && (
         <div
           ref={suggestionsRef}
           className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-72 overflow-y-auto"
@@ -448,7 +456,7 @@ export function MentionTextarea({
             <div className="px-4 py-3 text-sm text-gray-500">Søker...</div>
           ) : suggestions.length === 0 ? (
             <div className="px-4 py-3 text-sm text-gray-500">
-              Ingen resultater for &quot;{mentionQuery}&quot;
+              {mentionQuery ? `Ingen resultater for "${mentionQuery}"` : 'Begynn å skrive for å søke...'}
             </div>
           ) : (
             Object.entries(groupedSuggestions).map(([type, items]) => (
