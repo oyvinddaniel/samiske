@@ -1,6 +1,6 @@
 # Prosjektstatus - samiske.no
 
-> Sist oppdatert: 2025-12-18
+> Sist oppdatert: 2025-12-19
 
 ## Nåværende status
 
@@ -13,6 +13,26 @@
 ---
 
 ## Pågående arbeid
+
+### Post-Composer (19. desember 2025) - FULLFØRT ✅
+- **Status:** 100% produksjonsklart med alle 23 funksjoner
+- [x] Alle kritiske bugs fikset
+  - [x] Cron jobs for planlagte innlegg (hvert minutt)
+  - [x] Cron jobs for draft cleanup (daglig kl 03:00)
+  - [x] Poll-visning i feed
+  - [x] Emoji-picker tilgjengelig i toolbar
+  - [x] Video progress tracking (0-100%)
+  - [x] Video transcoding polling
+  - [x] Arkivering UI (toggle_archive_post)
+- [x] Video UX redesignet (research-basert)
+  - [x] VideoUploadCard.tsx (220 linjer) - Stor aspect-video preview
+  - [x] VideoDragDropZone.tsx (208 linjer) - Drag & drop med animations
+  - [x] Progress.tsx - Radix UI progress bar
+  - [x] Upload states: progress, processing, success, error
+  - [x] Duration og file size badges
+  - [x] Thumbnail selection UI (frame extraction planlagt)
+- [x] Hyperdetaljert testing-sjekkliste opprettet (~600 test-punkter)
+- Se: `/docs/POST-COMPOSER-PROJECT.md` og `/docs/POST-COMPOSER-TESTING-DETAILED.md`
 
 ### @mention/tagging-system (18. desember 2025) - FULLFØRT
 - **Status:** Live i produksjon
