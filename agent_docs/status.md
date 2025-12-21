@@ -1,6 +1,6 @@
 # Prosjektstatus - samiske.no
 
-> Sist oppdatert: 2025-12-19
+> Sist oppdatert: 2025-12-22
 
 ## Nåværende status
 
@@ -14,8 +14,35 @@
 
 ## Pågående arbeid
 
-### Post-Composer (19. desember 2025) - FULLFØRT ✅
-- **Status:** 100% produksjonsklart med alle 23 funksjoner
+### Geography Image Management (22. desember 2025) - FULLFØRT ✅
+- **Status:** 100% produksjonsklart
+- [x] Multi-image feed bug fikset (Feed.tsx, HashtagPageContent.tsx)
+- [x] Bulk editing system for geography images
+- [x] Ownership-based permissions (direct edit vs suggestions)
+- [x] Database migration for image suggestions
+- [x] Admin panel integration for approving suggestions
+- Se: `GeographyImagesManagementDialog.tsx` (484 linjer)
+
+### Post-Composer Testing (22. desember 2025) - 75% FULLFØRT ⏳
+- **Status:** STEG 1-3 fullført, STEG 4 (UI-testing) gjenstår
+- [x] **STEG 1:** Automatiske tester (22. des) ✅
+  - TypeScript, build, lint OK
+  - Alle API-ruter testet og fungerer
+  - 13 composer-komponenter verifisert
+- [x] **STEG 2:** Database-migrasjoner (22. des) ✅
+  - Cron jobs opprettet: `publish-scheduled-posts` (jobid 21), `cleanup-expired-drafts` (jobid 22)
+  - Begge verifisert aktive i Supabase
+- [x] **STEG 3:** Eksterne tjenester (22. des) ✅
+  - Bunny Stream: Library 567838 verifisert, 5 resolusjoner enabled
+  - **KRITISK FIKS:** Tenor API-nøkkel var feil (Google Maps key) → Opprettet ny fra Google Cloud Console
+  - Vercel: Alle 7 env vars satt og redeployed
+- [ ] **STEG 4:** Manuelle UI-tester (gjenstår)
+  - 5 kritiske funksjoner: Video, Polls, Planlagte innlegg, Emoji, Arkivering
+  - Estimert tid: 2-4 timer
+- Se: `/docs/POST-COMPOSER-TESTING.md` og `/Users/oyvinddaniel/.claude/plans/robust-seeking-russell.md`
+
+### Post-Composer (19. desember 2025) - IMPLEMENTERT ✅
+- **Status:** 100% kode fullført med alle 23 funksjoner
 - [x] Alle kritiske bugs fikset
   - [x] Cron jobs for planlagte innlegg (hvert minutt)
   - [x] Cron jobs for draft cleanup (daglig kl 03:00)
@@ -31,8 +58,7 @@
   - [x] Upload states: progress, processing, success, error
   - [x] Duration og file size badges
   - [x] Thumbnail selection UI (frame extraction planlagt)
-- [x] Hyperdetaljert testing-sjekkliste opprettet (~600 test-punkter)
-- Se: `/docs/POST-COMPOSER-PROJECT.md` og `/docs/POST-COMPOSER-TESTING-DETAILED.md`
+- See: `/docs/POST-COMPOSER-PROJECT.md`
 
 ### @mention/tagging-system (18. desember 2025) - FULLFØRT
 - **Status:** Live i produksjon

@@ -2,6 +2,7 @@
 
 > Unified innleggsfunksjon med 23 funksjoner
 > Opprettet: 2025-12-18
+> Sist oppdatert: 2025-12-22 (Testing 75% fullført)
 
 ## Prosjektoversikt
 
@@ -12,7 +13,15 @@ Lage en optimal, global "Nytt innlegg"-funksjon som:
 - Skaper en opplevelse av "så deilig å kunne fortelle det jeg ønsker uten at det tekniske hindrer meg"
 
 ### Nåværende situasjon
-**✅ FULLFØRT med 23/23 funksjoner (19. desember 2025)**
+**✅ KODE FULLFØRT:** 23/23 funksjoner implementert (19. desember 2025)
+**⏳ TESTING:** 75% fullført - STEG 1-3 OK, STEG 4 gjenstår (22. desember 2025)
+
+**Testing-fremdrift:**
+- ✅ **STEG 1:** Automatiske tester (TypeScript, build, API-ruter) - 22. des
+- ✅ **STEG 2:** Database (cron jobs verifisert: jobid 21 & 22) - 22. des
+- ✅ **STEG 3:** Eksterne tjenester (Bunny, Tenor API-fiks, Vercel) - 22. des
+- ⏳ **STEG 4:** Manuelle UI-tester (5 kritiske funksjoner) - Gjenstår
+- Se: `/docs/POST-COMPOSER-TESTING.md`
 
 Unified post-composer erstatter 3 fragmenterte komponenter:
 - ~~`CreatePostSheet.tsx`~~ (529 linjer) → Erstattet
