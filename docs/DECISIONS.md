@@ -1,231 +1,276 @@
-# Beslutningslogg: samiske.no
+# DECISIONS.md - Arkitekturbeslutninger
 
-## Sist oppdatert: 2025-12-13
+> Viktige valg og hvorfor de ble tatt  
+> Sist oppdatert: 2025-12-26
 
 ---
 
-## Beslutninger tatt
+## Format
 
-### 1. Tech Stack (2025-12-11)
-**Beslutning:** Next.js + Supabase + Vercel
-**Begrunnelse:**
-- Next.js: Best integrasjon med Vercel, stort økosystem
-- Supabase: Alt-i-ett løsning for database og auth, sikker, gratis tier
-- Vercel: Enkel hosting, automatisk deploy
+Hver beslutning dokumenteres med:
+- **Dato:** Når beslutningen ble tatt
+- **Kontekst:** Situasjonen som krevde en beslutning
+- **Beslutning:** Hva vi valgte
+- **Rationale:** Hvorfor vi valgte dette
+- **Konsekvenser:** Hva dette betyr for prosjektet
+- **Status:** Aktiv / Erstattet / Deprecated
 
-### 2. UI-bibliotek (2025-12-11)
-**Beslutning:** Tailwind CSS + Shadcn/ui
-**Begrunnelse:**
-- Moderne, minimalistisk design
-- Lett å tilpasse med samiske farger
-- God støtte for responsivt design
+---
 
-### 3. Innleggsstruktur (2025-12-11)
-**Beslutning:** Forenklet modell med to typer innlegg
-**Begrunnelse:**
-- Standard innlegg: Bilde, tittel, tekst, dato (valgfritt), kategori
-- Arrangement: Ekstra felter for dato, klokkeslett, sted
-- Holder det enkelt og intuitivt
+## ADR-001: Tech Stack
 
-### 4. Synlighet (2025-12-11)
-**Beslutning:** Todelt synlighet per innlegg
-**Begrunnelse:**
-- Offentlige innlegg: Synlig for alle
-- Medlemsinnlegg: Kun for innloggede
-- Kommentering/liking krever innlogging
+**Dato:** 2025 (prosjektstart)
 
-### 5. Brukerregistrering (2025-12-11)
-**Beslutning:** Åpen registrering først, godkjenning senere
-**Begrunnelse:**
-- Start enkelt
-- Legg til godkjenningskrav når/hvis nødvendig
+**Kontekst:** Valg av teknologier for samisk community-plattform
 
-### 6. Språk (2025-12-11)
-**Beslutning:** Kun norsk grensesnitt
-**Begrunnelse:**
-- Enklere å vedlikeholde
-- Målgruppen er norsktalende
+**Beslutning:**
+- Frontend: Next.js 15 (App Router)
+- Database: Supabase (PostgreSQL)
+- Auth: Supabase Auth
+- Hosting: Vercel
+- Video: Bunny.net Stream
 
-### 7. Fargepalett (2025-12-11)
-**Beslutning:** Samiske flaggfarger som aksentfarger
-**Begrunnelse:**
-- Rød, blå, grønn, gul fra det samiske flagget
-- Gir kulturell identitet
-- Moderne minimalistisk base med fargerike aksenter
+**Rationale:**
+- Next.js 15 gir beste DX og SSR/SSG fleksibilitet
+- Supabase gir rask utvikling med innebygd auth, realtime, storage
+- Vercel har sømløs Next.js-integrasjon
+- Bunny.net er kostnadseffektiv for video
 
-### 8. Ikoner (2025-12-12)
-**Beslutning:** Lucide React i stedet for emojis
-**Begrunnelse:**
+**Konsekvenser:**
+- Lock-in til Supabase økosystem
+- Avhengig av Vercel for deploy
+- Må håndtere Supabase-spesifikke mønstre
+
+**Status:** ✅ Aktiv
+
+---
+
+## ADR-002: Auto-confirm brukere
+
+**Dato:** 2025
+
+**Kontekst:** Skal vi kreve e-postbekreftelse ved registrering?
+
+**Beslutning:** Nei, auto-confirm er aktivert
+
+**Rationale:**
+- Lavere friksjon for nye brukere
+- Samisk community er relativt lite - spam er ikke et stort problem
+- Kan aktiveres senere hvis nødvendig
+
+**Konsekvenser:**
+- Potensielt spam-risiko (akseptert)
+- Ingen verifisering av e-postadresser
+- Må implementere alternative spam-tiltak ved behov
+
+**Status:** ✅ Aktiv (med dokumentert risiko)
+
+---
+
+## ADR-003: Kun norsk UI
+
+**Dato:** 2025
+
+**Kontekst:** Hvilket språk skal UI være på?
+
+**Beslutning:** Kun norsk i UI. Engelsk i kode.
+
+**Rationale:**
+- Målgruppen er primært norsktalende samer
+- Forenkler utviklingen (ingen i18n)
+- Samisk kan legges til senere som eget prosjekt
+
+**Konsekvenser:**
+- Ekskluderer ikke-norsktalende
+- Enklere kodebase
+- Fremtidig i18n vil kreve refaktorering
+
+**Status:** ✅ Aktiv
+
+---
+
+## ADR-004: RLS på alle tabeller
+
+**Dato:** 2025
+
+**Kontekst:** Hvordan sikre databasetilgang?
+
+**Beslutning:** Row Level Security (RLS) aktivert på ALLE tabeller
+
+**Rationale:**
+- Defense in depth - selv om frontend har bugs, er data sikret
+- Supabase anbefaler dette sterkt
+- Enklere å resonnere om tilgangskontroll
+
+**Konsekvenser:**
+- Alle queries må gå gjennom RLS
+- Må være forsiktig med policy-design
+- Noe overhead på queries
+
+**Status:** ✅ Aktiv
+
+---
+
+## ADR-005: SPA-navigasjon med pathname
+
+**Dato:** 16. desember 2025
+
+**Kontekst:** Hvordan implementere SPA-opplevelse?
+
+**Beslutning:** Pathname-basert navigasjon, ikke query params
+
+**Før:**
+```
+/?panel=community-page&slug=samisk-kultur&tab=produkter
+```
+
+**Etter:**
+```
+/samfunn/samisk-kultur?tab=produkter
+```
+
+**Rationale:**
+- Bedre SEO (søkemotorer forstår pathname bedre)
+- Mer standard URL-struktur
+- Bedre for deling på sosiale medier
+- Beholder page.tsx for initial SSR
+
+**Konsekvenser:**
+- Mer kompleks routing-logikk
+- Må vedlikeholde både page.tsx og SPA-panels
+- URL-er er deling-vennlige
+
+**Status:** ✅ Aktiv (Fase 1/6 fullført)
+
+---
+
+## ADR-006: Sentralisert Media Service
+
+**Dato:** 18-19. desember 2025
+
+**Kontekst:** Fragmentert bildehåndtering på tvers av komponenter
+
+**Beslutning:** Én sentralisert MediaService for alle bilder
+
+**Rationale:**
+- Konsistent håndtering (komprimering, validering)
+- GDPR-compliance (audit logging, soft delete)
+- Enklere vedlikehold
+- Bedre kontroll over storage-bruk
+
+**Konsekvenser:**
+- Må migrere alle eksisterende komponenter
+- Ny `media` tabell med 11 entity types
+- Copyright-sporing for alle bilder
+
+**Status:** ✅ Aktiv (7/11 komponenter migrert)
+
+---
+
+## ADR-007: Geografisk hierarki
+
+**Dato:** 13. desember 2025
+
+**Kontekst:** Hvordan strukturere samisk geografi?
+
+**Beslutning:** 5-nivå hierarki:
+1. Region (Sápmi)
+2. Land (Norge, Sverige, Finland, Russland)
+3. Språkområder (7 stk)
+4. Kommuner
+5. Steder
+
+**Rationale:**
+- Reflekterer faktisk samisk geografisk struktur
+- Tillater innhold å "boble opp" til høyere nivåer
+- Brukere kan stjernemerke favoritter på alle nivåer
+
+**Konsekvenser:**
+- Kompleks database-struktur
+- Må håndtere dyp nesting i UI
+- Content aggregation på tvers av nivåer
+
+**Status:** ✅ Aktiv
+
+---
+
+## ADR-008: Migrasjoner via Dashboard
+
+**Dato:** 2025
+
+**Kontekst:** Hvordan kjøre database-migrasjoner?
+
+**Beslutning:** Via Supabase Dashboard SQL Editor, IKKE CLI
+
+**Rationale:**
+- Mer kontroll over hva som kjøres
+- Unngår problemer med CLI-konfigurasjon
+- Enklere for ikke-kodere å følge med
+
+**Konsekvenser:**
+- Manuell prosess
+- Må kopiere SQL inn i dashboard
+- Ingen automatisk migrering ved deploy
+
+**Status:** ✅ Aktiv
+
+---
+
+## ADR-009: Lucide icons, ingen emojis
+
+**Dato:** 2025
+
+**Kontekst:** Hvilke ikoner skal brukes i UI?
+
+**Beslutning:** Lucide icons overalt, ingen emojis i UI
+
+**Rationale:**
+- Konsistent visuelt språk
+- Skalerbare SVG-ikoner
 - Profesjonelt utseende
-- Konsistent stil gjennom appen
-- Bedre tilgjengelighet
+- Emojis renderes ulikt på ulike OS
 
-### 9. Innleggsvisning (2025-12-12)
-**Beslutning:** Popup/dialog i stedet for egen side
-**Begrunnelse:**
-- Raskere navigasjon
-- Brukeren forblir i feeden
-- Bedre brukeropplevelse
+**Konsekvenser:**
+- Må importere ikoner fra lucide-react
+- Litt større bundle
+- Konsistent på tvers av plattformer
 
-### 10. Redigering (2025-12-12)
-**Beslutning:** In-place redigering i popup
-**Begrunnelse:**
-- Enklere enn egen redigeringsside
-- Umiddelbar tilbakemelding
-- Kun synlig for innleggets eier
-
-### 11. Varslingssystem (2025-12-12)
-**Beslutning:** Timestamp-basert varsling (last_seen_at)
-**Begrunnelse:**
-- Enklere enn full notifikasjons-tabell
-- Viser alt nytt siden sist besøk
-- Teller nye innlegg, kommentarer og likes
-
-### 12. Hosting/Domene (2025-12-12)
-**Beslutning:** Vercel med samiske.no
-**Begrunnelse:**
-- Automatisk deploy fra GitHub
-- Gratis SSL
-- God ytelse globalt
-
-### 13. Vennefunksjon (2025-12-12)
-**Beslutning:** Enkel vennefunksjon med forespørsler
-**Begrunnelse:**
-- Kan sende venneforespørsler
-- Kan godta/avslå forespørsler
-- Venner kan sende direktemeldinger til hverandre
-- Gir sosial funksjonalitet uten å bli for komplisert
-
-### 14. Meldingssystem (2025-12-12)
-**Beslutning:** Enkel en-til-en chat mellom venner
-**Begrunnelse:**
-- Kun direktemeldinger mellom godkjente venner
-- Sanntidsoppdatering med Supabase Realtime
-- Holder det enkelt - ingen gruppechat eller avanserte funksjoner ennå
-
-### 15. Sosial-meny plassering (2025-12-12)
-**Beslutning:** Flytende bobler i høyre hjørne
-**Begrunnelse:**
-- Alltid tilgjengelig uansett hvor på siden du er
-- Åpner panel som overlay
-- Fungerer på både mobil og desktop
-
-### 16. Auth-håndtering i klient-komponenter (2025-12-12)
-**Beslutning:** useMemo for Supabase-klient + getSession() først
-**Begrunnelse:**
-- `useMemo(() => createClient(), [])` gir stabil referanse
-- `getSession()` bruker cached session og er raskere
-- `getUser()` som fallback hvis session ikke finnes
-- Mer pålitelig auth-tilstand på tvers av komponenter
-
-### 17. Slett konto-funksjon (2025-12-12)
-**Beslutning:** Brukere kan slette egen konto med bekreftelse
-**Begrunnelse:**
-- GDPR-krav om rett til sletting
-- Service Role Key brukes på server-side for å slette fra auth.users
-- CASCADE-delete fjerner automatisk all tilknyttet data
-- AlertDialog for bekreftelse før permanent sletting
-
-### 18. Feedback-system (2025-12-12)
-**Beslutning:** Lilla chatboble i venstre hjørne
-**Begrunnelse:**
-- Enkel måte for brukere å gi tilbakemelding
-- Auto-åpner etter 10 sekunder for å oppfordre til deltakelse
-- Kun synlig for innloggede brukere
-- Admin kan se og slette tilbakemeldinger i admin-panel
-
-### 19. E-postvarsling for admin (2025-12-12)
-**Beslutning:** E-post til admin ved nye brukerregistreringer
-**Begrunnelse:**
-- Holder admin informert om nye brukere
-- Bruker eksisterende SMTP-oppsett (cPanel)
-- Database-trigger legger e-post i kø
-- Cron-jobb sender hvert 5. minutt
+**Status:** ✅ Aktiv
 
 ---
 
-## NYE BESLUTNINGER FRA SIKKERHETSGJENNOMGANG (2025-12-12)
+## ADR-010: shadcn/ui komponentbibliotek
 
-### 20. E-postbekreftelse (Auto-confirm)
-**Beslutning:** Behold auto-confirm for nå, planlegg overgang senere
-**Begrunnelse:**
-- Enklere onboarding for nye brukere i oppstartsfasen
-- Risiko for spam/impersonering aksepteres midlertidig
-- Overgang til e-postbekreftelse planlagt i Fase 5
-- Må dokumentere risikoen og overvåke for misbruk
+**Dato:** 2025
 
-### 21. Søkefunksjon
-**Beslutning:** Implementer søkefunksjon (Fase 4)
-**Begrunnelse:**
-- Nyttig funksjon for brukere å finne innlegg og personer
-- SearchModal finnes allerede (Cmd+K), bare ikke implementert
-- Søk i tittel, innhold og brukernavn
+**Kontekst:** Hvilke UI-komponenter skal brukes?
 
-### 22. SMS-varsling
-**Beslutning:** Fjern fra UI (Fase 4)
-**Begrunnelse:**
-- Unødvendig kompleksitet på dette stadiet
-- Ingen backend-støtte implementert
-- Forvirrer brukere med innstilling som ikke fungerer
-- Kan gjeninnføres senere om det er behov
+**Beslutning:** shadcn/ui med Tailwind
 
----
+**Rationale:**
+- Copy-paste komponenter (ikke npm dependency)
+- Full kontroll over styling
+- Bygget på Radix UI (tilgjengelighet)
+- Tailwind-native
 
-## NYE BESLUTNINGER (2025-12-13)
+**Konsekvenser:**
+- Komponenter ligger i `src/components/ui/`
+- Må ikke redigere disse direkte (oppdatering)
+- Konsistent design system
 
-### 23. Brukerlokasjoner
-**Beslutning:** Brukere kan registrere "hvor jeg bor" og "hvor jeg kommer fra"
-**Begrunnelse:**
-- Gir sosial kontekst og tilknytning
-- Stedene legges automatisk til i "Mine steder" i sidebar
-- Eksisterende koloner i profiles-tabellen tas i bruk
-- Tilgjengelig i innstillinger for alle brukere
-
-### 24. Onboarding for nye brukere
-**Beslutning:** 3-stegs onboarding-wizard etter registrering
-**Begrunnelse:**
-- Samler inn nyttig informasjon (bosted, hjemsted)
-- Gir brukere en veiledning ved oppstart
-- "Hopp over alt"-knapp i hjørnet for de som vil hoppe over
-- Eksisterende brukere markert som fullført (onboarding_completed=TRUE)
-
-### 25. Dele innlegg
-**Beslutning:** Web Share API med fallback til kopiering
-**Begrunnelse:**
-- Native share-dialog på støttede enheter (mobil)
-- Fallback til "kopier lenke" på desktop
-- Toast-bekreftelse ved kopiering
-- Deleknapp synlig for alle brukere
-
-### 26. Slette egne innlegg
-**Beslutning:** Brukere kan slette egne innlegg med bekreftelse
-**Begrunnelse:**
-- AlertDialog for å forhindre utilsiktet sletting
-- CASCADE-delete fjerner kommentarer og likes automatisk
-- Kun synlig for innleggets eier
-
-### 27. Bokmerke innlegg
-**Beslutning:** Brukere kan lagre innlegg som bokmerker
-**Begrunnelse:**
-- Egen database-tabell med RLS
-- Bokmerke-ikon i PostCard (kun for innloggede)
-- Dedikert /bokmerker side for å se lagrede innlegg
-- Lenke i sidemenyen under "Sosial"
-
-### 28. Rapportere innhold
-**Beslutning:** Brukere kan rapportere upassende innlegg
-**Begrunnelse:**
-- Database-tabell `reports` med RLS policies
-- Dialog med forhåndsdefinerte grunner (spam, trakassering, hat, etc.)
-- Admin kan se og behandle rapporter i admin-panel
-- Statusflyt: venter → under behandling → løst/avvist
+**Status:** ✅ Aktiv
 
 ---
 
 ## Fremtidige beslutninger å ta
 
-- Konkret SMS-tjenesteleverandør hvis det blir aktuelt
-- Utvidet e-postvarsling (digest, varsler til brukere)
-- PWA-konfigurasjon og offline-støtte
-- Gruppechat funksjonalitet
-- Kalenderintegrasjon for arrangementer
+| Tema | Kontekst | Tentativ dato |
+|------|----------|---------------|
+| PWA | Skal vi legge til offline-støtte? | Q1 2026 |
+| i18n | Skal vi støtte samisk/engelsk? | Q2 2026 |
+| Gruppechat | 1-1 vs. mange-til-mange meldinger | Q1 2026 |
+
+---
+
+**Sist oppdatert:** 2025-12-26  
+**Oppdatert av:** Claude (migrering)
