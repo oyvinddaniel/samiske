@@ -10,7 +10,7 @@ interface AllMyPostsProps {
   showOnlyOtherFeeds?: boolean
 }
 
-type FilterType = 'all' | 'geographic' | 'groups' | 'communities'
+type FilterType = 'all' | 'geographic' | 'communities'
 
 interface PostWithRelations {
   id: string
@@ -20,11 +20,9 @@ interface PostWithRelations {
   created_at: string
   municipality_id?: string | null
   place_id?: string | null
-  created_for_group_id?: string | null
   created_for_community_id?: string | null
   municipality?: { id: string; name: string } | null
   place?: { id: string; name: string } | null
-  group?: { id: string; name: string; slug: string } | null
   community?: { id: string; name: string; slug: string } | null
   [key: string]: unknown
 }
@@ -55,8 +53,26 @@ export function AllMyPosts({ userId, showOnlyOtherFeeds = false }: AllMyPostsPro
           category:categories(name, slug, color),
           municipality:municipalities(id, name),
           place:places(id, name),
-          group:groups(id, name, slug),
-          community:communities(id, name, slug)
+          community:communities(id, name, slug),
+          images:post_images (
+            id,
+            url,
+            thumbnail_url,
+            width,
+            height,
+            sort_order
+          ),
+          video:post_videos (
+            id,
+            bunny_video_id,
+            thumbnail_url,
+            playback_url,
+            hls_url,
+            duration,
+            width,
+            height,
+            status
+          )
         `)
         .eq('user_id', userId)
         .order('created_at', { ascending: false })
@@ -73,26 +89,24 @@ export function AllMyPosts({ userId, showOnlyOtherFeeds = false }: AllMyPostsPro
   const filteredPosts = posts.filter(post => {
     // If showOnlyOtherFeeds, exclude personal posts (posts with no associations)
     if (showOnlyOtherFeeds) {
-      const isPersonalPost = !post.municipality_id && !post.place_id && !post.created_for_group_id && !post.created_for_community_id
+      const isPersonalPost = !post.municipality_id && !post.place_id && !post.created_for_community_id
       if (isPersonalPost) return false
     }
 
     if (filter === 'all') return true
     if (filter === 'geographic') return post.municipality_id || post.place_id
-    if (filter === 'groups') return post.created_for_group_id
     if (filter === 'communities') return post.created_for_community_id
     return true
   })
 
   // Calculate counts - exclude personal posts if showOnlyOtherFeeds is true
   const postsForCounting = showOnlyOtherFeeds
-    ? posts.filter(p => p.municipality_id || p.place_id || p.created_for_group_id || p.created_for_community_id)
+    ? posts.filter(p => p.municipality_id || p.place_id || p.created_for_community_id)
     : posts
 
   const counts = {
     all: postsForCounting.length,
     geographic: postsForCounting.filter(p => p.municipality_id || p.place_id).length,
-    groups: postsForCounting.filter(p => p.created_for_group_id).length,
     communities: postsForCounting.filter(p => p.created_for_community_id).length
   }
 
@@ -122,13 +136,6 @@ export function AllMyPosts({ userId, showOnlyOtherFeeds = false }: AllMyPostsPro
           📍 Geografiske ({counts.geographic})
         </Button>
         <Button
-          variant={filter === 'groups' ? 'default' : 'outline'}
-          onClick={() => setFilter('groups')}
-          size="sm"
-        >
-          👥 Grupper ({counts.groups})
-        </Button>
-        <Button
           variant={filter === 'communities' ? 'default' : 'outline'}
           onClick={() => setFilter('communities')}
           size="sm"
@@ -156,17 +163,12 @@ export function AllMyPosts({ userId, showOnlyOtherFeeds = false }: AllMyPostsPro
                     📍 {post.place.name}
                   </span>
                 )}
-                {post.created_for_group_id && post.group && (
-                  <span className="inline-flex items-center gap-1 bg-green-100 text-green-800 px-2 py-1 rounded text-xs font-medium">
-                    👥 {post.group.name}
-                  </span>
-                )}
                 {post.created_for_community_id && post.community && (
                   <span className="inline-flex items-center gap-1 bg-purple-100 text-purple-800 px-2 py-1 rounded text-xs font-medium">
                     🏘️ {post.community.name}
                   </span>
                 )}
-                {!post.municipality_id && !post.place_id && !post.created_for_group_id && !post.created_for_community_id && (
+                {!post.municipality_id && !post.place_id && !post.created_for_community_id && (
                   <span className="inline-flex items-center gap-1 bg-gray-100 text-gray-800 px-2 py-1 rounded text-xs font-medium">
                     Personlig
                   </span>

@@ -9,14 +9,13 @@ import { BottomNav } from '@/components/layout/BottomNav'
 import { FriendsListPanel } from '@/components/social/FriendsListPanel'
 import { MessagesListPanel } from '@/components/social/MessagesListPanel'
 import { ChatPanel } from '@/components/social/ChatPanel'
-import { GroupFeedView } from '@/components/groups/GroupFeedView'
-import { CommunityFeedView, CommunityPageView } from '@/components/communities'
+// Samfunn-funksjonalitet midlertidig skjult før offentlig lansering
+// import { CommunityFeedView, CommunityPageView } from '@/components/communities'
 import { ProfileFeedView } from '@/components/profile/ProfileFeedView'
 import { GeographyExplorerView, GeographyDetailView } from '@/components/geography'
 import { BookmarksPanel } from '@/components/bookmarks/BookmarksPanel'
 import { PostDetailPanel } from '@/components/posts/PostDetailPanel'
 import { CalendarView } from '@/components/calendar/CalendarView'
-import { GroupsContent } from '@/app/grupper/GroupsContent'
 import { FloatingChatBubble } from '@/components/social/FloatingChatBubble'
 import { SwipeHints } from '@/components/ui/swipe-hints'
 import { useLinkInterceptor } from '@/lib/navigation/useLinkInterceptor'
@@ -27,7 +26,8 @@ interface HomeLayoutProps {
   currentCategory?: string
 }
 
-type ActivePanel = 'feed' | 'friends' | 'messages' | 'chat' | 'group' | 'community' | 'community-page' | 'profile' | 'geography' | 'bookmarks' | 'location' | 'post' | 'calendar' | 'groups'
+// Samfunn-funksjonalitet midlertidig skjult før offentlig lansering
+type ActivePanel = 'feed' | 'friends' | 'messages' | 'chat' | /* 'community' | 'community-page' | */ 'profile' | 'geography' | 'bookmarks' | 'location' | 'post' | 'calendar'
 
 interface ChatTarget {
   id: string
@@ -47,11 +47,11 @@ export function HomeLayout({ children, currentCategory = '' }: HomeLayoutProps) 
   const [showMobileSidebar, setShowMobileSidebar] = useState(false)
   const [activePanel, setActivePanel] = useState<ActivePanel>('feed')
   const [chatTarget, setChatTarget] = useState<ChatTarget | null>(null)
-  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null)
   const [selectedLocation, setSelectedLocation] = useState<LocationTarget | null>(null)
   const [selectedProfileUserId, setSelectedProfileUserId] = useState<string | null>(null)
-  const [selectedCommunitySlug, setSelectedCommunitySlug] = useState<string | null>(null)
-  const [selectedCommunityTab, setSelectedCommunityTab] = useState<string | null>(null)
+  // Samfunn-funksjonalitet midlertidig skjult før offentlig lansering
+  // const [selectedCommunitySlug, setSelectedCommunitySlug] = useState<string | null>(null)
+  // const [selectedCommunityTab, setSelectedCommunityTab] = useState<string | null>(null)
   const [selectedPostId, setSelectedPostId] = useState<string | null>(null)
   const [initialConversationUserId, setInitialConversationUserId] = useState<string | null>(null)
   const [floatingChatUserId, setFloatingChatUserId] = useState<string | null>(null)
@@ -99,19 +99,16 @@ export function HomeLayout({ children, currentCategory = '' }: HomeLayoutProps) 
           setSelectedLocation({ type, id, name })
         }
         break
-      case 'group':
-        setSelectedGroupId(searchParams.get('groupId'))
-        break
-      case 'community-page':
-        setSelectedCommunitySlug(searchParams.get('slug'))
-        setSelectedCommunityTab(searchParams.get('tab'))
-        break
+      // Samfunn-funksjonalitet midlertidig skjult før offentlig lansering
+      // case 'community-page':
+      //   setSelectedCommunitySlug(searchParams.get('slug'))
+      //   setSelectedCommunityTab(searchParams.get('tab'))
+      //   break
       case 'post':
         setSelectedPostId(searchParams.get('postId'))
         break
       case 'calendar':
-      case 'groups':
-        // No additional state needed for these panels
+        // No additional state needed for this panel
         break
     }
   }, [searchParams])
@@ -122,22 +119,21 @@ export function HomeLayout({ children, currentCategory = '' }: HomeLayoutProps) 
 
     // Only update if pathname indicates a specific panel (not feed)
     // This allows query param-based navigation to still work for friends/messages/chat
-    if (panelInfo.type !== 'feed') {
+    // Samfunn-funksjonalitet midlertidig skjult - redirect community panels to feed
+    if (panelInfo.type !== 'feed' && panelInfo.type !== 'community' && panelInfo.type !== 'community-page') {
       setActivePanel(panelInfo.type)
 
       // Update panel-specific state based on pathname params
       switch (panelInfo.type) {
-        case 'community-page':
-          setSelectedCommunitySlug(panelInfo.params.slug || null)
-          break
+        // Samfunn-funksjonalitet midlertidig skjult før offentlig lansering
+        // case 'community-page':
+        //   setSelectedCommunitySlug(panelInfo.params.slug || null)
+        //   break
         case 'profile':
           setSelectedProfileUserId(panelInfo.params.username || null)
           break
         case 'post':
           setSelectedPostId(panelInfo.params.postId || null)
-          break
-        case 'group':
-          setSelectedGroupId(panelInfo.params.slug || null)
           break
         case 'location':
           // Reconstruct location object from params
@@ -188,28 +184,23 @@ export function HomeLayout({ children, currentCategory = '' }: HomeLayoutProps) 
       }
     }
 
-    // Listen for group/community panel events
-    const handleOpenGroupPanel = (e: CustomEvent<{ groupId: string }>) => {
-      updateURL('group', { groupId: e.detail.groupId })
-      setSelectedGroupId(e.detail.groupId)
-      setActivePanel('group')
-      window.dispatchEvent(new CustomEvent('close-left-sidebar'))
-    }
-    const handleOpenCommunityPanel = () => {
-      updateURL('community')
-      setActivePanel('community')
-      window.dispatchEvent(new CustomEvent('close-left-sidebar'))
-    }
-    const handleOpenCommunityPage = (e: CustomEvent<{ slug: string; tab?: string }>) => {
-      updateURL('community-page', {
-        slug: e.detail.slug,
-        ...(e.detail.tab && { tab: e.detail.tab })
-      })
-      setSelectedCommunitySlug(e.detail.slug)
-      setSelectedCommunityTab(e.detail.tab || null)
-      setActivePanel('community-page')
-      window.dispatchEvent(new CustomEvent('close-left-sidebar'))
-    }
+    // Samfunn-funksjonalitet midlertidig skjult før offentlig lansering
+    // // Listen for community panel events
+    // const handleOpenCommunityPanel = () => {
+    //   updateURL('community')
+    //   setActivePanel('community')
+    //   window.dispatchEvent(new CustomEvent('close-left-sidebar'))
+    // }
+    // const handleOpenCommunityPage = (e: CustomEvent<{ slug: string; tab?: string }>) => {
+    //   updateURL('community-page', {
+    //     slug: e.detail.slug,
+    //     ...(e.detail.tab && { tab: e.detail.tab })
+    //   })
+    //   setSelectedCommunitySlug(e.detail.slug)
+    //   setSelectedCommunityTab(e.detail.tab || null)
+    //   setActivePanel('community-page')
+    //   window.dispatchEvent(new CustomEvent('close-left-sidebar'))
+    // }
     const handleOpenPostPanel = (e: CustomEvent<{ postId: string }>) => {
       updateURL('post', { postId: e.detail.postId })
       setSelectedPostId(e.detail.postId)
@@ -253,20 +244,15 @@ export function HomeLayout({ children, currentCategory = '' }: HomeLayoutProps) 
       setActivePanel('calendar')
       window.dispatchEvent(new CustomEvent('close-left-sidebar'))
     }
-    const handleOpenGroupsPanel = () => {
-      updateURL('groups')
-      setActivePanel('groups')
-      window.dispatchEvent(new CustomEvent('close-left-sidebar'))
-    }
 
     window.addEventListener('open-left-sidebar', handleOpenLeftSidebar)
     window.addEventListener('close-left-sidebar', handleCloseLeftSidebar)
     window.addEventListener('open-friends-panel', handleOpenFriendsPanel)
     window.addEventListener('open-messages-panel', handleOpenMessagesPanel)
     window.addEventListener('start-conversation-with-user', handleStartConversation as EventListener)
-    window.addEventListener('open-group-panel', handleOpenGroupPanel as EventListener)
-    window.addEventListener('open-community-panel', handleOpenCommunityPanel)
-    window.addEventListener('open-community-page', handleOpenCommunityPage as EventListener)
+    // Samfunn-funksjonalitet midlertidig skjult før offentlig lansering
+    // window.addEventListener('open-community-panel', handleOpenCommunityPanel)
+    // window.addEventListener('open-community-page', handleOpenCommunityPage as EventListener)
     window.addEventListener('open-post-panel', handleOpenPostPanel as EventListener)
     window.addEventListener('open-profile-panel', handleOpenProfilePanel)
     window.addEventListener('open-user-profile-panel', handleOpenUserProfilePanel as EventListener)
@@ -274,7 +260,6 @@ export function HomeLayout({ children, currentCategory = '' }: HomeLayoutProps) 
     window.addEventListener('open-bookmarks-panel', handleOpenBookmarksPanel)
     window.addEventListener('open-location-panel', handleOpenLocationPanel as EventListener)
     window.addEventListener('open-calendar-panel', handleOpenCalendarPanel)
-    window.addEventListener('open-groups-panel', handleOpenGroupsPanel)
 
     return () => {
       window.removeEventListener('open-left-sidebar', handleOpenLeftSidebar)
@@ -282,9 +267,9 @@ export function HomeLayout({ children, currentCategory = '' }: HomeLayoutProps) 
       window.removeEventListener('open-friends-panel', handleOpenFriendsPanel)
       window.removeEventListener('open-messages-panel', handleOpenMessagesPanel)
       window.removeEventListener('start-conversation-with-user', handleStartConversation as EventListener)
-      window.removeEventListener('open-group-panel', handleOpenGroupPanel as EventListener)
-      window.removeEventListener('open-community-panel', handleOpenCommunityPanel)
-      window.removeEventListener('open-community-page', handleOpenCommunityPage as EventListener)
+      // Samfunn-funksjonalitet midlertidig skjult før offentlig lansering
+      // window.removeEventListener('open-community-panel', handleOpenCommunityPanel)
+      // window.removeEventListener('open-community-page', handleOpenCommunityPage as EventListener)
       window.removeEventListener('open-post-panel', handleOpenPostPanel as EventListener)
       window.removeEventListener('open-profile-panel', handleOpenProfilePanel)
       window.removeEventListener('open-user-profile-panel', handleOpenUserProfilePanel as EventListener)
@@ -292,7 +277,6 @@ export function HomeLayout({ children, currentCategory = '' }: HomeLayoutProps) 
       window.removeEventListener('open-bookmarks-panel', handleOpenBookmarksPanel)
       window.removeEventListener('open-location-panel', handleOpenLocationPanel as EventListener)
       window.removeEventListener('open-calendar-panel', handleOpenCalendarPanel)
-      window.removeEventListener('open-groups-panel', handleOpenGroupsPanel)
     }
   }, [])
 
@@ -308,7 +292,7 @@ export function HomeLayout({ children, currentCategory = '' }: HomeLayoutProps) 
         {/* Left Sidebar */}
         <Sidebar
           currentCategory={currentCategory}
-          activePanel={activePanel === 'community-page' ? 'community' : activePanel === 'post' ? 'feed' : activePanel === 'calendar' || activePanel === 'groups' ? 'feed' : activePanel}
+          activePanel={activePanel === 'post' ? 'feed' : activePanel}
           selectedLocationId={selectedLocation?.id}
         />
 
@@ -342,15 +326,7 @@ export function HomeLayout({ children, currentCategory = '' }: HomeLayoutProps) 
                     setChatTarget(null)
                   }}
                 />
-              ) : activePanel === 'group' && selectedGroupId ? (
-                <GroupFeedView
-                  groupId={selectedGroupId}
-                  onClose={() => {
-                    setActivePanel('feed')
-                    setSelectedGroupId(null)
-                  }}
-                />
-              ) : activePanel === 'community' ? (
+              ) : /* Samfunn-funksjonalitet midlertidig skjult før offentlig lansering */ /* activePanel === 'community' ? (
                 <CommunityFeedView
                   onClose={() => setActivePanel('feed')}
                 />
@@ -364,7 +340,7 @@ export function HomeLayout({ children, currentCategory = '' }: HomeLayoutProps) 
                     setSelectedCommunityTab(null)
                   }}
                 />
-              ) : activePanel === 'post' && selectedPostId ? (
+              ) : */ activePanel === 'post' && selectedPostId ? (
                 <PostDetailPanel
                   postId={selectedPostId}
                   onClose={() => {
@@ -402,8 +378,6 @@ export function HomeLayout({ children, currentCategory = '' }: HomeLayoutProps) 
                 />
               ) : activePanel === 'calendar' ? (
                 <CalendarView hideBackButton={true} />
-              ) : activePanel === 'groups' ? (
-                <GroupsContent />
               ) : (
                 children
               )}

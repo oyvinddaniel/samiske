@@ -574,3 +574,177 @@ export async function completeOnboarding(userId: string): Promise<boolean> {
   }
   return true
 }
+
+// =====================================================
+// GEOCODING (Nominatim / OpenStreetMap)
+// =====================================================
+
+export interface GeocodingResult {
+  latitude: number
+  longitude: number
+  displayName: string
+  type: string
+}
+
+/**
+ * Search for coordinates using Nominatim (OpenStreetMap geocoding API)
+ * Free to use, but has usage limits (1 request/second, no heavy usage)
+ *
+ * @param placeName - Name of the place (e.g., "Kautokeino")
+ * @param municipalityName - Optional municipality name for better accuracy
+ * @param countryCode - ISO country code (e.g., "no", "se", "fi")
+ */
+export async function geocodePlace(
+  placeName: string,
+  municipalityName?: string,
+  countryCode: string = 'no'
+): Promise<GeocodingResult | null> {
+  try {
+    // Build search query
+    const searchParts = [placeName]
+    if (municipalityName && municipalityName !== placeName) {
+      searchParts.push(municipalityName)
+    }
+
+    // Add country name for better results
+    const countryNames: Record<string, string> = {
+      no: 'Norway',
+      se: 'Sweden',
+      fi: 'Finland',
+      ru: 'Russia'
+    }
+    const country = countryNames[countryCode.toLowerCase()] || 'Norway'
+    searchParts.push(country)
+
+    const query = encodeURIComponent(searchParts.join(', '))
+
+    // Nominatim API (free, no API key required)
+    // Important: Must include a valid User-Agent header
+    const response = await fetch(
+      `https://nominatim.openstreetmap.org/search?q=${query}&format=json&limit=1&countrycodes=${countryCode}`,
+      {
+        headers: {
+          'User-Agent': 'samiske.no/1.0 (https://samiske.no)',
+          'Accept-Language': 'no,en'
+        }
+      }
+    )
+
+    if (!response.ok) {
+      console.error('Geocoding request failed:', response.status)
+      return null
+    }
+
+    const results = await response.json()
+
+    if (results.length === 0) {
+      console.log(`No geocoding results for: ${searchParts.join(', ')}`)
+      return null
+    }
+
+    const result = results[0]
+    return {
+      latitude: parseFloat(result.lat),
+      longitude: parseFloat(result.lon),
+      displayName: result.display_name,
+      type: result.type
+    }
+  } catch (error) {
+    console.error('Geocoding error:', error)
+    return null
+  }
+}
+
+/**
+ * Geocode a municipality by name
+ */
+export async function geocodeMunicipality(
+  municipalityName: string,
+  countryCode: string = 'no'
+): Promise<GeocodingResult | null> {
+  return geocodePlace(municipalityName, undefined, countryCode)
+}
+
+/**
+ * Update coordinates for an existing place in the database
+ */
+export async function updatePlaceCoordinates(
+  placeId: string,
+  latitude: number,
+  longitude: number
+): Promise<boolean> {
+  const supabase = getSupabase()
+  const { error } = await supabase
+    .from('places')
+    .update({ latitude, longitude })
+    .eq('id', placeId)
+
+  if (error) {
+    console.error('Error updating place coordinates:', error)
+    return false
+  }
+  return true
+}
+
+/**
+ * Update coordinates for an existing municipality in the database
+ */
+export async function updateMunicipalityCoordinates(
+  municipalityId: string,
+  latitude: number,
+  longitude: number
+): Promise<boolean> {
+  const supabase = getSupabase()
+  const { error } = await supabase
+    .from('municipalities')
+    .update({ latitude, longitude })
+    .eq('id', municipalityId)
+
+  if (error) {
+    console.error('Error updating municipality coordinates:', error)
+    return false
+  }
+  return true
+}
+
+/**
+ * Auto-geocode a place and update the database
+ * Returns the coordinates if successful
+ */
+export async function autoGeocodePlace(
+  placeId: string,
+  placeName: string,
+  municipalityName?: string,
+  countryCode: string = 'no'
+): Promise<{ latitude: number; longitude: number } | null> {
+  const result = await geocodePlace(placeName, municipalityName, countryCode)
+
+  if (!result) return null
+
+  const success = await updatePlaceCoordinates(placeId, result.latitude, result.longitude)
+
+  if (success) {
+    return { latitude: result.latitude, longitude: result.longitude }
+  }
+  return null
+}
+
+/**
+ * Auto-geocode a municipality and update the database
+ */
+export async function autoGeocodeMunicipality(
+  municipalityId: string,
+  municipalityName: string,
+  countryCode: string = 'no'
+): Promise<{ latitude: number; longitude: number } | null> {
+  const result = await geocodeMunicipality(municipalityName, countryCode)
+
+  if (!result) return null
+
+  const success = await updateMunicipalityCoordinates(municipalityId, result.latitude, result.longitude)
+
+  if (success) {
+    return { latitude: result.latitude, longitude: result.longitude }
+  }
+  return null
+}

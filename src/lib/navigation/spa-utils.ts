@@ -1,4 +1,4 @@
-type ActivePanel = 'feed' | 'friends' | 'messages' | 'chat' | 'group' | 'community' | 'community-page' | 'profile' | 'geography' | 'bookmarks' | 'location' | 'post' | 'calendar' | 'groups'
+type ActivePanel = 'feed' | 'friends' | 'messages' | 'chat' | 'community' | 'community-page' | 'profile' | 'geography' | 'bookmarks' | 'location' | 'post' | 'calendar'
 
 export interface PanelInfo {
   type: ActivePanel
@@ -73,20 +73,6 @@ export function getPanelFromPathname(pathname: string): PanelInfo {
   // Bookmarks
   if (cleanPath === '/bokmerker') {
     return { type: 'bookmarks', params: {} }
-  }
-
-  // Groups
-  if (cleanPath.startsWith('/grupper')) {
-    const parts = cleanPath.split('/').filter(Boolean)
-    if (parts.length === 1) {
-      // /grupper (list view)
-      return { type: 'groups', params: {} }
-    }
-    // /grupper/[slug]
-    return {
-      type: 'group',
-      params: { slug: parts[1] }
-    }
   }
 
   // Geography (Sapmi) - complex hierarchical structure

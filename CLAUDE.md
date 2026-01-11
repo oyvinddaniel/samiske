@@ -1,7 +1,7 @@
 # CLAUDE.md - samiske.no
 
 > Sosialt nettverk for samer | LIVE i produksjon | Ekte brukere
-> Sist oppdatert: 2026-01-06
+> Sist oppdatert: 2026-01-08
 
 ---
 
@@ -10,8 +10,9 @@
 **Ved ny chat-sesjon, les i denne rekkefølgen:**
 1. `docs/PROJECT.md` - Full prosjektoversikt
 2. `docs/STATUS.md` - Nåværende tilstand og pågående arbeid
-3. Relevant PRD i `docs/prd/` for spesifikke features
-4. `docs/process/START-HER.md` - Prosess A-Å for nye features (anbefalt)
+3. **🌟 `docs/prosjektleder/BRUKER-GUIDE.md`** - Slik bruker du AI-agentene (enkelt forklart)
+4. Relevant PRD i `docs/prd/` for spesifikke features
+5. `docs/process/START-HER.md` - Prosess A-Å for nye features (anbefalt)
 
 ---
 
@@ -145,6 +146,11 @@ docs/
 ├── SECURITY.md             ← Sikkerhetsregler
 ├── SETUP.md                ← Oppsett og deployment
 │
+├── prosjektleder/          ← Multi-agent orchestration
+│   ├── Projektleder.md     ← Teknisk dokumentasjon (fullstendig)
+│   ├── AGENTER-KATALOG.md  ← Alle 21 agenter beskrevet
+│   └── BRUKER-GUIDE.md     ← Enkel guide for ikke-kodere ⭐
+│
 ├── prd/                    ← Feature-spesifikasjoner (PRDs)
 │   ├── _TEMPLATE.md
 │   ├── media-service.md
@@ -232,15 +238,24 @@ Spør brukeren. Prosjekteier er ikke-koder - forklar enkelt.
 
 ## Nyttige lenker
 
+### Multi-Agent System
+- **🌟 Enkel guide (ikke-kodere):** `docs/prosjektleder/BRUKER-GUIDE.md` ← START HER!
+- **Agent-katalog (alle 21 agenter):** `docs/prosjektleder/AGENTER-KATALOG.md`
+- **Teknisk dokumentasjon:** `docs/prosjektleder/Projektleder.md`
+
+### Prosess A-Å
 - **Full prosess-guide:** `docs/process/START-HER.md`
 - **Agent-oversikt:** `docs/process/agenter/AGENTS-OVERSIKT.md`
 - **Quick prompts:** `docs/process/agenter/QUICK-START-PROMPTS.md`
 - **PRD-templates:** `docs/process/templates/`
+
+### Prosjekt
 - **Conventions:** `docs/CONVENTIONS.md`
 - **Sikkerhet:** `docs/SECURITY.md`
 
 ---
 
-**Sist oppdatert:** 2026-01-06
+**Sist oppdatert:** 2026-01-08
 **Prosess A-Å integrert:** 2026-01-06
+**Multi-agent system:** 2026-01-08 (21 subagents implementert)
 **Prosjektstatus:** Live i produksjon, aktiv videreutvikling

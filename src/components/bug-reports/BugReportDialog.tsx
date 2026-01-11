@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
+import * as React from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -21,6 +22,8 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { toast } from 'sonner'
 import { Bug, Lightbulb, HelpCircle, MoreHorizontal, Loader2, Upload, X } from 'lucide-react'
 import type { BugReportCategory, BugReportContextData } from '@/lib/types/bug-reports'
+import { MediaService } from '@/lib/media/mediaService'
+import { validateFile } from '@/lib/media/mediaValidation'
 
 const CATEGORIES = [
   { value: 'bug' as BugReportCategory, label: 'Bug / Feil', icon: Bug, description: 'Noe fungerer ikke som det skal' },
@@ -29,7 +32,6 @@ const CATEGORIES = [
   { value: 'other' as BugReportCategory, label: 'Annet', icon: MoreHorizontal, description: 'Noe annet' },
 ]
 
-const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
 const ACCEPTED_IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp']
 
 const bugReportSchema = z.object({
@@ -57,6 +59,7 @@ export function BugReportDialog({
   const [screenshotPreview, setScreenshotPreview] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [sendAnonymously, setSendAnonymously] = useState(false)
+  const [maxFileSizeMb, setMaxFileSizeMb] = useState(20) // Default 20MB
   const supabase = useMemo(() => createClient(), [])
 
   const {
@@ -76,6 +79,21 @@ export function BugReportDialog({
   const category = watch('category')
   const description = watch('description') || ''
 
+  // Load media settings
+  React.useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        const settings = await MediaService.getSettings()
+        if (settings) {
+          setMaxFileSizeMb(settings.maxFileSizeMb)
+        }
+      } catch (error) {
+        console.error('Failed to load media settings:', error)
+      }
+    }
+    loadSettings()
+  }, [])
+
   // Auto-capture context data
   const captureContext = (): BugReportContextData => {
     return {
@@ -86,30 +104,31 @@ export function BugReportDialog({
   }
 
   // Handle screenshot upload
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
 
-    // Validate file type
-    if (!ACCEPTED_IMAGE_TYPES.includes(file.type)) {
-      toast.error('Kun bilder (JPG, PNG, WebP) er tillatt')
-      return
-    }
+    // Validate file using MediaService
+    try {
+      const errors = await validateFile(file)
 
-    // Validate file size
-    if (file.size > MAX_FILE_SIZE) {
-      toast.error('Bildet kan maks være 5MB')
-      return
-    }
+      if (errors.length > 0) {
+        toast.error(errors[0].message)
+        return
+      }
 
-    setScreenshot(file)
+      setScreenshot(file)
 
-    // Create preview
-    const reader = new FileReader()
-    reader.onloadend = () => {
-      setScreenshotPreview(reader.result as string)
+      // Create preview
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        setScreenshotPreview(reader.result as string)
+      }
+      reader.readAsDataURL(file)
+    } catch (error) {
+      console.error('File validation error:', error)
+      toast.error('Kunne ikke validere fil')
     }
-    reader.readAsDataURL(file)
   }
 
   const removeScreenshot = () => {
@@ -117,31 +136,28 @@ export function BugReportDialog({
     setScreenshotPreview(null)
   }
 
-  // Upload screenshot to Supabase Storage
-  const uploadScreenshot = async (userId: string): Promise<string | null> => {
+  // Upload screenshot using MediaService
+  const uploadScreenshot = async (bugReportId: string): Promise<string | null> => {
     if (!screenshot) return null
 
-    const fileExt = screenshot.name.split('.').pop()
-    const fileName = `${userId}/${Date.now()}.${fileExt}`
-
-    const { error: uploadError } = await supabase.storage
-      .from('bug-screenshots')
-      .upload(fileName, screenshot, {
-        cacheControl: '3600',
-        upsert: false,
+    try {
+      const result = await MediaService.upload(screenshot, {
+        entityType: 'bug_report',
+        entityId: bugReportId,
       })
 
-    if (uploadError) {
-      console.error('Screenshot upload error:', uploadError)
+      if (!result.success || !result.media) {
+        toast.error(result.error || 'Kunne ikke laste opp skjermbilde')
+        return null
+      }
+
+      // Generate URL for the uploaded image
+      return MediaService.getUrl(result.media.storage_path)
+    } catch (error) {
+      console.error('Screenshot upload error:', error)
       toast.error('Kunne ikke laste opp skjermbilde')
       return null
     }
-
-    const { data: { publicUrl } } = supabase.storage
-      .from('bug-screenshots')
-      .getPublicUrl(fileName)
-
-    return publicUrl
   }
 
   const onSubmit = async (data: BugReportFormValues) => {
@@ -155,28 +171,39 @@ export function BugReportDialog({
       // Capture context
       const context = captureContext()
 
-      // Upload screenshot if present
-      let screenshotUrl: string | null = null
-      if (screenshot && userId) {
-        screenshotUrl = await uploadScreenshot(userId)
-      }
+      // Insert bug report first (without screenshot)
+      const { data: bugReport, error: insertError } = await supabase
+        .from('bug_reports')
+        .insert({
+          user_id: userId,
+          category: data.category,
+          title: data.title,
+          description: data.description,
+          url: context.url,
+          user_agent: context.userAgent,
+          screen_size: context.screenSize,
+        })
+        .select('id')
+        .single()
 
-      // Insert bug report
-      const { error: insertError } = await supabase.from('bug_reports').insert({
-        user_id: userId,
-        category: data.category,
-        title: data.title,
-        description: data.description,
-        url: context.url,
-        user_agent: context.userAgent,
-        screen_size: context.screenSize,
-        screenshot_url: screenshotUrl,
-      })
-
-      if (insertError) {
+      if (insertError || !bugReport) {
         console.error('Bug report insert error:', insertError)
         toast.error('Kunne ikke sende rapport. Prøv igjen.')
         return
+      }
+
+      // Upload screenshot if present (now we have bug report ID)
+      let screenshotUrl: string | null = null
+      if (screenshot) {
+        screenshotUrl = await uploadScreenshot(bugReport.id)
+
+        // Update bug report with screenshot URL
+        if (screenshotUrl) {
+          await supabase
+            .from('bug_reports')
+            .update({ screenshot_url: screenshotUrl })
+            .eq('id', bugReport.id)
+        }
       }
 
       toast.success('Takk for rapporten! Vi vil se på den.')
@@ -297,7 +324,7 @@ export function BugReportDialog({
                     Klikk for å laste opp et skjermbilde
                   </p>
                   <p className="text-xs text-gray-400 mt-1">
-                    JPG, PNG eller WebP (maks 5MB)
+                    JPG, PNG eller WebP (maks {maxFileSizeMb}MB)
                   </p>
                 </label>
               </div>

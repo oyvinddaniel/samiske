@@ -26,12 +26,14 @@ export const SEARCH_LIMITS = {
   arrangementer: 10,
   kommentarer: 10,
   geografi: 10,
-  samfunn: 10,
-  tjenester: 10,
-  produkter: 10,
+  // Samfunn-funksjonalitet midlertidig skjult før offentlig lansering
+  // samfunn: 10,
+  // tjenester: 10,
+  // produkter: 10,
 } as const
 
 // Search category type
+// Samfunn-funksjonalitet midlertidig skjult før offentlig lansering
 export type SearchCategory =
   | 'alle'
   | 'brukere'
@@ -39,11 +41,12 @@ export type SearchCategory =
   | 'arrangementer'
   | 'kommentarer'
   | 'geografi'
-  | 'samfunn'
-  | 'tjenester'
-  | 'produkter'
+  // | 'samfunn'
+  // | 'tjenester'
+  // | 'produkter'
 
 // Category names in Norwegian
+// Samfunn-funksjonalitet midlertidig skjult før offentlig lansering
 export const CATEGORY_NAMES: Record<SearchCategory, string> = {
   alle: 'Alle',
   brukere: 'Brukere',
@@ -51,19 +54,20 @@ export const CATEGORY_NAMES: Record<SearchCategory, string> = {
   arrangementer: 'Arrangementer',
   kommentarer: 'Kommentarer',
   geografi: 'Hvor?',
-  samfunn: 'Samfunn',
-  tjenester: 'Tjenester',
-  produkter: 'Produkter',
+  // samfunn: 'Samfunn',
+  // tjenester: 'Tjenester',
+  // produkter: 'Produkter',
 }
 
 // All categories except 'alle'
+// Samfunn-funksjonalitet midlertidig skjult før offentlig lansering
 export const SEARCHABLE_CATEGORIES: Exclude<SearchCategory, 'alle'>[] = [
   'brukere',
   'innlegg',
   'arrangementer',
   'kommentarer',
   'geografi',
-  'samfunn',
-  'tjenester',
-  'produkter',
+  // 'samfunn',
+  // 'tjenester',
+  // 'produkter',
 ]

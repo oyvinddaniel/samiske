@@ -166,7 +166,6 @@ export function MessagesListPanel({ onClose, initialConversationUserId }: Messag
     if (!currentUserId) return
 
     const handleMessagesRead = () => {
-      console.log('📭 Messages marked as read, refreshing MessagesListPanel')
       fetchData()
     }
 
@@ -192,7 +191,6 @@ export function MessagesListPanel({ onClose, initialConversationUserId }: Messag
           table: 'messages'
         },
         () => {
-          console.log('💬 New message detected in MessagesListPanel')
           fetchData()
         }
       )

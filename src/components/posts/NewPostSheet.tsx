@@ -111,16 +111,31 @@ export function NewPostSheet({ open, onClose }: NewPostSheetProps) {
     onClose()
   }
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
       if (!file.type.startsWith('image/')) {
         setError('Vennligst velg en bildefil')
         return
       }
-      if (file.size > 5 * 1024 * 1024) {
-        setError('Bildet kan ikke være større enn 5MB')
-        return
+
+      // Check file size against MediaService settings
+      try {
+        const { MediaService } = await import('@/lib/media')
+        const settings = await MediaService.getSettings()
+        const maxSizeBytes = settings.maxFileSizeMb * 1024 * 1024
+
+        if (file.size > maxSizeBytes) {
+          setError(`Bildet kan ikke være større enn ${settings.maxFileSizeMb}MB`)
+          return
+        }
+      } catch (error) {
+        console.error('Failed to get media settings:', error)
+        // Fallback to 20MB
+        if (file.size > 20 * 1024 * 1024) {
+          setError('Bildet kan ikke være større enn 20MB')
+          return
+        }
       }
 
       setImageFile(file)

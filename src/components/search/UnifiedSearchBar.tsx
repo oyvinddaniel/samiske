@@ -69,31 +69,32 @@ export function UnifiedSearchBar() {
           })
         )
         break
-      case 'samfunn':
-        window.dispatchEvent(
-          new CustomEvent('open-community-page', { detail: { slug: result.slug } })
-        )
-        break
-      case 'tjenester':
-        // Open community page with services tab
-        if (result.community?.slug) {
-          window.dispatchEvent(
-            new CustomEvent('open-community-page', {
-              detail: { slug: result.community.slug, tab: 'tjenester' }
-            })
-          )
-        }
-        break
-      case 'produkter':
-        // Open community page with products tab
-        if (result.community?.slug) {
-          window.dispatchEvent(
-            new CustomEvent('open-community-page', {
-              detail: { slug: result.community.slug, tab: 'produkter' }
-            })
-          )
-        }
-        break
+      // Samfunn-funksjonalitet midlertidig skjult før offentlig lansering
+      // case 'samfunn':
+      //   window.dispatchEvent(
+      //     new CustomEvent('open-community-page', { detail: { slug: result.slug } })
+      //   )
+      //   break
+      // case 'tjenester':
+      //   // Open community page with services tab
+      //   if (result.community?.slug) {
+      //     window.dispatchEvent(
+      //       new CustomEvent('open-community-page', {
+      //         detail: { slug: result.community.slug, tab: 'tjenester' }
+      //       })
+      //     )
+      //   }
+      //   break
+      // case 'produkter':
+      //   // Open community page with products tab
+      //   if (result.community?.slug) {
+      //     window.dispatchEvent(
+      //       new CustomEvent('open-community-page', {
+      //         detail: { slug: result.community.slug, tab: 'produkter' }
+      //       })
+      //     )
+      //   }
+      //   break
     }
 
     // Close search but keep query and results

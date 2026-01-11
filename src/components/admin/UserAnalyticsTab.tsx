@@ -76,10 +76,6 @@ export function UserAnalyticsTab() {
         supabase.rpc('get_user_registration_trend'),
       ])
 
-      console.log('👥 Admin - Users result:', usersResult)
-      console.log('👥 Admin - Users data:', usersResult.data)
-      console.log('👥 Admin - Users error:', usersResult.error)
-
       if (usersResult.error) {
         setError(`Feil ved henting av brukere: ${usersResult.error.message}`)
         console.error('Error fetching users:', usersResult.error)

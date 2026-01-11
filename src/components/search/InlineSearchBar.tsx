@@ -348,7 +348,7 @@ export function InlineSearchBar({ placeholder = "Søk etter innlegg, brukere..."
                             }
                             if (status === 'pending_sent') {
                               return (
-                                <button onClick={(e) => cancelFriendRequest(result.id, e)} className="p-1.5 text-orange-500 hover:text-orange-600 hover:bg-orange-50 rounded" title="Angre">
+                                <button onClick={(e) => cancelFriendRequest(result.id, e)} className="p-1.5 text-orange-500 hover:text-orange-600 hover:bg-orange-50 rounded" title="Angre" aria-label="Angre venneforespørsel">
                                   <Undo2 className="w-4 h-4" />
                                 </button>
                               )
@@ -357,7 +357,7 @@ export function InlineSearchBar({ placeholder = "Søk etter innlegg, brukere..."
                               return <div className="p-1.5 text-blue-500" title="Venter på deg"><Clock className="w-4 h-4" /></div>
                             }
                             return (
-                              <button onClick={(e) => sendFriendRequest(result.id, e)} className="p-1.5 text-gray-400 hover:text-blue-500 hover:bg-blue-50 rounded" title="Legg til som venn">
+                              <button onClick={(e) => sendFriendRequest(result.id, e)} className="p-1.5 text-gray-400 hover:text-blue-500 hover:bg-blue-50 rounded" title="Legg til som venn" aria-label="Legg til som venn">
                                 <UserPlus className="w-4 h-4" />
                               </button>
                             )

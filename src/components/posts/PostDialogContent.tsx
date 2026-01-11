@@ -4,7 +4,6 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
-import { Textarea } from '@/components/ui/textarea'
 import {
   Tooltip,
   TooltipContent,
@@ -23,7 +22,9 @@ import { PostData, Comment, CommentLikeUser, categoryColors } from './types'
 import { getInitials, formatDate, formatEventDate } from './utils'
 import { RSVPButton } from '@/components/events/RSVPButton'
 import { ShareEventDialog } from '@/components/events/ShareEventDialog'
-import { MentionText } from '@/components/mentions'
+import { MentionText, MentionTextarea } from '@/components/mentions'
+import { ReactionPicker } from './ReactionPicker'
+import type { ReactionType } from './composer/constants'
 
 interface CommentLikeData {
   count: number
@@ -31,10 +32,23 @@ interface CommentLikeData {
   users: CommentLikeUser[]
 }
 
+interface ReactionUser {
+  id: string
+  full_name: string | null
+  avatar_url: string | null
+  reaction_type: ReactionType
+}
+
+interface ReactionData {
+  total_count: number
+  user_reaction: ReactionType | null
+  reactions: Partial<Record<ReactionType, number>> | null
+  recent_users: ReactionUser[] | null
+}
+
 interface PostDialogContentProps {
   postData: PostData
-  liked: boolean
-  likeCount: number
+  reactionData: ReactionData
   commentCount: number
   comments: Comment[]
   loadingComments: boolean
@@ -47,7 +61,7 @@ interface PostDialogContentProps {
   commentLikes: Record<string, CommentLikeData>
   editingCommentId: string | null
   editCommentContent: string
-  onLike: () => void
+  onReactionChange: (data: ReactionData) => void
   onNewCommentChange: (value: string) => void
   onReplyContentChange: (value: string) => void
   onReplyingToChange: (commentId: string | null) => void
@@ -63,8 +77,7 @@ interface PostDialogContentProps {
 
 export function PostDialogContent({
   postData,
-  liked,
-  likeCount,
+  reactionData,
   commentCount,
   comments,
   loadingComments,
@@ -77,7 +90,7 @@ export function PostDialogContent({
   commentLikes,
   editingCommentId,
   editCommentContent,
-  onLike,
+  onReactionChange,
   onNewCommentChange,
   onReplyContentChange,
   onReplyingToChange,
@@ -110,11 +123,10 @@ export function PostDialogContent({
             {editingCommentId === comment.id ? (
               // Edit mode
               <div className="space-y-1.5">
-                <Textarea
+                <MentionTextarea
                   value={editCommentContent}
-                  onChange={(e) => onEditCommentContentChange(e.target.value)}
+                  onChange={(value) => onEditCommentContentChange(value)}
                   className="resize-none text-sm min-h-[60px] py-2"
-                  autoFocus
                 />
                 <div className="flex gap-1.5 justify-end">
                   <Button
@@ -137,16 +149,17 @@ export function PostDialogContent({
                 </div>
               </div>
             ) : (
-              // View mode
+              // View mode - Complete Feed Card Design
               <>
-                <div className="bg-gray-50 rounded-md px-2 py-1 relative">
+                {/* Comment Bubble */}
+                <div className="bg-gray-50 rounded-2xl px-3 py-2 relative">
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 min-w-0">
-                      <span className="text-xs font-medium text-gray-900">
+                      <span className="text-sm font-semibold text-gray-900">
                         {comment.user.full_name || 'Ukjent'}
                       </span>
-                      <p className="text-sm text-gray-700 whitespace-pre-wrap break-words">
-                        {comment.content}
+                      <p className="text-sm text-gray-700 whitespace-pre-wrap break-words mt-0.5">
+                        <MentionText content={comment.content} />
                       </p>
                     </div>
 
@@ -182,24 +195,18 @@ export function PostDialogContent({
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 mt-0.5 px-0.5">
-                  <span className="text-[9px] text-gray-400">
-                    {formatDate(comment.created_at)}
-                  </span>
-
-                  {/* Comment like button */}
+                {/* Action buttons below bubble - Complete Feed Card Design */}
+                <div className="flex items-center gap-4 mt-1 px-3">
+                  {/* Comment like button with emoji */}
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <button
                           onClick={() => onCommentLike(comment.id)}
                           disabled={!currentUserId}
-                          className={`text-[9px] hover:underline flex items-center gap-0.5 ${
-                            likeData.liked ? 'text-red-500' : 'text-gray-400'
-                          }`}
+                          className="text-xs font-medium flex items-center gap-1 text-gray-600 hover:text-gray-900"
                         >
-                          {likeData.liked ? '❤️' : '🤍'}
-                          {likeData.count > 0 && <span>{likeData.count}</span>}
+                          {likeData.liked ? '❤️' : '🤍'} {likeData.count > 0 && likeData.count}
                         </button>
                       </TooltipTrigger>
                       {likeData.count > 0 && (
@@ -222,11 +229,16 @@ export function PostDialogContent({
                   {currentUserId && (
                     <button
                       onClick={() => onReplyingToChange(replyingTo === comment.id ? null : comment.id)}
-                      className="text-[9px] text-gray-400 hover:underline"
+                      className="text-xs font-medium text-gray-600 hover:text-gray-900"
                     >
                       Svar
                     </button>
                   )}
+
+                  {/* Timestamp */}
+                  <span className="text-xs text-gray-500">
+                    {formatDate(comment.created_at)}
+                  </span>
                 </div>
               </>
             )}
@@ -234,10 +246,10 @@ export function PostDialogContent({
             {/* Reply form */}
             {replyingTo === comment.id && (
               <form onSubmit={(e) => onSubmitComment(e, comment.id)} className="mt-1.5 flex gap-1.5">
-                <Textarea
+                <MentionTextarea
                   value={replyContent}
-                  onChange={(e) => onReplyContentChange(e.target.value)}
-                  placeholder={`Svar til ${comment.user.full_name || 'Ukjent'}...`}
+                  onChange={(value) => onReplyContentChange(value)}
+                  placeholder={`Svar til ${comment.user.full_name || 'Ukjent'}... Bruk @ for å nevne`}
                   rows={1}
                   className="resize-none text-sm min-h-[28px] py-1 text-xs"
                 />
@@ -345,15 +357,12 @@ export function PostDialogContent({
 
       {/* Actions */}
       <div className="flex items-center gap-2 pt-2 border-t">
-        <Button
-          variant="ghost"
-          size="sm"
-          className={`${liked ? 'text-red-500' : 'text-gray-500'}`}
-          onClick={onLike}
-          disabled={!currentUserId}
-        >
-          {liked ? '❤️' : '🤍'} {likeCount}
-        </Button>
+        <ReactionPicker
+          postId={postData.id}
+          initialData={reactionData}
+          currentUserId={currentUserId}
+          onReactionChange={onReactionChange}
+        />
         <span className="text-sm text-gray-500">
           <MessageCircle className="w-4 h-4 inline mr-1" /> {commentCount}
         </span>
@@ -374,10 +383,10 @@ export function PostDialogContent({
 
         {currentUserId ? (
           <form onSubmit={(e) => onSubmitComment(e, null)} className="flex gap-2">
-            <Textarea
+            <MentionTextarea
               value={newComment}
-              onChange={(e) => onNewCommentChange(e.target.value)}
-              placeholder="Skriv en kommentar..."
+              onChange={(value) => onNewCommentChange(value)}
+              placeholder="Skriv en kommentar... Bruk @ for å nevne"
               rows={1}
               className="resize-none text-sm"
             />

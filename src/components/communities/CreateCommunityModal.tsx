@@ -13,7 +13,11 @@ import {
   Building,
   CircleDot,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Brush,
+  Hammer,
+  UtensilsCrossed,
+  Wrench
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -30,7 +34,6 @@ import {
 } from '@/components/ui/dialog'
 import { createCommunity, generateSlug } from '@/lib/communities'
 import { getIndustries } from '@/lib/industries'
-import type { CommunityCategory } from '@/lib/types/communities'
 import type { Industry } from '@/lib/types/industries'
 import { categoryLabels } from '@/lib/types/communities'
 import { toast } from 'sonner'
@@ -43,7 +46,7 @@ interface CreateCommunityModalProps {
   onCreated?: (slug: string) => void
 }
 
-const categoryOptions: { value: CommunityCategory; icon: React.ReactNode }[] = [
+const categoryOptions: { value: string; icon: React.ReactNode }[] = [
   { value: 'organization', icon: <Building2 className="w-4 h-4" /> },
   { value: 'business', icon: <Briefcase className="w-4 h-4" /> },
   { value: 'association', icon: <Users className="w-4 h-4" /> },
@@ -51,6 +54,10 @@ const categoryOptions: { value: CommunityCategory; icon: React.ReactNode }[] = [
   { value: 'educational', icon: <GraduationCap className="w-4 h-4" /> },
   { value: 'institution', icon: <Landmark className="w-4 h-4" /> },
   { value: 'government', icon: <Building className="w-4 h-4" /> },
+  { value: 'artist', icon: <Brush className="w-4 h-4" /> },
+  { value: 'craftsperson', icon: <Hammer className="w-4 h-4" /> },
+  { value: 'restaurant', icon: <UtensilsCrossed className="w-4 h-4" /> },
+  { value: 'service_provider', icon: <Wrench className="w-4 h-4" /> },
   { value: 'other', icon: <CircleDot className="w-4 h-4" /> },
 ]
 
@@ -66,7 +73,7 @@ export function CreateCommunityModal({ open, onOpenChange, onCreated }: CreateCo
   // Step 1: Grunnleggende
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
-  const [category, setCategory] = useState<CommunityCategory>('organization')
+  const [category, setCategory] = useState('organization')
   const [selectedIndustries, setSelectedIndustries] = useState<string[]>([])
 
   // Step 2: Kontaktinfo
@@ -198,7 +205,7 @@ export function CreateCommunityModal({ open, onOpenChange, onCreated }: CreateCo
               <Label>Kategori</Label>
               <RadioGroup
                 value={category}
-                onValueChange={(value) => setCategory(value as CommunityCategory)}
+                onValueChange={setCategory}
                 className="grid grid-cols-2 gap-2"
               >
                 {categoryOptions.map((option) => (

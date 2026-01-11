@@ -1,7 +1,6 @@
 // Central type exports for Sapmi platform
 
 export * from './geography'
-export * from './groups'
 export * from './communities'
 export * from './circles'
 export * from './events'

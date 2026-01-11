@@ -41,14 +41,29 @@ export function UserProfileTabs({ userId }: UserProfileTabsProps) {
         .select(`
           *,
           user:profiles!inner(id, full_name, avatar_url),
-          category:categories(name, slug, color)
+          category:categories(name, slug, color),
+          images:post_images (
+            id,
+            url,
+            thumbnail_url,
+            width,
+            height,
+            sort_order
+          ),
+          video:post_videos (
+            id,
+            bunny_video_id,
+            thumbnail_url,
+            playback_url,
+            hls_url,
+            duration,
+            width,
+            height,
+            status
+          )
         `)
         .eq('user_id', userId)
         .order('created_at', { ascending: false })
-
-      // 🔒 KRITISK SIKKERHET: ALLTID ekskluder gruppeinnlegg fra profiler
-      // Gruppeinnlegg skal ALDRI vises på brukerprofiler, bare i gruppen selv
-      query = query.is('created_for_group_id', null)
 
       // 🔒 SIKKERHET: Filtrer basert på visibility og hvem som ser
       if (!isOwnProfile) {

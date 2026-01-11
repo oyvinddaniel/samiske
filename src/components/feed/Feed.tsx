@@ -4,7 +4,8 @@ import { useEffect, useState, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { PostCard } from '@/components/posts/PostCard'
-import { CreatePostSheet, type DefaultGeography } from '@/components/posts/CreatePostSheet'
+import { PostComposerInline } from '@/components/posts/composer'
+import type { GeographySelection } from '@/components/geography'
 import { FeedFilters, FeedFilterType } from './FeedFilters'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
@@ -25,8 +26,6 @@ interface FeedProps {
   geography?: GeographyFilter
   geographyName?: string  // Name of the geography for auto-setting in create post
   showFilters?: boolean
-  groupId?: string
-  groupIds?: string[]  // Filter by multiple groups (for combined feed)
   communityIds?: string[]
   userId?: string  // Filter posts by specific user
   hideCreateButton?: boolean  // Hide the create post button
@@ -35,13 +34,37 @@ interface FeedProps {
   onlyFromCommunities?: boolean  // Filter to show only posts from communities
 }
 
+interface PostImage {
+  id: string
+  post_id: string
+  url: string
+  thumbnail_url: string | null
+  width: number | null
+  height: number | null
+  sort_order: number
+}
+
+interface PostVideo {
+  id: string
+  bunny_video_id: string
+  thumbnail_url: string | null
+  playback_url: string | null
+  hls_url: string | null
+  duration: number | null
+  width: number | null
+  height: number | null
+  status: string
+}
+
 interface Post {
   id: string
   title: string
   content: string
   image_url: string | null
+  images?: { id: string; url: string; thumbnail_url?: string | null; width?: number | null; height?: number | null; sort_order: number }[]
+  video?: PostVideo | null
   type: 'standard' | 'event'
-  visibility: 'public' | 'members'
+  visibility: 'public' | 'friends' | 'circles'
   event_date: string | null
   event_time: string | null
   event_location: string | null
@@ -61,17 +84,10 @@ interface Post {
   user_has_liked: boolean
   // Kontekst - hvor innlegget er publisert
   posted_from_name?: string
-  posted_from_type?: 'group' | 'community' | 'place' | 'municipality' | 'private'
+  posted_from_type?: 'community' | 'place' | 'municipality' | 'private'
   posted_from_id?: string
-  created_for_group_id?: string | null
   created_for_community_id?: string | null
   // Joined data for context (from standard query)
-  group?: {
-    id: string
-    name: string
-    slug: string
-    group_type?: 'open' | 'closed' | 'hidden'
-  } | null
   community?: {
     id: string
     name: string
@@ -90,7 +106,7 @@ interface Post {
   } | null
 }
 
-export function Feed({ categorySlug, geography, geographyName, showFilters = false, groupId, groupIds, communityIds, userId: filterUserId, hideCreateButton = false, starredLocations, friendsOnly = false, onlyFromCommunities = false }: FeedProps) {
+export function Feed({ categorySlug, geography, geographyName, showFilters = false, communityIds, userId: filterUserId, hideCreateButton = false, starredLocations, friendsOnly = false, onlyFromCommunities = false }: FeedProps) {
   const [posts, setPosts] = useState<Post[]>([])
   const [loading, setLoading] = useState(true)
   const [currentUserId, setCurrentUserId] = useState<string | undefined>()
@@ -163,11 +179,9 @@ export function Feed({ categorySlug, geography, geographyName, showFilters = fal
         posted_from_name?: string
         posted_from_type?: string
         posted_from_id?: string
-        created_for_group_id?: string | null
         created_for_community_id?: string | null
         user?: unknown
         category?: unknown
-        group?: unknown
         community?: unknown
         place?: unknown
         municipality?: unknown
@@ -188,17 +202,32 @@ export function Feed({ categorySlug, geography, geographyName, showFilters = fal
           console.warn('RPC function not available, falling back to standard query:', error)
           fetchError = error
         } else {
-          // KRITISK SIKKERHET: Ekstra lag - filtrer bort ALLE gruppeinnlegg fra geografiske feeds
-          // Dette beskytter mot bugs i RPC-funksjonen og er et ekstra sikkerhetslag
-          // Gruppeinnlegg skal BARE vises i gruppens egen feed, IKKE på geografiske feeds
-          const filteredData = (data || []).filter((post: { created_for_group_id?: string | null }) => {
-            if (post.created_for_group_id) {
-              console.warn('Blocked group post in geographic feed:', post.created_for_group_id)
-              return false  // Ekskluder ALLE gruppeinnlegg
-            }
-            return true
-          })
-          postsData = filteredData
+          // Fetch images and videos for RPC posts (since RPC doesn't return nested data)
+          if (data && data.length > 0) {
+            const postIds = data.map((p: { id: string }) => p.id)
+
+            // Fetch all images for these posts
+            const { data: imagesData } = await supabase
+              .from('post_images')
+              .select('*')
+              .in('post_id', postIds)
+              .order('sort_order')
+
+            // Fetch all videos for these posts
+            const { data: videosData } = await supabase
+              .from('post_videos')
+              .select('*')
+              .in('post_id', postIds)
+
+            // Attach images and videos to posts
+            postsData = data.map((post: any) => ({
+              ...post,
+              images: imagesData?.filter((img: any) => img.post_id === post.id) || [],
+              video: videosData?.find((vid: any) => vid.post_id === post.id) || null,
+            }))
+          } else {
+            postsData = data
+          }
         }
       }
 
@@ -222,7 +251,6 @@ export function Feed({ categorySlug, geography, geographyName, showFilters = fal
             category_id,
             municipality_id,
             place_id,
-            created_for_group_id,
             created_for_community_id,
             user:profiles!posts_user_id_fkey (
               id,
@@ -233,12 +261,6 @@ export function Feed({ categorySlug, geography, geographyName, showFilters = fal
               name,
               slug,
               color
-            ),
-            group:groups (
-              id,
-              name,
-              slug,
-              group_type
             ),
             community:communities (
               id,
@@ -255,6 +277,25 @@ export function Feed({ categorySlug, geography, geographyName, showFilters = fal
               id,
               name,
               slug
+            ),
+            images:post_images (
+              id,
+              url,
+              thumbnail_url,
+              width,
+              height,
+              sort_order
+            ),
+            video:post_videos (
+              id,
+              bunny_video_id,
+              thumbnail_url,
+              playback_url,
+              hls_url,
+              duration,
+              width,
+              height,
+              status
             )
           `)
           .order('pinned', { ascending: false, nullsFirst: false })
@@ -273,126 +314,33 @@ export function Feed({ categorySlug, geography, geographyName, showFilters = fal
           }
         }
 
-        // Filter by group(s) if provided
-        if (groupId || (groupIds && groupIds.length > 0)) {
-          // Get posts that belong to the group(s) via created_for_group_id
-          const idsToQuery = groupIds && groupIds.length > 0 ? groupIds : [groupId!]
-          query = query.in('created_for_group_id', idsToQuery)
-        } else {
-          // SIKKERHET: ALLTID ekskluder innlegg fra lukkede/skjulte grupper
-          // When NOT viewing a specific group:
-          // 1. ALWAYS EXCLUDE posts from ALL groups (open/closed/hidden) unless:
-          //    - Group is associated with current geography (for geographic feeds)
-          //    - User is member (for personal feeds)
+        // Ekskluder personlige innlegg fra geografiske feeds
+        if (geography || starredLocations) {
+          // KRITISK: Vis bare poster som matcher DENNE geografien
+          // Ikke bare "har en geografi", men "matcher denne spesifikke geografien"
 
-          // Get ALL groups
-          const { data: allGroups } = await supabase
-            .from('groups')
-            .select('id, group_type')
+          if (geography && geography.type === 'municipality' && geography.id) {
+            // For municipality: Vis kun poster fra DENNE municipality
+            query = query.or(`created_for_community_id.not.is.null,municipality_id.eq.${geography.id}`)
+          } else if (geography && geography.type === 'place' && geography.id) {
+            // For place: Vis kun poster fra DETTE place
+            query = query.or(`created_for_community_id.not.is.null,place_id.eq.${geography.id}`)
+          } else if (geography && geography.type === 'sapmi') {
+            // For sapmi: Vis alle poster med geografi-kontekst (ikke personlige)
+            query = query.or('created_for_community_id.not.is.null,municipality_id.not.is.null,place_id.not.is.null')
+          } else if (starredLocations) {
+            // For starred locations: Vis poster fra alle favorittlokasjoner
+            const locationFilters: string[] = []
 
-          const allGroupIds = (allGroups || []).map(g => g.id)
-
-          if (allGroupIds.length > 0) {
-            // For geographic feeds: only show posts from groups associated with this geography
-            if (geography) {
-              const { data: geographicGroups } = await supabase
-                .from('group_places')
-                .select('group_id, place_id, municipality_id')
-
-              let allowedGroupIds: string[] = []
-
-              if (geography.type === 'place' && geography.id) {
-                // Show groups associated with this specific place
-                allowedGroupIds = (geographicGroups || [])
-                  .filter(gp => gp.place_id === geography.id)
-                  .map(gp => gp.group_id)
-              } else if (geography.type === 'municipality' && geography.id) {
-                // Show groups associated with this municipality OR places within it
-                const { data: placesInMunicipality } = await supabase
-                  .from('places')
-                  .select('id')
-                  .eq('municipality_id', geography.id)
-
-                const placeIds = (placesInMunicipality || []).map(p => p.id)
-
-                allowedGroupIds = (geographicGroups || [])
-                  .filter(gp =>
-                    gp.municipality_id === geography.id ||
-                    (gp.place_id && placeIds.includes(gp.place_id))
-                  )
-                  .map(gp => gp.group_id)
-              } else if (geography.type === 'language_area' && geography.id) {
-                // Show groups from municipalities in this language area
-                const { data: municipalitiesInArea } = await supabase
-                  .from('municipalities')
-                  .select('id')
-                  .eq('language_area_id', geography.id)
-
-                const municipalityIds = (municipalitiesInArea || []).map(m => m.id)
-
-                allowedGroupIds = (geographicGroups || [])
-                  .filter(gp => gp.municipality_id && municipalityIds.includes(gp.municipality_id))
-                  .map(gp => gp.group_id)
-              }
-
-              // Exclude ALL group posts except those from geographically-associated groups
-              const excludeGroupIds = allGroupIds.filter(id => !allowedGroupIds.includes(id))
-
-              if (excludeGroupIds.length > 0) {
-                query = query.or(`created_for_group_id.is.null,created_for_group_id.not.in.(${excludeGroupIds.join(',')})`)
-              }
+            if (starredLocations.municipalityIds.length > 0) {
+              locationFilters.push(`municipality_id.in.(${starredLocations.municipalityIds.join(',')})`)
             }
-            // For personal/profile feeds: show posts from groups user is a member of
-            else if (filterUserId === currentUserId || friendsOnly) {
-              if (currentUserId) {
-                const { data: userGroupMemberships } = await supabase
-                  .from('group_members')
-                  .select('group_id')
-                  .eq('user_id', currentUserId)
-                  .eq('status', 'approved')
-
-                const userGroupIds = (userGroupMemberships || []).map(gm => gm.group_id)
-                const excludeGroupIds = allGroupIds.filter(id => !userGroupIds.includes(id))
-
-                if (excludeGroupIds.length > 0) {
-                  query = query.or(`created_for_group_id.is.null,created_for_group_id.not.in.(${excludeGroupIds.join(',')})`)
-                }
-              }
+            if (starredLocations.placeIds.length > 0) {
+              locationFilters.push(`place_id.in.(${starredLocations.placeIds.join(',')})`)
             }
-            // For main feed / other feeds: exclude ALL group posts
-            else {
-              query = query.is('created_for_group_id', null)
-            }
-          }
 
-          // Ekskluder personlige innlegg fra geografiske feeds
-          if (geography || starredLocations) {
-            // KRITISK: Vis bare poster som matcher DENNE geografien
-            // Ikke bare "har en geografi", men "matcher denne spesifikke geografien"
-
-            if (geography && geography.type === 'municipality' && geography.id) {
-              // For municipality: Vis kun poster fra DENNE municipality
-              query = query.or(`created_for_community_id.not.is.null,municipality_id.eq.${geography.id}`)
-            } else if (geography && geography.type === 'place' && geography.id) {
-              // For place: Vis kun poster fra DETTE place
-              query = query.or(`created_for_community_id.not.is.null,place_id.eq.${geography.id}`)
-            } else if (geography && geography.type === 'sapmi') {
-              // For sapmi: Vis alle poster med geografi-kontekst (ikke personlige)
-              query = query.or('created_for_group_id.not.is.null,created_for_community_id.not.is.null,municipality_id.not.is.null,place_id.not.is.null')
-            } else if (starredLocations) {
-              // For starred locations: Vis poster fra alle favorittlokasjoner
-              const locationFilters: string[] = []
-
-              if (starredLocations.municipalityIds.length > 0) {
-                locationFilters.push(`municipality_id.in.(${starredLocations.municipalityIds.join(',')})`)
-              }
-              if (starredLocations.placeIds.length > 0) {
-                locationFilters.push(`place_id.in.(${starredLocations.placeIds.join(',')})`)
-              }
-
-              if (locationFilters.length > 0) {
-                query = query.or(locationFilters.join(','))
-              }
+            if (locationFilters.length > 0) {
+              query = query.or(locationFilters.join(','))
             }
           }
         }
@@ -409,9 +357,7 @@ export function Feed({ categorySlug, geography, geographyName, showFilters = fal
           const communityPostIds = (communityPosts || []).map(cp => cp.post_id)
 
           if (communityPostIds.length > 0) {
-            // KRITISK SIKKERHET: Ekskluder ALLTID innlegg som har created_for_group_id
-            // Dette sikrer at innlegg fra lukkede/skjulte grupper ALDRI vises på samfunnssider
-            query = query.in('id', communityPostIds).is('created_for_group_id', null)
+            query = query.in('id', communityPostIds)
           } else {
             // No posts from followed communities
             postsData = []
@@ -428,8 +374,7 @@ export function Feed({ categorySlug, geography, geographyName, showFilters = fal
 
           const allCommunityPostIds = (allCommunityPosts || []).map(cp => cp.post_id)
           if (allCommunityPostIds.length > 0) {
-            // KRITISK SIKKERHET: Ekskluder ALLTID innlegg som har created_for_group_id
-            query = query.in('id', allCommunityPostIds).is('created_for_group_id', null)
+            query = query.in('id', allCommunityPostIds)
           } else {
             // No community posts exist
             postsData = []
@@ -523,7 +468,20 @@ export function Feed({ categorySlug, geography, geographyName, showFilters = fal
         return
       }
 
+      // Debug: Log fetched posts with visibility
+      if (postsData && postsData.length > 0) {
+        console.log(`📬 Fetched ${postsData.length} posts from database:`,
+          postsData.map((p: any) => ({
+            id: p.id.substring(0, 8),
+            title: p.title?.substring(0, 30),
+            visibility: p.visibility,
+            user_id: p.user_id === currentUserId ? 'YOU' : 'OTHER'
+          }))
+        )
+      }
+
       if (!postsData || postsData.length === 0) {
+        console.log('📭 No posts returned from database')
         setPosts([])
         setLoading(false)
         return
@@ -583,6 +541,109 @@ export function Feed({ categorySlug, geography, geographyName, showFilters = fal
         userLikedPostIds = (userLikes || []).map(l => l.post_id)
       }
 
+      // Batch fetch post images from BOTH media table AND post_images table
+      // Media table: For posts created with MediaService (geografi-bilder)
+      const { data: mediaImages } = await supabase
+        .from('media')
+        .select('id, entity_id, storage_path, width, height, sort_order')
+        .eq('entity_type', 'post')
+        .in('entity_id', postIds)
+        .is('deleted_at', null)
+        .order('sort_order', { ascending: true })
+
+      // Post_images table: For posts created with post composer (innleggsbilder)
+      const { data: postImagesData } = await supabase
+        .from('post_images')
+        .select('id, post_id, url, thumbnail_url, width, height, sort_order')
+        .in('post_id', postIds)
+        .order('sort_order', { ascending: true })
+
+      // Debug: Log raw data from post_images table
+      console.log('🔍 Fetched from post_images table:', postImagesData?.length || 0, 'images')
+      if (postImagesData && postImagesData.length > 0) {
+        console.log('🔍 First few images:', postImagesData.slice(0, 3).map(img => ({
+          post_id: img.post_id,
+          url: img.url.substring(0, 40) + '...',
+          sort_order: img.sort_order
+        })))
+      }
+
+      // Group images by post_id
+      type ImageForPost = { id: string; url: string; thumbnail_url: string | null; width: number | null; height: number | null; sort_order: number; like_count?: number; comment_count?: number }
+      const { MediaService } = await import('@/lib/media/mediaService')
+
+      // First, add images from media table
+      const imagesMap = (mediaImages || []).reduce((acc, img) => {
+        if (!acc[img.entity_id]) {
+          acc[img.entity_id] = []
+        }
+        const url = MediaService.getUrl(img.storage_path)
+        const thumbnailUrl = MediaService.getUrl(img.storage_path, 'medium')
+        acc[img.entity_id].push({
+          id: img.id,
+          url: url,
+          thumbnail_url: thumbnailUrl,
+          width: img.width,
+          height: img.height,
+          sort_order: img.sort_order,
+          like_count: 0, // TODO: Fetch actual counts from media_likes
+          comment_count: 0 // TODO: Fetch actual counts from media_comments
+        })
+        return acc
+      }, {} as Record<string, ImageForPost[]>)
+
+      // Then, add images from post_images table
+      ;(postImagesData || []).forEach(img => {
+        if (!imagesMap[img.post_id]) {
+          imagesMap[img.post_id] = []
+        }
+        imagesMap[img.post_id].push({
+          id: img.id,
+          url: img.url,
+          thumbnail_url: img.thumbnail_url,
+          width: img.width,
+          height: img.height,
+          sort_order: img.sort_order,
+          like_count: 0, // TODO: Implement engagement tracking (FASE 4)
+          comment_count: 0 // TODO: Implement engagement tracking (FASE 4)
+        })
+      })
+
+      // Sort images by sort_order within each post
+      Object.keys(imagesMap).forEach(postId => {
+        imagesMap[postId].sort((a, b) => a.sort_order - b.sort_order)
+      })
+
+      // Debug: Log images map
+      console.log('📸 Images map:', Object.entries(imagesMap).map(([postId, images]) => ({
+        postId,
+        imageCount: images.length,
+        images: images.map(img => ({ id: img.id, url: img.url.substring(0, 50) + '...', sort_order: img.sort_order }))
+      })))
+
+      // Batch fetch post videos from post_videos table (Bunny Stream)
+      const { data: postVideos } = await supabase
+        .from('post_videos')
+        .select('id, post_id, bunny_video_id, thumbnail_url, playback_url, hls_url, duration, width, height, status')
+        .in('post_id', postIds)
+        .eq('status', 'finished') // Only show finished videos
+
+      // Map videos by post_id (1 video per post)
+      const videosMap = (postVideos || []).reduce((acc, vid) => {
+        acc[vid.post_id] = {
+          id: vid.id,
+          bunny_video_id: vid.bunny_video_id,
+          thumbnail_url: vid.thumbnail_url,
+          playback_url: vid.playback_url,
+          hls_url: vid.hls_url,
+          duration: vid.duration,
+          width: vid.width,
+          height: vid.height,
+          status: vid.status,
+        }
+        return acc
+      }, {} as Record<string, PostVideo>)
+
       // Count comments and likes per post
       const commentCountMap = (commentCounts || []).reduce((acc, c) => {
         acc[c.post_id] = (acc[c.post_id] || 0) + 1
@@ -613,16 +674,11 @@ export function Feed({ categorySlug, geography, geographyName, showFilters = fal
 
         if (!postedFromName) {
           // Extract from joined data
-          const groupData = post.group ? (Array.isArray(post.group) ? post.group[0] : post.group) : null
           const communityData = post.community ? (Array.isArray(post.community) ? post.community[0] : post.community) : null
           const placeData = post.place ? (Array.isArray(post.place) ? post.place[0] : post.place) : null
           const municipalityData = post.municipality ? (Array.isArray(post.municipality) ? post.municipality[0] : post.municipality) : null
 
-          if (groupData && post.created_for_group_id) {
-            postedFromName = groupData.name
-            postedFromType = 'group'
-            postedFromId = groupData.id
-          } else if (communityData && post.created_for_community_id) {
+          if (communityData && post.created_for_community_id) {
             postedFromName = communityData.name
             postedFromType = 'community'
             postedFromId = communityData.id
@@ -639,13 +695,20 @@ export function Feed({ categorySlug, geography, geographyName, showFilters = fal
           }
         }
 
+        const postImages = imagesMap[post.id] || []
+        if (postImages.length > 1) {
+          console.log(`📸 Post ${post.id} has ${postImages.length} images:`, postImages.map(img => img.url.substring(0, 30)))
+        }
+
         return {
           id: post.id,
           title: post.title,
           content: post.content,
           image_url: post.image_url,
+          images: postImages,
+          video: videosMap[post.id] || null,
           type: post.type as 'standard' | 'event',
-          visibility: post.visibility as 'public' | 'members',
+          visibility: post.visibility as 'public' | 'friends' | 'circles',
           event_date: post.event_date,
           event_time: post.event_time,
           event_location: post.event_location,
@@ -658,14 +721,13 @@ export function Feed({ categorySlug, geography, geographyName, showFilters = fal
           posted_from_name: postedFromName,
           posted_from_type: postedFromType as Post['posted_from_type'],
           posted_from_id: postedFromId,
-          created_for_group_id: post.created_for_group_id,
           created_for_community_id: post.created_for_community_id,
         }
       })
 
       setPosts(postsWithCounts)
       setLoading(false)
-  }, [categorySlug, geography, supabase, currentFilter, showFilters, fetchUserData, groupId, groupIds, communityIds, filterUserId, starredLocations, friendsOnly])
+    }, [categorySlug, geography, supabase, currentFilter, showFilters, fetchUserData, communityIds, filterUserId, starredLocations, friendsOnly])
 
   useEffect(() => {
      
@@ -701,20 +763,21 @@ export function Feed({ categorySlug, geography, geographyName, showFilters = fal
           <button
             onClick={() => setShowCreatePost(true)}
             className="group flex items-center gap-2.5 px-5 py-2.5 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white rounded-full shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/30 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
+            aria-label="Opprett nytt innlegg"
           >
             <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center group-hover:bg-white/30 transition-colors">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
               </svg>
             </div>
-            <span className="font-medium text-sm">Nytt innlegg</span>
+            <span className="font-medium text-sm">Nytt innlegg i {geographyName}</span>
           </button>
         </div>
       )}
 
-      {/* Create post sheet */}
+      {/* Inline create post form */}
       {currentUserId && (
-        <CreatePostSheet
+        <PostComposerInline
           open={showCreatePost}
           onClose={() => setShowCreatePost(false)}
           onSuccess={fetchPosts}
@@ -724,7 +787,6 @@ export function Feed({ categorySlug, geography, geographyName, showFilters = fal
             id: geography.id,
             name: geographyName
           } : undefined}
-          groupId={groupId || null}
           communityId={communityIds && communityIds.length > 0 ? communityIds[0] : null}
         />
       )}
@@ -771,7 +833,7 @@ export function Feed({ categorySlug, geography, geographyName, showFilters = fal
                 <div className="flex items-center gap-3 flex-shrink-0">
                   <div className="w-10 h-10 rounded-xl overflow-hidden shadow-md">
                     <img
-                      src="/images/sami.jpg"
+                      src="/images/sami.png"
                       alt="Samisk flagg"
                       className="w-full h-full object-cover"
                     />

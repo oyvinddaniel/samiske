@@ -1,8 +1,6 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { Trash2, AlertTriangle, Loader2 } from 'lucide-react'
+import { Settings, User, Mail, Users, AlertTriangle } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -10,113 +8,89 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { deleteCommunity } from '@/lib/communities'
-import { toast } from 'sonner'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import {
+  BasicSettingsTab,
+  ContactSettingsTab,
+  TeamSettingsTab,
+  DangerZoneTab,
+} from './settings'
 import type { Community } from '@/lib/types/communities'
 
 interface CommunitySettingsDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   community: Community
+  onUpdated?: () => void
 }
 
 export function CommunitySettingsDialog({
   open,
   onOpenChange,
   community,
+  onUpdated,
 }: CommunitySettingsDialogProps) {
-  const [confirmText, setConfirmText] = useState('')
-  const [isDeleting, setIsDeleting] = useState(false)
-  const router = useRouter()
-
-  const handleDelete = async () => {
-    if (confirmText !== community.name) {
-      toast.error('Vennligst skriv inn navnet på siden for å bekrefte')
-      return
+  const handleUpdated = () => {
+    if (onUpdated) {
+      onUpdated()
     }
+  }
 
-    setIsDeleting(true)
-
-    try {
-      const success = await deleteCommunity(community.id)
-
-      if (success) {
-        toast.success('Siden er slettet')
-        // Navigate first before closing dialog to prevent refetch
-        router.replace('/samfunn')
-      } else {
-        toast.error('Kunne ikke slette siden')
-        setIsDeleting(false)
-      }
-    } catch (error) {
-      console.error('Error deleting community:', error)
-      toast.error('Kunne ikke slette siden')
-      setIsDeleting(false)
-    }
+  const handleDeleted = () => {
+    onOpenChange(false)
   }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
-          <DialogTitle>Sideinnstillinger</DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
+            <Settings className="w-5 h-5" />
+            Sideinnstillinger
+          </DialogTitle>
           <DialogDescription>
             Administrer innstillinger for {community.name}
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6 mt-4">
-          {/* Delete section */}
-          <div className="border border-red-200 rounded-lg p-4 bg-red-50">
-            <div className="flex items-start gap-3 mb-4">
-              <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-              <div>
-                <h3 className="font-semibold text-red-900 mb-1">Slett side</h3>
-                <p className="text-sm text-red-700">
-                  Dette vil permanent slette siden. Alle innlegg, produkter og tjenester
-                  knyttet til siden vil forbli, men siden vil ikke lenger være synlig.
-                </p>
-              </div>
-            </div>
+        <Tabs defaultValue="basic" className="flex-1 flex flex-col overflow-hidden">
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="basic" className="flex items-center gap-1.5">
+              <User className="w-4 h-4" />
+              <span className="hidden sm:inline">Grunnleggende</span>
+            </TabsTrigger>
+            <TabsTrigger value="contact" className="flex items-center gap-1.5">
+              <Mail className="w-4 h-4" />
+              <span className="hidden sm:inline">Kontakt</span>
+            </TabsTrigger>
+            <TabsTrigger value="team" className="flex items-center gap-1.5">
+              <Users className="w-4 h-4" />
+              <span className="hidden sm:inline">Team</span>
+            </TabsTrigger>
+            <TabsTrigger value="danger" className="flex items-center gap-1.5 text-red-600 data-[state=active]:text-red-600">
+              <AlertTriangle className="w-4 h-4" />
+              <span className="hidden sm:inline">Faresone</span>
+            </TabsTrigger>
+          </TabsList>
 
-            <div className="space-y-3">
-              <div>
-                <Label htmlFor="confirm-delete" className="text-sm text-red-900">
-                  Skriv inn <span className="font-mono font-semibold">{community.name}</span> for å bekrefte
-                </Label>
-                <Input
-                  id="confirm-delete"
-                  value={confirmText}
-                  onChange={(e) => setConfirmText(e.target.value)}
-                  placeholder={community.name}
-                  className="mt-1.5"
-                />
-              </div>
+          <div className="flex-1 overflow-y-auto mt-4">
+            <TabsContent value="basic" className="mt-0">
+              <BasicSettingsTab community={community} onUpdated={handleUpdated} />
+            </TabsContent>
 
-              <Button
-                variant="destructive"
-                onClick={handleDelete}
-                disabled={confirmText !== community.name || isDeleting}
-                className="w-full"
-              >
-                {isDeleting ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Sletter...
-                  </>
-                ) : (
-                  <>
-                    <Trash2 className="w-4 h-4 mr-2" />
-                    Slett side permanent
-                  </>
-                )}
-              </Button>
-            </div>
+            <TabsContent value="contact" className="mt-0">
+              <ContactSettingsTab community={community} onUpdated={handleUpdated} />
+            </TabsContent>
+
+            <TabsContent value="team" className="mt-0">
+              <TeamSettingsTab community={community} onUpdated={handleUpdated} />
+            </TabsContent>
+
+            <TabsContent value="danger" className="mt-0">
+              <DangerZoneTab community={community} onDeleted={handleDeleted} />
+            </TabsContent>
           </div>
-        </div>
+        </Tabs>
       </DialogContent>
     </Dialog>
   )

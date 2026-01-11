@@ -33,10 +33,6 @@ export async function compressImage(
   try {
     const compressedFile = await imageCompression(file, compressionOptions)
 
-    console.log(
-      `Image compressed: ${(file.size / 1024).toFixed(0)}KB → ${(compressedFile.size / 1024).toFixed(0)}KB`
-    )
-
     return compressedFile
   } catch (error) {
     console.error('Image compression failed:', error)
@@ -58,5 +54,13 @@ export async function compressPostImage(file: File): Promise<File> {
     maxSizeMB: 0.2, // 200KB for post images
     maxWidthOrHeight: 1200,
     quality: 0.75,
+  })
+}
+
+export async function compressGeographyImage(file: File): Promise<File> {
+  return compressImage(file, {
+    maxSizeMB: 0.3, // 300KB for geography/landscape images
+    maxWidthOrHeight: 1600,
+    quality: 0.8,
   })
 }

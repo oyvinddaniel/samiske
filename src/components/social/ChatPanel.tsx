@@ -215,6 +215,7 @@ export function ChatPanel({ friendId, friendName, onClose }: ChatPanelProps) {
         <button
           onClick={onClose}
           className="p-1 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors"
+          aria-label="Lukk chat"
         >
           <ArrowLeft className="w-4 h-4" />
         </button>
@@ -286,6 +287,7 @@ export function ChatPanel({ friendId, friendName, onClose }: ChatPanelProps) {
             type="submit"
             disabled={!newMessage.trim() || sending}
             className="p-1.5 bg-blue-500 text-white rounded-full hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            aria-label="Send melding"
           >
             <Send className="w-4 h-4" />
           </button>

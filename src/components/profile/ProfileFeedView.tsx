@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { ProfileHeader } from '@/components/profile/ProfileHeader'
 import { ProfileTabs } from '@/components/profile/ProfileTabs'
 import { UserProfileTabs } from '@/components/profile/UserProfileTabs'
-import { CreatePostSheet } from '@/components/posts/CreatePostSheet'
+import { PostComposerSheet } from '@/components/posts/composer'
 import { Loader2, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
@@ -123,7 +123,7 @@ export function ProfileFeedView({ userId: viewUserId, onClose }: ProfileFeedView
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
               </svg>
             </div>
-            <span className="font-medium text-sm">Nytt innlegg</span>
+            <span className="font-medium text-sm">Nytt personlig innlegg</span>
           </button>
         </div>
       )}
@@ -152,7 +152,7 @@ export function ProfileFeedView({ userId: viewUserId, onClose }: ProfileFeedView
 
       {/* Create post sheet (only for own profile) */}
       {isOwnProfile && (
-        <CreatePostSheet
+        <PostComposerSheet
           open={showCreatePost}
           onClose={() => setShowCreatePost(false)}
           onSuccess={handlePostSuccess}

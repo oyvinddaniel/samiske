@@ -57,7 +57,36 @@ export function InlineRegistrationForm({ onLoginClick }: InlineRegistrationFormP
     )
   }
 
-  // Show maintenance message if enabled
+  // Always show registration closed message
+  return (
+    <Card className="w-full">
+      <CardHeader className="text-center pb-4">
+        <div className="mx-auto w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mb-3">
+          <Construction className="w-6 h-6 text-blue-600" />
+        </div>
+        <CardTitle className="text-xl font-bold text-gray-900">
+          Registrering stengt
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="text-center space-y-4">
+        <p className="text-sm text-gray-600">
+          Registrering er midlertidig stengt frem til appen er klar til bruk.
+        </p>
+        <p className="text-xs text-gray-500">
+          Har du allerede en konto?
+        </p>
+        <Button
+          variant="outline"
+          onClick={onLoginClick}
+          className="w-full"
+        >
+          Logg inn
+        </Button>
+      </CardContent>
+    </Card>
+  )
+
+  // Show maintenance message if enabled (kept for future use, but unreachable)
   if (maintenance.enabled) {
     return (
       <Card className="w-full">

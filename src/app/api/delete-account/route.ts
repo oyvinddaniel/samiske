@@ -130,8 +130,6 @@ export async function DELETE(request: Request) {
         if (storageError) {
           console.error('Error deleting images from storage:', storageError)
           // Fortsett med sletting selv om bilder ikke kunne slettes
-        } else {
-          console.log(`Deleted ${filePaths.length} images from storage for user ${user.id}`)
         }
       }
     } catch (storageError) {

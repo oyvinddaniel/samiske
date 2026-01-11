@@ -1,10 +1,10 @@
 'use client'
 
 import Link from 'next/link'
-import { Building2, Briefcase, Landmark, Users, Palette, GraduationCap, Building, CircleDot, BadgeCheck } from 'lucide-react'
+import { Building2, Briefcase, Landmark, Users, Palette, GraduationCap, Building, CircleDot, BadgeCheck, Brush, Hammer, UtensilsCrossed, Wrench } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { FollowButton } from './FollowButton'
-import type { Community, CommunityCategory } from '@/lib/types/communities'
+import type { Community } from '@/lib/types/communities'
 import { categoryLabels } from '@/lib/types/communities'
 
 export interface CommunityCardProps {
@@ -13,7 +13,7 @@ export interface CommunityCardProps {
   isFollowing?: boolean
 }
 
-const categoryIcons: Record<CommunityCategory, React.ReactNode> = {
+const categoryIcons: Record<string, React.ReactNode> = {
   organization: <Building2 className="w-5 h-5" />,
   business: <Briefcase className="w-5 h-5" />,
   institution: <Landmark className="w-5 h-5" />,
@@ -21,6 +21,10 @@ const categoryIcons: Record<CommunityCategory, React.ReactNode> = {
   cultural: <Palette className="w-5 h-5" />,
   educational: <GraduationCap className="w-5 h-5" />,
   government: <Building className="w-5 h-5" />,
+  artist: <Brush className="w-5 h-5" />,
+  craftsperson: <Hammer className="w-5 h-5" />,
+  restaurant: <UtensilsCrossed className="w-5 h-5" />,
+  service_provider: <Wrench className="w-5 h-5" />,
   other: <CircleDot className="w-5 h-5" />
 }
 

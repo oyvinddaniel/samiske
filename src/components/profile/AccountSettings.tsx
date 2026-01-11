@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import { compressProfileImage } from '@/lib/imageCompression'
+import { MediaService } from '@/lib/media'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -29,7 +29,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
-import { Download, Shield, Trash2, Mail, Bell, MapPin, Users, User } from 'lucide-react'
+import { Download, Shield, Trash2, Mail, Bell, MapPin, Users, User, Link2, Tag, Image as ImageIcon, X } from 'lucide-react'
 import { toast } from 'sonner'
 import {
   isPushSupported,
@@ -40,6 +40,9 @@ import {
 import { CircleManager } from '@/components/circles'
 import { GeographySelector } from '@/components/geography/GeographySelectorWithAdd'
 import { getUserLocations, setUserLocation } from '@/lib/geography'
+import { SocialLinksEditor, SocialLink } from './SocialLinksEditor'
+import { InterestsTagEditor } from './InterestsTagEditor'
+import { ProfileCoverUpload } from './ProfileCoverUpload'
 
 interface NotificationPreferences {
   email_new_posts: 'none' | 'instant' | 'daily' | 'weekly'
@@ -56,6 +59,12 @@ interface Profile {
   location: string | null
   phone: string | null
   phone_public: boolean
+  username: string | null
+  tagline: string | null
+  cover_image_url: string | null
+  avatar_status_color: string | null
+  social_links: Array<{ type: string; url: string; label?: string }> | null
+  interests: string[] | null
 }
 
 interface AccountSettingsProps {
@@ -75,6 +84,14 @@ export function AccountSettings({ userId }: AccountSettingsProps) {
   const [avatarUrl, setAvatarUrl] = useState('')
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // New profile enhancement fields
+  const [username, setUsername] = useState('')
+  const [tagline, setTagline] = useState('')
+  const [coverImageUrl, setCoverImageUrl] = useState<string | null>(null)
+  const [avatarStatusColor, setAvatarStatusColor] = useState<string | null>(null)
+  const [socialLinks, setSocialLinks] = useState<SocialLink[]>([])
+  const [interests, setInterests] = useState<string[]>([])
 
   const [preferences, setPreferences] = useState<NotificationPreferences>({
     email_new_posts: 'none',
@@ -123,6 +140,14 @@ export function AccountSettings({ userId }: AccountSettingsProps) {
         setAvatarUrl(profileData.avatar_url || '')
         setShowCurrentLocation(profileData.show_current_location ?? true)
         setShowHomeLocation(profileData.show_home_location ?? true)
+
+        // Set new profile enhancement fields
+        setUsername(profileData.username || '')
+        setTagline(profileData.tagline || '')
+        setCoverImageUrl(profileData.cover_image_url || null)
+        setAvatarStatusColor(profileData.avatar_status_color || null)
+        setSocialLinks(profileData.social_links || [])
+        setInterests(profileData.interests || [])
       }
 
       // Check push notification support
@@ -152,17 +177,12 @@ export function AccountSettings({ userId }: AccountSettingsProps) {
 
       // Fetch user locations
       const locations = await getUserLocations(userId)
-      console.log('👤 User locations loaded:', locations)
       if (locations) {
         setCurrentLocation({
           municipalityId: locations.currentMunicipalityId,
           placeId: locations.currentPlaceId
         })
         setHomeLocation({
-          municipalityId: locations.homeMunicipalityId,
-          placeId: locations.homePlaceId
-        })
-        console.log('👤 Home location set to:', {
           municipalityId: locations.homeMunicipalityId,
           placeId: locations.homePlaceId
         })
@@ -183,40 +203,35 @@ export function AccountSettings({ userId }: AccountSettingsProps) {
       return
     }
 
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('Bildet kan ikke være større enn 5MB')
-      return
-    }
-
     setUploadingImage(true)
 
     try {
-      const compressedFile = await compressProfileImage(file)
+      // Show preview immediately
       const reader = new FileReader()
       reader.onloadend = () => {
         setAvatarPreview(reader.result as string)
       }
-      reader.readAsDataURL(compressedFile)
+      reader.readAsDataURL(file)
 
-      const fileExt = 'jpg'
-      const fileName = `${profile.id}-${Date.now()}.${fileExt}`
-      const filePath = `avatars/${fileName}`
+      // Upload via MediaService
+      const result = await MediaService.upload(file, {
+        entityType: 'profile_avatar',
+        entityId: profile.id,
+        altText: `Avatar for ${profile.full_name || 'user'}`,
+      })
 
-      const { error: uploadError } = await supabase.storage
-        .from('images')
-        .upload(filePath, compressedFile)
+      if (!result.success || !result.media) {
+        throw new Error(result.error || 'Upload failed')
+      }
 
-      if (uploadError) throw uploadError
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('images')
-        .getPublicUrl(filePath)
-
-      setAvatarUrl(publicUrl)
+      // Get URL from MediaService
+      const url = MediaService.getUrl(result.media.storage_path, 'thumb')
+      setAvatarUrl(url)
       toast.success('Bilde lastet opp!')
     } catch (error) {
       console.error('Upload error:', error)
       toast.error('Kunne ikke laste opp bildet')
+      setAvatarPreview(null)
     }
 
     setUploadingImage(false)
@@ -241,6 +256,13 @@ export function AccountSettings({ userId }: AccountSettingsProps) {
           avatar_url: avatarUrl || null,
           show_current_location: showCurrentLocation,
           show_home_location: showHomeLocation,
+          // New profile enhancement fields
+          username: username.trim() || null,
+          tagline: tagline.trim() || null,
+          cover_image_url: coverImageUrl,
+          avatar_status_color: avatarStatusColor,
+          social_links: socialLinks.length > 0 ? socialLinks : null,
+          interests: interests.length > 0 ? interests : null,
         })
         .eq('id', profile.id)
 
@@ -248,7 +270,21 @@ export function AccountSettings({ userId }: AccountSettingsProps) {
         console.error('Profile save error:', profileError)
         hasError = true
       } else {
-        setProfile({ ...profile, full_name: fullName, bio, location, phone, phone_public: phonePublic, avatar_url: avatarUrl })
+        setProfile({
+          ...profile,
+          full_name: fullName,
+          bio,
+          location,
+          phone,
+          phone_public: phonePublic,
+          avatar_url: avatarUrl,
+          username,
+          tagline,
+          cover_image_url: coverImageUrl,
+          avatar_status_color: avatarStatusColor,
+          social_links: socialLinks.length > 0 ? socialLinks : null,
+          interests: interests.length > 0 ? interests : null,
+        })
         setAvatarPreview(null)
       }
 
@@ -432,7 +468,45 @@ export function AccountSettings({ userId }: AccountSettingsProps) {
     )
   }
 
-  if (!profile) return null
+  if (!profile) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12 text-center">
+        <div className="text-gray-500 mb-4">
+          <p className="font-medium mb-2">Profilen din ble ikke funnet</p>
+          <p className="text-sm">Dette kan skje hvis det oppstod en feil under registrering.</p>
+        </div>
+        <Button
+          onClick={async () => {
+            setLoading(true)
+            try {
+              const { data: { user } } = await supabase.auth.getUser()
+              if (user) {
+                const { error } = await supabase
+                  .from('profiles')
+                  .insert({
+                    id: user.id,
+                    email: user.email || '',
+                    full_name: user.user_metadata?.full_name || '',
+                    avatar_url: user.user_metadata?.avatar_url || null,
+                  })
+                if (error) {
+                  toast.error('Kunne ikke opprette profil: ' + error.message)
+                } else {
+                  toast.success('Profil opprettet! Laster på nytt...')
+                  window.location.reload()
+                }
+              }
+            } catch (err) {
+              toast.error('En feil oppstod')
+            }
+            setLoading(false)
+          }}
+        >
+          Opprett profil
+        </Button>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6 max-w-2xl">
@@ -549,6 +623,155 @@ export function AccountSettings({ userId }: AccountSettingsProps) {
               <p className="text-xs text-gray-500">E-postadressen kan ikke endres</p>
             </div>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Cover Image */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <ImageIcon className="w-5 h-5 text-purple-600" />
+            Cover-bilde
+          </CardTitle>
+          <CardDescription>Last opp et cover-bilde til profilen din (1200x400px)</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ProfileCoverUpload
+            userId={userId}
+            currentCoverUrl={coverImageUrl}
+            onUploadSuccess={(url) => setCoverImageUrl(url)}
+            onDelete={() => setCoverImageUrl(null)}
+            isEditable={true}
+          />
+        </CardContent>
+      </Card>
+
+      {/* Username & Tagline */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <User className="w-5 h-5 text-indigo-600" />
+            Brukernavn og tagline
+          </CardTitle>
+          <CardDescription>Velg et unikt brukernavn og en kort beskrivelse</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          <div className="space-y-2">
+            <Label htmlFor="username">Brukernavn</Label>
+            <Input
+              id="username"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              placeholder="brukernavn"
+              maxLength={30}
+              pattern="^[a-zA-Z0-9_]{3,30}$"
+            />
+            <p className="text-xs text-gray-500">
+              3-30 tegn, kun bokstaver, tall og understrek. Brukes i URL: /bruker/{username || 'brukernavn'}
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="tagline">Tagline</Label>
+            <Input
+              id="tagline"
+              value={tagline}
+              onChange={(e) => setTagline(e.target.value)}
+              placeholder="F.eks. Samisk lærer fra Kautokeino"
+              maxLength={100}
+            />
+            <p className="text-xs text-gray-500">
+              En kort beskrivelse som vises under navnet ditt ({tagline.length}/100 tegn)
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="avatarStatusColor">Avatar status ring</Label>
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex gap-2">
+                {['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'].map((color) => (
+                  <button
+                    key={color}
+                    type="button"
+                    onClick={() => setAvatarStatusColor(color)}
+                    className={`w-10 h-10 rounded-full transition-all ${
+                      avatarStatusColor === color
+                        ? 'ring-4 ring-offset-2 ring-gray-400'
+                        : 'hover:scale-110'
+                    }`}
+                    style={{ backgroundColor: color }}
+                    title={color}
+                    aria-label={`Velg farge ${color}`}
+                  />
+                ))}
+                <button
+                  type="button"
+                  onClick={() => setAvatarStatusColor(null)}
+                  className={`w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center transition-all ${
+                    avatarStatusColor === null
+                      ? 'ring-4 ring-offset-2 ring-gray-400'
+                      : 'hover:scale-110'
+                  }`}
+                  title="Ingen farge"
+                  aria-label="Fjern farge"
+                >
+                  <X className="w-5 h-5 text-gray-600" />
+                </button>
+              </div>
+              <div className="flex-1 flex items-center gap-2 min-w-[180px]">
+                <span className="text-sm text-gray-500 flex-shrink-0">eller</span>
+                <Input
+                  id="avatarStatusColor"
+                  type="text"
+                  value={avatarStatusColor || ''}
+                  onChange={(e) => setAvatarStatusColor(e.target.value || null)}
+                  placeholder="#3b82f6"
+                  maxLength={7}
+                  className="w-full"
+                />
+              </div>
+            </div>
+            <p className="text-xs text-gray-500">
+              Velg en farge for ringen rundt profilbildet ditt, eller skriv inn en hex-kode
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Social Links */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Link2 className="w-5 h-5 text-cyan-600" />
+            Sosiale lenker
+          </CardTitle>
+          <CardDescription>Legg til lenker til sosiale medier og nettside</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <SocialLinksEditor
+            links={socialLinks}
+            onChange={setSocialLinks}
+            maxLinks={10}
+          />
+        </CardContent>
+      </Card>
+
+      {/* Interests */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Tag className="w-5 h-5 text-amber-600" />
+            Interesser
+          </CardTitle>
+          <CardDescription>Del dine interesser og hobbyer</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <InterestsTagEditor
+            interests={interests}
+            onChange={setInterests}
+            maxInterests={20}
+            maxLength={50}
+          />
         </CardContent>
       </Card>
 

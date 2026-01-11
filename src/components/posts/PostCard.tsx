@@ -6,7 +6,6 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { BottomSheet } from '@/components/ui/bottom-sheet'
 import {
   Tooltip,
   TooltipContent,
@@ -20,7 +19,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { Pencil, Trash2, MapPin, Share2, Bookmark, BookmarkCheck, Flag, Package, Briefcase, ExternalLink, Users, Building2, MoreVertical, Pin, PinOff } from 'lucide-react'
+import { Pencil, Trash2, MapPin, Share2, Bookmark, BookmarkCheck, Flag, Package, Briefcase, ExternalLink, Users, Building2, MoreVertical, Pin, PinOff, Lock, Globe, BarChart3, Archive, ArchiveRestore, Repeat } from 'lucide-react'
 import { ProfileOverlay } from '@/components/profile/ProfileOverlay'
 import { RSVPButton } from '@/components/events/RSVPButton'
 import { ReportDialog } from '@/components/reports'
@@ -30,10 +29,15 @@ import { useProfileHover } from '@/hooks/useProfileHover'
 // Import child components
 import { PostActions } from './PostActions'
 import { PostComments } from './PostComments'
+import { PostStats } from './PostStats'
 import { EditPostDialog } from './EditPostDialog'
-import { PostDialogContent } from './PostDialogContent'
-import { ImageGalleryPreview, ImageGalleryViewer } from './ImageGallery'
+import { ImageGalleryPreview } from './ImageGallery'
+import { VideoPlayer } from './VideoPlayer'
+import { Poll } from './Poll'
 import { MentionText } from '@/components/mentions'
+import { AdvancedGalleryViewer } from '@/components/gallery'
+import type { GalleryImage } from '@/lib/types/gallery'
+import { convertPostToGalleryFormatSync } from '@/lib/utils/galleryConverters'
 
 // Import types and utils
 import { PostCardProps, categoryColors } from './types'
@@ -42,12 +46,11 @@ import { getInitials, formatDate, formatEventDate } from './utils'
 export function PostCard({ post, currentUserId, onClick, canPin, onPin }: PostCardProps) {
   const [showImageViewer, setShowImageViewer] = useState(false)
   const [imageViewerIndex, setImageViewerIndex] = useState(0)
+  const [expanded, setExpanded] = useState(false)
 
   const {
     // State
-    liked,
-    likeCount,
-    likeUsers,
+    reactionData,
     showComments,
     comments,
     commentCount,
@@ -58,7 +61,6 @@ export function PostCard({ post, currentUserId, onClick, canPin, onPin }: PostCa
     submitting,
     commentLikes,
     previewComments,
-    showDialog,
     isEditing,
     showReportDialog,
     editTitle,
@@ -73,6 +75,8 @@ export function PostCard({ post, currentUserId, onClick, canPin, onPin }: PostCa
     deleting,
     bookmarked,
     bookmarking,
+    archived,
+    archiving,
     isOwner,
     isBlurred,
     editingCommentId,
@@ -82,7 +86,6 @@ export function PostCard({ post, currentUserId, onClick, canPin, onPin }: PostCa
     setReplyingTo,
     setReplyContent,
     setEditCommentContent,
-    setShowDialog,
     setShowReportDialog,
     setEditTitle,
     setEditContent,
@@ -91,7 +94,7 @@ export function PostCard({ post, currentUserId, onClick, canPin, onPin }: PostCa
     setEditEventLocation,
     setEditGeography,
     // Handlers
-    handleLike,
+    handleReactionChange,
     handleCommentLike,
     handleToggleComments,
     handleSubmitComment,
@@ -105,17 +108,28 @@ export function PostCard({ post, currentUserId, onClick, canPin, onPin }: PostCa
     handleDeletePost,
     handleShare,
     handleBookmark,
+    handleArchivePost,
     fetchComments,
+    // New handlers
+    reposted,
+    reposting,
+    handleRepost,
+    handleRestorePost,
+    commentsSinceOpened,
   } = usePostCard({ post, currentUserId })
 
   const profileHover = useProfileHover(postData.user.id)
   const categoryColor = postData.category?.color || categoryColors[postData.category?.slug || ''] || '#6B7280'
 
-  const openDialog = () => {
+  const toggleExpand = () => {
     if (onClick) {
       onClick()
     } else {
-      setShowDialog(true)
+      const newExpanded = !expanded
+      setExpanded(newExpanded)
+      if (newExpanded && comments.length === 0) {
+        fetchComments()
+      }
     }
   }
 
@@ -125,7 +139,7 @@ export function PostCard({ post, currentUserId, onClick, canPin, onPin }: PostCa
 
   return (
     <>
-      <Card id={`post-${postData.id}`} className={`overflow-hidden hover:shadow-md transition-shadow w-full max-w-full ${isBlurred ? 'relative' : ''} !pt-0 !pb-0 !gap-0`}>
+      <Card id={`post-${postData.id}`} className={`overflow-hidden hover:shadow-md transition-all duration-500 ease-out w-full max-w-full ${isBlurred ? 'relative' : ''} ${expanded ? 'ring-2 ring-blue-200 shadow-lg scale-[1.01]' : 'scale-100'} !pt-0 !pb-0 !gap-0`}>
         {/* Blue accent bar at top */}
         <div className="h-3" style={{ backgroundColor: '#1472E6' }} />
         <CardContent className="!px-2 !py-2 sm:!px-4 sm:!py-4">
@@ -133,7 +147,7 @@ export function PostCard({ post, currentUserId, onClick, canPin, onPin }: PostCa
           {isBlurred && (
             <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/60 backdrop-blur-sm">
               <div className="text-center p-3">
-                <div className="text-xl mb-1">🔒</div>
+                <Lock className="w-6 h-6 mx-auto mb-1 text-gray-600" />
                 <p className="text-sm font-medium text-gray-700">Kun for medlemmer</p>
                 <Link href="/login">
                   <Button size="sm" className="mt-1.5 h-7 text-xs">Logg inn</Button>
@@ -172,14 +186,42 @@ export function PostCard({ post, currentUserId, onClick, canPin, onPin }: PostCa
             </button>
             <span className="text-xs text-gray-400">·</span>
             <span className="text-xs text-gray-500 flex-shrink-0">{formatDate(postData.created_at)}</span>
+            {/* Edited badge */}
+            {postData.edited_at && (
+              <>
+                <span className="text-xs text-gray-400">·</span>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="text-xs text-gray-500 cursor-help">
+                        redigert
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="text-xs">
+                      Redigert {formatDate(postData.edited_at)}
+                      {postData.edit_count && postData.edit_count > 1 && ` (${postData.edit_count} ganger)`}
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </>
+            )}
             {postData.posted_from_name && postData.posted_from_type !== 'private' && (
               <>
                 <span className="text-xs text-gray-400 hidden sm:inline">·</span>
                 <span className="hidden sm:flex items-center gap-0.5 text-xs text-gray-500 truncate">
-                  {postData.posted_from_type === 'group' && <Users className="w-3 h-3" />}
                   {postData.posted_from_type === 'community' && <Building2 className="w-3 h-3" />}
                   {(postData.posted_from_type === 'place' || postData.posted_from_type === 'municipality') && <MapPin className="w-3 h-3" />}
                   {postData.posted_from_name}
+                </span>
+              </>
+            )}
+            {/* Direct geography tag (when not posted from a context) */}
+            {!postData.posted_from_name && (postData.place?.name || postData.municipality?.name) && (
+              <>
+                <span className="text-xs text-gray-400 hidden sm:inline">·</span>
+                <span className="hidden sm:flex items-center gap-0.5 text-xs text-gray-500 truncate">
+                  <MapPin className="w-3 h-3" />
+                  {postData.place?.name || postData.municipality?.name}
                 </span>
               </>
             )}
@@ -190,15 +232,17 @@ export function PostCard({ post, currentUserId, onClick, canPin, onPin }: PostCa
               <Tooltip>
                 <TooltipTrigger asChild>
                   <span className="cursor-help">
-                    <img
-                      src={postData.visibility === 'members' ? '/images/lock.png' : '/images/globe.png'}
-                      alt={postData.visibility === 'members' ? 'Kun for medlemmer' : 'Offentlig'}
-                      className="w-3.5 h-3.5"
-                    />
+                    {postData.visibility !== 'public' ? (
+                      <Lock className="w-3.5 h-3.5 text-gray-500" />
+                    ) : (
+                      <Globe className="w-3.5 h-3.5 text-gray-500" />
+                    )}
                   </span>
                 </TooltipTrigger>
                 <TooltipContent side="top" className="text-xs">
-                  {postData.visibility === 'members' ? 'Kun for medlemmer' : 'Offentlig synlig'}
+                  {postData.visibility === 'friends' ? 'Kun for venner' :
+                   postData.visibility === 'circles' ? 'Kun for vennekretser' :
+                   'Offentlig synlig'}
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
@@ -242,6 +286,26 @@ export function PostCard({ post, currentUserId, onClick, canPin, onPin }: PostCa
                   </DropdownMenuItem>
                 )}
 
+                {/* Repost - for logged in users */}
+                {currentUserId && (
+                  <DropdownMenuItem
+                    onClick={(e) => { e.stopPropagation(); handleRepost(); }}
+                    disabled={reposting}
+                  >
+                    {reposted ? (
+                      <>
+                        <Repeat className="w-4 h-4 mr-2" />
+                        Fjern repost
+                      </>
+                    ) : (
+                      <>
+                        <Repeat className="w-4 h-4 mr-2" />
+                        Repost til min feed
+                      </>
+                    )}
+                  </DropdownMenuItem>
+                )}
+
                 {/* Pin - for group admins/moderators */}
                 {canPin && onPin && (
                   <DropdownMenuItem
@@ -264,13 +328,29 @@ export function PostCard({ post, currentUserId, onClick, canPin, onPin }: PostCa
                   </DropdownMenuItem>
                 )}
 
-                {/* Edit and Delete - for owner only */}
+                {/* Edit, Archive and Delete - for owner only */}
                 {isOwner && (
                   <>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setShowDialog(true); handleStartEdit(); }}>
+                    <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setExpanded(true); handleStartEdit(); }}>
                       <Pencil className="w-4 h-4 mr-2" />
                       Rediger
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={(e) => { e.stopPropagation(); handleArchivePost(); }}
+                      disabled={archiving}
+                    >
+                      {archived ? (
+                        <>
+                          <ArchiveRestore className="w-4 h-4 mr-2" />
+                          Gjenopprett
+                        </>
+                      ) : (
+                        <>
+                          <Archive className="w-4 h-4 mr-2" />
+                          Arkiver
+                        </>
+                      )}
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       onClick={(e) => { e.stopPropagation(); handleDeletePost(); }}
@@ -281,6 +361,17 @@ export function PostCard({ post, currentUserId, onClick, canPin, onPin }: PostCa
                       Slett
                     </DropdownMenuItem>
                   </>
+                )}
+
+                {/* Restore - for owner of deleted posts */}
+                {isOwner && isDeleted && (
+                  <DropdownMenuItem
+                    onClick={(e) => { e.stopPropagation(); handleRestorePost(); }}
+                    className="text-green-600 focus:text-green-600"
+                  >
+                    <ArchiveRestore className="w-4 h-4 mr-2" />
+                    Gjenopprett
+                  </DropdownMenuItem>
                 )}
 
                 {/* Report - for logged in users (not owner) */}
@@ -297,8 +388,8 @@ export function PostCard({ post, currentUserId, onClick, canPin, onPin }: PostCa
             </DropdownMenu>
           </div>
 
-          {/* Title - opens dialog */}
-          <button onClick={openDialog} className="text-left w-full">
+          {/* Title - toggles expand */}
+          <button onClick={toggleExpand} className="text-left w-full">
             <div className="flex items-start gap-2">
               {postData.pinned && (
                 <Pin className="w-4 h-4 text-blue-600 mt-1 flex-shrink-0" />
@@ -328,10 +419,15 @@ export function PostCard({ post, currentUserId, onClick, canPin, onPin }: PostCa
             </div>
           )}
 
-          {/* Content preview */}
-          <p className="text-gray-600 text-base line-clamp-2 mb-1.5 break-words">
-            <MentionText content={postData.content} />
-          </p>
+          {/* Content - preview when collapsed, full when expanded - clickable to expand */}
+          <button
+            onClick={toggleExpand}
+            className="text-left w-full cursor-pointer"
+          >
+            <div className={`text-gray-600 text-base mb-1.5 break-words whitespace-pre-wrap transition-all duration-500 ease-out overflow-hidden ${expanded ? 'max-h-[2000px]' : 'max-h-[3.5em] line-clamp-2'}`}>
+              <MentionText content={postData.content} />
+            </div>
+          </button>
 
           {/* Promoted Product */}
           {postData.product && postData.product_id && (
@@ -430,38 +526,92 @@ export function PostCard({ post, currentUserId, onClick, canPin, onPin }: PostCa
             </div>
           )}
 
-          {/* Image Gallery */}
-          {postData.image_url && (
+          {/* Poll - if post has a poll */}
+          <Poll postId={postData.id} />
+
+          {/* Video Player - Bunny Stream */}
+          {postData.video && postData.video.playback_url && (
             <div className="mb-1.5">
-              <ImageGalleryPreview
-                images={[postData.image_url]}
-                alt={postData.title}
-                onImageClick={(index) => {
-                  setImageViewerIndex(index)
-                  setShowImageViewer(true)
-                }}
+              <VideoPlayer
+                playbackUrl={postData.video.playback_url}
+                thumbnailUrl={postData.video.thumbnail_url}
+                title={postData.title}
               />
             </div>
           )}
 
+          {/* Image Gallery - clickable: expand if collapsed, fullscreen if expanded */}
+          {/* Use images array from post_images table, fallback to single image_url for backwards compatibility */}
+          {!postData.video && ((postData.images && postData.images.length > 0) || postData.image_url) && (() => {
+            const imageUrls = postData.images && postData.images.length > 0
+              ? postData.images.map(img => img.url)
+              : [postData.image_url!]
+
+            return (
+              <div className="mb-1.5">
+                <ImageGalleryPreview
+                  images={imageUrls}
+                  alt={postData.title}
+                  onImageClick={(index) => {
+                    // Always open gallery in masonry mode (don't require expand first)
+                    setImageViewerIndex(index)
+                    setShowImageViewer(true)
+                  }}
+                />
+              </div>
+            )
+          })()}
+
           {/* Actions */}
           <PostActions
-            liked={liked}
-            likeCount={likeCount}
+            postId={postData.id}
+            reactionData={reactionData}
             commentCount={commentCount}
-            likeUsers={likeUsers}
             currentUserId={currentUserId}
-            onLike={handleLike}
+            onReactionChange={handleReactionChange}
             onToggleComments={handleToggleComments}
-            onOpenDialog={openDialog}
+            onOpenDialog={toggleExpand}
+            commentsSinceOpened={commentsSinceOpened}
+            showComments={showComments}
           />
 
-          {/* Comments */}
+          {/* Statistics for post owner */}
+          {isOwner && expanded && (
+            <div className="flex justify-end mt-2">
+              <PostStats postId={postData.id} isOwner={true} />
+            </div>
+          )}
+
+          {/* Inline Edit Post - when editing */}
+          {expanded && isEditing && (
+            <div className="mt-4 pt-4 border-t border-gray-100 animate-in fade-in slide-in-from-top-2 duration-300">
+              <EditPostDialog
+                postData={postData}
+                editTitle={editTitle}
+                editContent={editContent}
+                editEventDate={editEventDate}
+                editEventTime={editEventTime}
+                editEventLocation={editEventLocation}
+                editGeography={editGeography}
+                saving={saving}
+                onEditTitleChange={setEditTitle}
+                onEditContentChange={setEditContent}
+                onEditEventDateChange={setEditEventDate}
+                onEditEventTimeChange={setEditEventTime}
+                onEditEventLocationChange={setEditEventLocation}
+                onEditGeographyChange={setEditGeography}
+                onSave={handleSaveEdit}
+                onCancel={handleCancelEdit}
+              />
+            </div>
+          )}
+
+          {/* Comments - show full list when expanded */}
           <PostComments
             comments={comments}
             previewComments={previewComments}
             commentCount={commentCount}
-            showComments={showComments}
+            showComments={showComments || expanded}
             loadingComments={loadingComments}
             newComment={newComment}
             replyingTo={replyingTo}
@@ -490,6 +640,16 @@ export function PostCard({ post, currentUserId, onClick, canPin, onPin }: PostCa
               )
             }}
           />
+
+          {/* Collapse button when expanded */}
+          {expanded && (
+            <button
+              onClick={toggleExpand}
+              className="w-full mt-3 py-2 text-sm text-gray-500 hover:text-gray-700 hover:bg-gray-50 rounded-lg transition-colors animate-in fade-in slide-in-from-top-2 duration-300"
+            >
+              Vis mindre ↑
+            </button>
+          )}
         </CardContent>
 
         {/* Profile overlay */}
@@ -512,80 +672,22 @@ export function PostCard({ post, currentUserId, onClick, canPin, onPin }: PostCa
         )}
       </Card>
 
-      {/* Post BottomSheet */}
-      {!onClick && (
-        <BottomSheet
-          open={showDialog}
-          onClose={() => { setShowDialog(false); if (isEditing) handleCancelEdit(); }}
-          onOpen={() => { if (comments.length === 0) fetchComments(); }}
-          title={isEditing ? 'Rediger innlegg' : postData.title}
-          confirmClose={isEditing}
-          confirmMessage="Er du sikker på at du vil avbryte? Endringer vil gå tapt."
-        >
-          <div className="py-4 pb-[100px]">
-            {isEditing ? (
-              <EditPostDialog
-                postData={postData}
-                editTitle={editTitle}
-                editContent={editContent}
-                editEventDate={editEventDate}
-                editEventTime={editEventTime}
-                editEventLocation={editEventLocation}
-                editGeography={editGeography}
-                saving={saving}
-                onEditTitleChange={setEditTitle}
-                onEditContentChange={setEditContent}
-                onEditEventDateChange={setEditEventDate}
-                onEditEventTimeChange={setEditEventTime}
-                onEditEventLocationChange={setEditEventLocation}
-                onEditGeographyChange={setEditGeography}
-                onSave={handleSaveEdit}
-                onCancel={handleCancelEdit}
-              />
-            ) : (
-              <PostDialogContent
-                postData={postData}
-                liked={liked}
-                likeCount={likeCount}
-                commentCount={commentCount}
-                comments={comments}
-                loadingComments={loadingComments}
-                newComment={newComment}
-                replyingTo={replyingTo}
-                replyContent={replyContent}
-                submitting={submitting}
-                currentUserId={currentUserId}
-                isOwner={isOwner}
-                commentLikes={commentLikes}
-                editingCommentId={editingCommentId}
-                editCommentContent={editCommentContent}
-                onLike={handleLike}
-                onNewCommentChange={setNewComment}
-                onReplyContentChange={setReplyContent}
-                onReplyingToChange={setReplyingTo}
-                onSubmitComment={handleSubmitComment}
-                onDeleteComment={handleDeleteComment}
-                onCommentLike={handleCommentLike}
-                onEdit={handleStartEdit}
-                onStartEditComment={handleStartEditComment}
-                onSaveEditComment={handleSaveEditComment}
-                onCancelEditComment={handleCancelEditComment}
-                onEditCommentContentChange={setEditCommentContent}
-              />
-            )}
-          </div>
-        </BottomSheet>
-      )}
 
-      {/* Image Gallery Viewer */}
-      {showImageViewer && postData.image_url && (
-        <ImageGalleryViewer
-          images={[postData.image_url]}
-          initialIndex={imageViewerIndex}
-          onClose={() => setShowImageViewer(false)}
-          postTitle={postData.title}
-        />
-      )}
+      {/* Advanced Gallery Viewer with Comments & Likes - Masonry Mode */}
+      {showImageViewer && ((postData.images && postData.images.length > 0) || postData.image_url) && (() => {
+        // Use converter to get proper gallery format with post context
+        const { context, images } = convertPostToGalleryFormatSync(postData, currentUserId || undefined)
+
+        return (
+          <AdvancedGalleryViewer
+            images={images}
+            initialIndex={imageViewerIndex}
+            initialMode="masonry"
+            context={context}
+            onClose={() => setShowImageViewer(false)}
+          />
+        )
+      })()}
     </>
   )
 }

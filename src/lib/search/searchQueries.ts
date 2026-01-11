@@ -1,15 +1,16 @@
 // Search query functions for all categories
 
 import { createClient } from '@/lib/supabase/client'
+// Samfunn-funksjonalitet midlertidig skjult før offentlig lansering
 import type {
   UserSearchResult,
   PostSearchResult,
   EventSearchResult,
   CommentSearchResult,
   GeographySearchResult,
-  CommunitySearchResult,
-  ServiceSearchResult,
-  ProductSearchResult,
+  // CommunitySearchResult,
+  // ServiceSearchResult,
+  // ProductSearchResult,
 } from '@/components/search/searchTypes'
 
 const supabase = createClient()
@@ -127,6 +128,7 @@ export async function searchEvents(
     `
     )
     .eq('type', 'event')
+    .eq('visibility', 'public')  // 🔒 Kun offentlige arrangementer
 
   // For pre-populated (no query): show upcoming events
   if (!query || query.trim().length === 0) {
@@ -355,16 +357,21 @@ export async function searchGeography(
 // ============================================
 // 6. COMMUNITIES (Samfunn)
 // ============================================
+// Samfunn-funksjonalitet midlertidig skjult før offentlig lansering
 
 export async function searchCommunities(
   query: string,
   limit: number = 6,
   offset: number = 0
-): Promise<CommunitySearchResult[]> {
+): Promise<[]> {
+  // Samfunn midlertidig skjult
+  return []
+  /*
   let queryBuilder = supabase
     .from('communities')
     .select('id, name, slug, logo_url, category, follower_count, is_verified, created_at')
     .eq('is_active', true)
+    .eq('is_hidden', false)  // Skjul samfunn før offentlig lansering
 
   // Sort by follower count for pre-populated, or relevance for search
   if (!query || query.trim().length === 0) {
@@ -392,17 +399,22 @@ export async function searchCommunities(
       created_at: community.created_at,
     })) || []
   )
+  */
 }
 
 // ============================================
 // 7. SERVICES (Tjenester)
 // ============================================
+// Samfunn-funksjonalitet midlertidig skjult før offentlig lansering
 
 export async function searchServices(
   query: string,
   limit: number = 6,
   offset: number = 0
-): Promise<ServiceSearchResult[]> {
+): Promise<[]> {
+  // Samfunn midlertidig skjult
+  return []
+  /*
   let queryBuilder = supabase
     .from('services')
     .select(
@@ -450,17 +462,22 @@ export async function searchServices(
         : service.community,
     })) || []
   )
+  */
 }
 
 // ============================================
 // 8. PRODUCTS (Produkter)
 // ============================================
+// Samfunn-funksjonalitet midlertidig skjult før offentlig lansering
 
 export async function searchProducts(
   query: string,
   limit: number = 6,
   offset: number = 0
-): Promise<ProductSearchResult[]> {
+): Promise<[]> {
+  // Samfunn midlertidig skjult
+  return []
+  /*
   let queryBuilder = supabase
     .from('products')
     .select(
@@ -520,6 +537,7 @@ export async function searchProducts(
         : product.community,
     })) || []
   )
+  */
 }
 
 // ============================================

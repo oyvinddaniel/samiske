@@ -15,7 +15,7 @@ interface BookmarkedPost {
   title: string
   content: string
   type: 'standard' | 'event'
-  visibility: 'public' | 'members'
+  visibility: 'public' | 'friends' | 'circles'
   image_url: string | null
   event_date: string | null
   event_time: string | null
@@ -174,13 +174,11 @@ function ExpandedPostView({
     posted_from_name: undefined,
     posted_from_type: undefined as 'group' | 'community' | 'place' | 'municipality' | 'private' | undefined,
     posted_from_id: undefined,
-    created_for_group_id: undefined,
     created_for_community_id: undefined,
   }
 
   const {
-    liked,
-    likeCount,
+    reactionData,
     comments,
     commentCount,
     loadingComments,
@@ -197,7 +195,7 @@ function ExpandedPostView({
     setReplyingTo,
     setReplyContent,
     setEditCommentContent,
-    handleLike,
+    handleReactionChange,
     handleCommentLike,
     handleSubmitComment,
     handleDeleteComment,
@@ -220,8 +218,7 @@ function ExpandedPostView({
       <div className="py-4 pb-[100px]">
         <PostDialogContent
           postData={postData}
-          liked={liked}
-          likeCount={likeCount}
+          reactionData={reactionData}
           commentCount={commentCount}
           comments={comments}
           loadingComments={loadingComments}
@@ -234,7 +231,7 @@ function ExpandedPostView({
           commentLikes={commentLikes}
           editingCommentId={editingCommentId}
           editCommentContent={editCommentContent}
-          onLike={handleLike}
+          onReactionChange={handleReactionChange}
           onNewCommentChange={setNewComment}
           onReplyContentChange={setReplyContent}
           onReplyingToChange={setReplyingTo}
@@ -338,7 +335,7 @@ export function BookmarksPanel({ onClose }: BookmarksPanelProps) {
               title: string
               content: string
               type: 'standard' | 'event'
-              visibility: 'public' | 'members'
+              visibility: 'public' | 'friends' | 'circles'
               image_url: string | null
               event_date: string | null
               event_time: string | null

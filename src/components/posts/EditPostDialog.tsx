@@ -1,12 +1,14 @@
 'use client'
 
+import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { GeographySearchInput, type GeographySelection } from '@/components/geography'
-import { MapPin } from 'lucide-react'
+import { MapPin, ImageIcon } from 'lucide-react'
 import { PostData } from './types'
+import { EditPostImagesDialog } from './EditPostImagesDialog'
 
 interface EditPostDialogProps {
   postData: PostData
@@ -25,6 +27,7 @@ interface EditPostDialogProps {
   onEditGeographyChange: (value: GeographySelection | null) => void
   onSave: () => void
   onCancel: () => void
+  onImagesUpdated?: () => void
 }
 
 export function EditPostDialog({
@@ -44,7 +47,10 @@ export function EditPostDialog({
   onEditGeographyChange,
   onSave,
   onCancel,
+  onImagesUpdated,
 }: EditPostDialogProps) {
+  const [showImageEditor, setShowImageEditor] = useState(false)
+
   return (
     <div className="space-y-4">
       <div className="space-y-2">
@@ -107,6 +113,34 @@ export function EditPostDialog({
           placeholder="Søk etter sted, kommune eller språkområde..."
         />
       </div>
+
+      {/* Edit Images Button */}
+      {postData.images && postData.images.length > 0 && (
+        <div className="space-y-2">
+          <Label>Bilder</Label>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setShowImageEditor(true)}
+            className="w-full"
+          >
+            <ImageIcon className="w-4 h-4 mr-2" />
+            Rediger bilder ({postData.images.length})
+          </Button>
+        </div>
+      )}
+
+      {/* Image Editor Dialog */}
+      {showImageEditor && postData.images && (
+        <EditPostImagesDialog
+          postId={postData.id}
+          images={postData.images}
+          open={showImageEditor}
+          onClose={() => setShowImageEditor(false)}
+          onImagesUpdated={onImagesUpdated || (() => {})}
+        />
+      )}
+
       <div className="flex gap-2 pt-2">
         <Button onClick={onSave} disabled={saving} className="flex-1">
           {saving ? 'Lagrer...' : 'Lagre endringer'}

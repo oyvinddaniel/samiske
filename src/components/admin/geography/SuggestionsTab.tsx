@@ -1,12 +1,13 @@
 'use client'
 
-import { MessageSquare, MapPin, Check, XCircle, Clock } from 'lucide-react'
+import { MessageSquare, MapPin, Check, XCircle, Clock, Image, Trash2, Edit2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { TabsContent } from '@/components/ui/tabs'
 import { cn } from '@/lib/utils'
 import { sanitizeHtml } from '@/lib/sanitize'
+import { MediaService } from '@/lib/media/mediaService'
 import type { Suggestion, LanguageArea, Municipality } from './types'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
@@ -31,6 +32,77 @@ export function SuggestionsTab({
     if (!user) return
 
     try {
+      // Handle image suggestions differently (direct database update)
+      if (suggestion.suggestion_type === 'delete_image') {
+        if (!suggestion.media_id) {
+          toast.error('Mangler bilde-ID')
+          return
+        }
+
+        // Soft delete the image
+        const { error: deleteError } = await supabase
+          .from('media')
+          .update({
+            deleted_at: new Date().toISOString(),
+            deleted_by: user.id,
+            deletion_reason: `Godkjent forslag fra bruker: ${suggestion.reason}`,
+          })
+          .eq('id', suggestion.media_id)
+
+        if (deleteError) throw deleteError
+
+        // Mark suggestion as approved
+        const { error: updateError } = await supabase
+          .from('geography_suggestions')
+          .update({
+            status: 'approved',
+            reviewed_at: new Date().toISOString(),
+            reviewed_by: user.id,
+          })
+          .eq('id', suggestion.id)
+
+        if (updateError) throw updateError
+
+        toast.success('Bildet er slettet')
+        onDataChange()
+        return
+      }
+
+      if (suggestion.suggestion_type === 'edit_image') {
+        if (!suggestion.media_id) {
+          toast.error('Mangler bilde-ID')
+          return
+        }
+
+        // Update the image metadata
+        const { error: updateError } = await supabase
+          .from('media')
+          .update({
+            caption: suggestion.suggested_data.caption as string || null,
+            alt_text: suggestion.suggested_data.alt_text as string || null,
+          })
+          .eq('id', suggestion.media_id)
+
+        if (updateError) throw updateError
+
+        // Mark suggestion as approved
+        const { error: suggestionError } = await supabase
+          .from('geography_suggestions')
+          .update({
+            status: 'approved',
+            reviewed_at: new Date().toISOString(),
+            reviewed_by: user.id,
+          })
+          .eq('id', suggestion.id)
+
+        if (suggestionError) throw suggestionError
+
+        toast.success('Bildedetaljer oppdatert')
+        onDataChange()
+        return
+      }
+
+      // For non-image suggestions, use the RPC function
       const { data, error } = await supabase.rpc('approve_geography_suggestion', {
         p_suggestion_id: suggestion.id,
         p_reviewer_id: user.id,
@@ -109,7 +181,10 @@ export function SuggestionsTab({
             )
 
             const suggestionTypeLabel = suggestion.suggestion_type === 'new_item' ? 'Nytt element' :
-              suggestion.suggestion_type === 'edit_name' ? 'Navneendring' : 'Tilknytning'
+              suggestion.suggestion_type === 'edit_name' ? 'Navneendring' :
+              suggestion.suggestion_type === 'edit_relationship' ? 'Tilknytning' :
+              suggestion.suggestion_type === 'delete_image' ? 'Slett bilde' :
+              suggestion.suggestion_type === 'edit_image' ? 'Rediger bilde' : suggestion.suggestion_type
 
             const entityTypeLabel = suggestion.entity_type === 'language_area' ? 'Språkområde' :
               suggestion.entity_type === 'municipality' ? 'Kommune' : 'Sted'
@@ -133,7 +208,89 @@ export function SuggestionsTab({
 
                       {/* Suggested data */}
                       <div className="bg-white rounded p-3 mb-2 text-sm">
-                        {suggestion.suggestion_type === 'new_item' || suggestion.suggestion_type === 'edit_name' ? (
+                        {suggestion.suggestion_type === 'delete_image' ? (
+                          <div className="space-y-2">
+                            <div className="flex items-start gap-3">
+                              <Image className="w-5 h-5 text-red-600 flex-shrink-0 mt-1" />
+                              <div className="flex-1">
+                                <p className="font-medium text-red-900 mb-2">Forslag om å slette bilde</p>
+                                {(() => {
+                                  if (!suggestion.current_data || typeof suggestion.current_data.url !== 'string') return null
+                                  return (
+                                    <img
+                                      src={suggestion.current_data.url}
+                                      alt="Bilde som skal slettes"
+                                      className="w-full max-w-sm rounded border"
+                                    />
+                                  )
+                                })()}
+                                {(() => {
+                                  if (!suggestion.current_data?.caption || typeof suggestion.current_data.caption !== 'string') return null
+                                  return (
+                                    <p className="text-xs text-gray-500 mt-1">
+                                      Bildetekst: {sanitizeHtml(suggestion.current_data.caption)}
+                                    </p>
+                                  )
+                                })()}
+                              </div>
+                            </div>
+                          </div>
+                        ) : suggestion.suggestion_type === 'edit_image' ? (
+                          <div className="space-y-2">
+                            <div className="flex items-start gap-3">
+                              <Edit2 className="w-5 h-5 text-blue-600 flex-shrink-0 mt-1" />
+                              <div className="flex-1">
+                                <p className="font-medium text-blue-900 mb-2">Forslag om å endre bildedetaljer</p>
+                                {(() => {
+                                  if (!suggestion.current_data || typeof suggestion.current_data.url !== 'string') return null
+                                  return (
+                                    <img
+                                      src={suggestion.current_data.url}
+                                      alt="Bilde som skal endres"
+                                      className="w-full max-w-sm rounded border mb-2"
+                                    />
+                                  )
+                                })()}
+                                <div className="grid grid-cols-2 gap-4 text-xs">
+                                  <div>
+                                    <p className="font-medium text-gray-700 mb-1">Nåværende:</p>
+                                    <p className="text-gray-500">
+                                      Bildetekst: {
+                                        suggestion.current_data?.caption && typeof suggestion.current_data.caption === 'string'
+                                          ? sanitizeHtml(suggestion.current_data.caption)
+                                          : '(tom)'
+                                      }
+                                    </p>
+                                    <p className="text-gray-500">
+                                      Alt-tekst: {
+                                        suggestion.current_data?.alt_text && typeof suggestion.current_data.alt_text === 'string'
+                                          ? sanitizeHtml(suggestion.current_data.alt_text)
+                                          : '(tom)'
+                                      }
+                                    </p>
+                                  </div>
+                                  <div>
+                                    <p className="font-medium text-gray-700 mb-1">Foreslått:</p>
+                                    <p className="text-blue-700">
+                                      Bildetekst: {
+                                        suggestion.suggested_data?.caption && typeof suggestion.suggested_data.caption === 'string'
+                                          ? sanitizeHtml(suggestion.suggested_data.caption)
+                                          : '(tom)'
+                                      }
+                                    </p>
+                                    <p className="text-blue-700">
+                                      Alt-tekst: {
+                                        suggestion.suggested_data?.alt_text && typeof suggestion.suggested_data.alt_text === 'string'
+                                          ? sanitizeHtml(suggestion.suggested_data.alt_text)
+                                          : '(tom)'
+                                      }
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ) : suggestion.suggestion_type === 'new_item' || suggestion.suggestion_type === 'edit_name' ? (
                           <div className="space-y-1">
                             <p>
                               <span className="text-gray-500">Navn:</span>{' '}

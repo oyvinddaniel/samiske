@@ -9,6 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Calendar, MapPin, MessageCircle, ChevronLeft, BarChart3, X, Building2, Users } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { MentionText } from '@/components/mentions'
 
 interface PlacePost {
   id: string
@@ -27,15 +28,6 @@ interface Community {
   slug: string
   logo_url: string | null
   category: string
-  created_at: string
-}
-
-interface OpenGroup {
-  id: string
-  name: string
-  slug: string
-  image_url: string | null
-  member_count: number
   created_at: string
 }
 
@@ -73,7 +65,6 @@ interface RecentComment {
 export function RightSidebar() {
   const [placePosts, setPlacePosts] = useState<PlacePost[]>([])
   const [communities, setCommunities] = useState<Community[]>([])
-  const [openGroups, setOpenGroups] = useState<OpenGroup[]>([])
   const [upcomingEvents, setUpcomingEvents] = useState<UpcomingEvent[]>([])
   const [recentComments, setRecentComments] = useState<RecentComment[]>([])
   const [stats, setStats] = useState<Stats>({ totalMembers: 0, totalPosts: 0, totalComments: 0 })
@@ -305,18 +296,6 @@ export function RightSidebar() {
     if (comms) setCommunities(comms)
   }, [supabase])
 
-  // Fetch open groups (can be called to refresh)
-  const fetchOpenGroups = useCallback(async () => {
-    const { data: groups } = await supabase
-      .from('groups')
-      .select('id, name, slug, image_url, member_count, created_at')
-      .eq('group_type', 'open')
-      .order('created_at', { ascending: false })
-      .limit(5)
-
-    if (groups) setOpenGroups(groups)
-  }, [supabase])
-
   // Fetch upcoming events (can be called to refresh)
   const fetchUpcomingEvents = useCallback(async () => {
     const today = new Date().toISOString().split('T')[0]
@@ -324,6 +303,7 @@ export function RightSidebar() {
       .from('posts')
       .select('id, title, image_url, event_date, event_time, event_end_time, event_location')
       .eq('type', 'event')
+      .eq('visibility', 'public')  // 🔒 Kun offentlige arrangementer
       .gte('event_date', today)
       .order('event_date', { ascending: true })
       .limit(3)
@@ -341,7 +321,6 @@ export function RightSidebar() {
       await Promise.all([
         fetchPlacePosts(),
         fetchCommunities(),
-        fetchOpenGroups(),
         fetchUpcomingEvents(),
         fetchRecentComments(),
         fetchStats(),
@@ -351,7 +330,7 @@ export function RightSidebar() {
     }
 
     fetchData()
-  }, [supabase, fetchPlacePosts, fetchCommunities, fetchOpenGroups, fetchUpcomingEvents, fetchRecentComments, fetchStats])
+  }, [supabase, fetchPlacePosts, fetchCommunities, fetchUpcomingEvents, fetchRecentComments, fetchStats])
 
   // Real-time subscription for all relevant tables
   useEffect(() => {
@@ -381,19 +360,12 @@ export function RightSidebar() {
           fetchCommunities()
         }
       )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'groups' },
-        () => {
-          fetchOpenGroups()
-        }
-      )
       .subscribe()
 
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [supabase, fetchRecentComments, fetchStats, fetchPlacePosts, fetchCommunities, fetchOpenGroups, fetchUpcomingEvents])
+  }, [supabase, fetchRecentComments, fetchStats, fetchPlacePosts, fetchCommunities, fetchUpcomingEvents])
 
   const getInitials = (name: string | null) => {
     if (!name) return '?'
@@ -535,53 +507,6 @@ export function RightSidebar() {
         </Card>
       )}
 
-      {/* Open groups */}
-      {openGroups.length > 0 && (
-        <Card className="gap-0">
-          <CardHeader className="pb-0">
-            <CardTitle className="text-sm font-semibold flex items-center gap-2">
-              <Users className="w-4 h-4 text-green-500" />
-              De 5 nyeste gruppene (åpne)
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="pt-0">
-            <div className="space-y-2">
-              {openGroups.map((group) => (
-                <Link key={group.id} href={`/grupper/${group.slug}`} onClick={() => isMobile && setMobileOpen(false)}>
-                  <div className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-gray-50 transition-colors">
-                    {group.image_url ? (
-                      <img
-                        src={group.image_url}
-                        alt={group.name}
-                        className="w-8 h-8 rounded object-cover"
-                      />
-                    ) : (
-                      <div className="w-8 h-8 rounded bg-green-100 flex items-center justify-center">
-                        <Users className="w-4 h-4 text-green-600" />
-                      </div>
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900 truncate">
-                        {group.name}
-                      </p>
-                      <div className="flex items-center gap-1.5">
-                        <p className="text-[10px] text-gray-500">
-                          {group.member_count} {group.member_count === 1 ? 'medlem' : 'medlemmer'}
-                        </p>
-                        <span className="text-[10px] text-gray-300">•</span>
-                        <p className="text-[10px] text-gray-400">
-                          {getTimeAgo(group.created_at)}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
       {/* Upcoming events */}
       {upcomingEvents.length > 0 && (
         <Card className="gap-0">
@@ -682,7 +607,7 @@ export function RightSidebar() {
                               {getTimeAgo(comment.created_at)}
                             </span>
                           </div>
-                          <p className="text-xs text-gray-600 line-clamp-2">{comment.content}</p>
+                          <p className="text-xs text-gray-600 line-clamp-2"><MentionText content={comment.content} /></p>
                         </Link>
                       ))}
                     </div>

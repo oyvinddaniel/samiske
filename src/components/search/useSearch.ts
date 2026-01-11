@@ -38,15 +38,16 @@ const initialCategoryState = {
   total: 0,
 }
 
+// Samfunn-funksjonalitet midlertidig skjult før offentlig lansering
 const initialState: AllCategoryResults = {
   brukere: { ...initialCategoryState },
   innlegg: { ...initialCategoryState },
   arrangementer: { ...initialCategoryState },
   kommentarer: { ...initialCategoryState },
   geografi: { ...initialCategoryState },
-  samfunn: { ...initialCategoryState },
-  tjenester: { ...initialCategoryState },
-  produkter: { ...initialCategoryState },
+  // samfunn: { ...initialCategoryState },
+  // tjenester: { ...initialCategoryState },
+  // produkter: { ...initialCategoryState },
 }
 
 export function useSearch() {

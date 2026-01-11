@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { ProfileHeader } from '@/components/profile/ProfileHeader'
 import { ProfileTabs } from '@/components/profile/ProfileTabs'
-import { CreatePostSheet } from '@/components/posts/CreatePostSheet'
+import { PostComposerSheet } from '@/components/posts/composer'
 import { ArrowLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
@@ -114,7 +114,7 @@ export default function MinProfilPage() {
         </div>
 
         {/* Create post sheet */}
-        <CreatePostSheet
+        <PostComposerSheet
           open={showCreatePost}
           onClose={() => setShowCreatePost(false)}
           onSuccess={handlePostSuccess}

@@ -15,15 +15,18 @@ import {
   Globe,
   Megaphone,
   Lightbulb,
+  ImageIcon,
 } from 'lucide-react'
 import {
   PostsTab,
   ReportsTab,
   BugReportsTab,
   GeographyTab,
+  GeographyImagesTab,
   StatsCards,
   EmergencyTab,
   AdminDashboard,
+  MediaSettingsTab,
 } from '@/components/admin'
 import { BroadcastMessagesTab } from '@/components/admin/BroadcastMessagesTab'
 import { Header } from '@/components/layout/Header'
@@ -31,7 +34,7 @@ import { FeatureRequestsTab, type FeatureRequestWithUser, type FeatureRequestSta
 import type { User, Post, Stats, Report, BugReportWithUser } from '@/components/admin'
 import type { BugReportPriority, BugReportStatus } from '@/lib/types/bug-reports'
 
-type TabValue = 'emergency' | 'dashboard' | 'posts' | 'reports' | 'bugs' | 'feature-requests' | 'geography' | 'broadcasts'
+type TabValue = 'emergency' | 'dashboard' | 'posts' | 'reports' | 'bugs' | 'feature-requests' | 'geography' | 'geography-images' | 'broadcasts' | 'media-settings'
 
 interface NavItem {
   value: TabValue
@@ -404,6 +407,8 @@ export default function AdminPage() {
         { value: 'bugs', label: 'Bug-rapporter', icon: Bug, badge: bugReports.filter(br => br.status === 'new').length },
         { value: 'broadcasts', label: 'Logg inn-meldinger', subtitle: 'Broadcast popups til brukerne ved innlogging', icon: Megaphone },
         { value: 'geography', label: 'Geografi', icon: Globe },
+        { value: 'geography-images', label: 'Geografi-bilder', subtitle: 'Administrer bilder for kommuner og steder', icon: ImageIcon },
+        { value: 'media-settings', label: 'Media Service', subtitle: 'Innstillinger for bildeopplasting', icon: ImageIcon },
       ]
     },
   ]
@@ -550,6 +555,8 @@ export default function AdminPage() {
               />
             )}
             {activeTab === 'geography' && <GeographyTab />}
+            {activeTab === 'geography-images' && <GeographyImagesTab />}
+            {activeTab === 'media-settings' && <MediaSettingsTab />}
           </div>
         </main>
       </div>

@@ -8,10 +8,12 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { CommentSection } from '@/components/posts/CommentSection'
+import { NestedComments } from '@/components/posts/NestedComments'
+import { PostStats } from '@/components/posts/PostStats'
 import { RSVPButton } from '@/components/events/RSVPButton'
 import { RSVPList } from '@/components/events/RSVPList'
-import { Video, Globe, MapPin, Clock, Calendar, ArrowLeft, Heart, Loader2 } from 'lucide-react'
+import { MentionText } from '@/components/mentions'
+import { Video, Globe, MapPin, Clock, Calendar, ArrowLeft, Heart, Loader2, Archive } from 'lucide-react'
 
 interface Post {
   id: string
@@ -93,6 +95,25 @@ export function PostDetailPanel({ postId, onClose }: PostDetailPanelProps) {
             name,
             slug,
             color
+          ),
+          images:post_images (
+            id,
+            url,
+            thumbnail_url,
+            width,
+            height,
+            sort_order
+          ),
+          video:post_videos (
+            id,
+            bunny_video_id,
+            thumbnail_url,
+            playback_url,
+            hls_url,
+            duration,
+            width,
+            height,
+            status
           )
         `)
         .eq('id', postId)
@@ -129,6 +150,12 @@ export function PostDetailPanel({ postId, onClose }: PostDetailPanelProps) {
           .single()
         setLiked(!!likeData)
       }
+
+      // Record view for statistics
+      await supabase.rpc('record_post_view', {
+        p_post_id: postId,
+        p_session_id: !user ? `anon_${Date.now()}` : null
+      })
 
       setLoading(false)
     }
@@ -372,7 +399,7 @@ export function PostDetailPanel({ postId, onClose }: PostDetailPanelProps) {
 
           {/* Content */}
           <p className="text-gray-700 whitespace-pre-wrap leading-relaxed">
-            {post.content}
+            <MentionText content={post.content} />
           </p>
 
           {/* Actions */}
@@ -390,16 +417,22 @@ export function PostDetailPanel({ postId, onClose }: PostDetailPanelProps) {
               </Button>
             </div>
 
-            {/* Delete button for owner */}
+            {/* Owner actions */}
             {currentUserId === post.user_id && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleDelete}
-                className="text-red-500 hover:text-red-700"
-              >
-                Slett innlegg
-              </Button>
+              <div className="flex items-center gap-2">
+                <PostStats
+                  postId={postId}
+                  isOwner={true}
+                />
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleDelete}
+                  className="text-red-500 hover:text-red-700"
+                >
+                  Slett innlegg
+                </Button>
+              </div>
             )}
           </div>
         </CardContent>
@@ -408,7 +441,11 @@ export function PostDetailPanel({ postId, onClose }: PostDetailPanelProps) {
       {/* Comments */}
       <Card>
         <CardContent className="pt-6">
-          <CommentSection postId={postId} currentUserId={currentUserId} />
+          <NestedComments
+            postId={postId}
+            postOwnerId={post.user_id}
+            currentUserId={currentUserId}
+          />
         </CardContent>
       </Card>
     </div>

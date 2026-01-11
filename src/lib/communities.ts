@@ -1,25 +1,18 @@
 import { createClient } from '@/lib/supabase/client'
-import type { Community, CommunityAdmin, CommunityFollower, CommunityCategory, AdminRole } from '@/lib/types/communities'
+import type { Community, CommunityAdmin, CommunityFollower, AdminRole } from '@/lib/types/communities'
+import { generateSlug as generateSlugUtil } from '@/lib/utils/slug'
 
 const supabase = createClient()
 
-// Generate URL-friendly slug
-export function generateSlug(name: string): string {
-  return name
-    .toLowerCase()
-    .replace(/[æ]/g, 'ae')
-    .replace(/[ø]/g, 'o')
-    .replace(/[å]/g, 'a')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-|-$/g, '')
-}
+// Re-export slug function for backward compatibility
+export const generateSlug = generateSlugUtil
 
 // Create a new community
 export async function createCommunity(
   params: {
     name: string
     description?: string
-    category?: CommunityCategory
+    category?: string  // Now a string to support dynamic categories
     municipalityId?: string
     placeId?: string
     email?: string
@@ -214,12 +207,13 @@ export async function getAdminCommunities(): Promise<(Community & { admin_role: 
 export async function getCommunities(
   limit = 20,
   offset = 0,
-  category?: CommunityCategory
+  category?: string
 ): Promise<Community[]> {
   let query = supabase
     .from('communities')
     .select('*')
     .eq('is_active', true)
+    .eq('is_hidden', false)  // Skjul samfunn før offentlig lansering
     .order('follower_count', { ascending: false })
     .range(offset, offset + limit - 1)
 
@@ -239,10 +233,11 @@ export async function getCommunities(
 
 // Search communities
 export async function searchCommunities(searchTerm: string, limit = 10): Promise<Community[]> {
-  const { data, error } = await supabase
+  const { data, error} = await supabase
     .from('communities')
     .select('*')
     .eq('is_active', true)
+    .eq('is_hidden', false)  // Skjul samfunn før offentlig lansering
     .or(`name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%`)
     .order('follower_count', { ascending: false })
     .limit(limit)

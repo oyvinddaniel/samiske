@@ -443,7 +443,7 @@ function MobileNavContent({ currentCategory = '' }: MobileNavProps) {
               >
                 <div className="w-8 h-8 rounded-lg overflow-hidden shadow-md">
                   <img
-                    src="/images/sami.jpg"
+                    src="/images/sami.png"
                     alt="Samisk flagg"
                     className="w-full h-full object-cover"
                   />
@@ -558,32 +558,9 @@ function MobileNavContent({ currentCategory = '' }: MobileNavProps) {
                 </button>
               </div>
 
-              {/* Navigation section - Grupper & Samfunn */}
-              <div className="mb-4 pb-4 border-b border-gray-100">
-                {/* Grupper - opens groups panel */}
-                <button
-                  onClick={() => {
-                    setIsOpen(false)
-                    window.dispatchEvent(new CustomEvent('open-groups-panel'))
-                  }}
-                  className={cn(
-                    'w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-colors',
-                    pathname === '/' && searchParams.get('panel') === 'groups'
-                      ? 'bg-blue-50 text-blue-700'
-                      : 'text-gray-600 hover:bg-blue-50/50 hover:text-gray-700'
-                  )}
-                >
-                  <span className="flex items-center gap-3">
-                    <Users className={cn(
-                      'w-4 h-4 transition-colors',
-                      pathname === '/' && searchParams.get('panel') === 'groups' ? 'text-blue-600' : 'text-purple-500'
-                    )} />
-                    Grupper
-                  </span>
-                  <ChevronRight className="w-4 h-4 text-gray-400" />
-                </button>
-
-                {/* Samfunn - opens community panel */}
+              {/* Samfunn-funksjonalitet midlertidig skjult før offentlig lansering */}
+              {/* Navigation section - Samfunn */}
+              {/* <div className="mb-4 pb-4 border-b border-gray-100">
                 <button
                   onClick={() => {
                     setIsOpen(false)
@@ -597,7 +574,7 @@ function MobileNavContent({ currentCategory = '' }: MobileNavProps) {
                   </span>
                   <ChevronRight className="w-4 h-4 text-gray-400" />
                 </button>
-              </div>
+              </div> */}
 
               {/* Mine steder - only for logged in users */}
               {currentUserId && (
@@ -721,7 +698,7 @@ function MobileNavContent({ currentCategory = '' }: MobileNavProps) {
                   >
                     <span className="flex items-center gap-3">
                       <Bookmark className="w-4 h-4 text-amber-500" />
-                      Bokmerker
+                      Lagret
                     </span>
                     <ChevronRight className="w-4 h-4 text-gray-400" />
                   </button>

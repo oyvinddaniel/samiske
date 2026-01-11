@@ -24,6 +24,17 @@ import {
 import { toast } from 'sonner'
 import { Loader2, Plus, Languages, MapPin, Building2, Upload, X } from 'lucide-react'
 import Image from 'next/image'
+import { MediaService } from '@/lib/media/mediaService'
+import { validateFile } from '@/lib/media/mediaValidation'
+import type { MediaEntityType } from '@/lib/media/mediaTypes'
+import { geocodePlace, geocodeMunicipality } from '@/lib/geography'
+
+// Mapping til MediaService entity types
+const MEDIA_ENTITY_MAP: Record<EntityType, MediaEntityType> = {
+  language_area: 'geography_language_area',
+  municipality: 'geography_municipality',
+  place: 'geography_place',
+}
 
 interface LanguageArea {
   id: string
@@ -128,17 +139,24 @@ export function SuggestChangeModal({
         return
       }
 
-      const column = entityType === 'language_area' ? 'language_area_id' :
-                     entityType === 'municipality' ? 'municipality_id' : 'place_id'
-
       const { data } = await supabase
-        .from('geography_images')
-        .select('*')
-        .eq(column, entity.id)
+        .from('media')
+        .select('id, storage_path, caption, sort_order')
+        .eq('entity_type', MEDIA_ENTITY_MAP[entityType])
+        .eq('entity_id', entity.id)
+        .is('deleted_at', null)
         .order('sort_order')
-        .limit(5)
+        .limit(20)
 
-      if (data) setImages(data)
+      if (data) {
+        // Transform to GeographyImage format
+        setImages(data.map(item => ({
+          id: item.id,
+          image_url: MediaService.getUrl(item.storage_path),
+          caption: item.caption,
+          sort_order: item.sort_order,
+        })))
+      }
     }
     if (open) fetchImages()
   }, [open, entity, entityType, suggestionType, supabase])
@@ -183,53 +201,53 @@ export function SuggestChangeModal({
     const file = e.target.files?.[0]
     if (!file || !currentUserId || !entity) return
 
-    if (images.length >= 5) {
-      toast.error('Maks 5 bilder per sted')
+    if (images.length >= 20) {
+      toast.error('Maks 20 bilder per sted')
+      return
+    }
+
+    // Validate file using MediaService
+    const errors = await validateFile(file)
+    if (errors.length > 0) {
+      toast.error(errors[0].message)
       return
     }
 
     setUploadingImage(true)
 
     try {
-      // Upload to storage
-      const fileExt = file.name.split('.').pop()
-      const fileName = `${entityType}/${entity.id}/${Date.now()}.${fileExt}`
-
-      const { error: uploadError } = await supabase.storage
-        .from('geography-images')
-        .upload(fileName, file)
-
-      if (uploadError) throw uploadError
-
-      // Get public URL
-      const { data: { publicUrl } } = supabase.storage
-        .from('geography-images')
-        .getPublicUrl(fileName)
-
-      // Save to database
-      const column = entityType === 'language_area' ? 'language_area_id' :
-                     entityType === 'municipality' ? 'municipality_id' : 'place_id'
-
-      const { error: dbError } = await supabase.from('geography_images').insert({
-        [column]: entity.id,
-        image_url: publicUrl,
-        uploaded_by: currentUserId,
-        sort_order: images.length,
+      // Upload using MediaService
+      const result = await MediaService.upload(file, {
+        entityType: MEDIA_ENTITY_MAP[entityType],
+        entityId: entity.id,
+        sortOrder: images.length,
       })
 
-      if (dbError) throw dbError
+      if (!result.success || !result.media) {
+        throw new Error(result.error || 'Upload failed')
+      }
 
       toast.success('Bilde lastet opp')
 
-      // Refresh images
+      // Refresh images from media table
       const { data } = await supabase
-        .from('geography_images')
-        .select('*')
-        .eq(column, entity.id)
+        .from('media')
+        .select('id, storage_path, caption, sort_order')
+        .eq('entity_type', MEDIA_ENTITY_MAP[entityType])
+        .eq('entity_id', entity.id)
+        .is('deleted_at', null)
         .order('sort_order')
-        .limit(5)
+        .limit(20)
 
-      if (data) setImages(data)
+      if (data) {
+        // Transform to GeographyImage format
+        setImages(data.map(item => ({
+          id: item.id,
+          image_url: MediaService.getUrl(item.storage_path),
+          caption: item.caption,
+          sort_order: item.sort_order,
+        })))
+      }
     } catch (error) {
       console.error('Upload error:', error)
       toast.error('Kunne ikke laste opp bilde')
@@ -320,8 +338,12 @@ export function SuggestChangeModal({
         }
         else if (entityType === 'municipality') {
           // Get first available country as default (Norway)
-          const { data: countries } = await supabase.from('countries').select('id').eq('code', 'NO').limit(1)
+          const { data: countries } = await supabase.from('countries').select('id, code').eq('code', 'NO').limit(1)
           const defaultCountryId = countries?.[0]?.id || null
+          const countryCode = countries?.[0]?.code?.toLowerCase() || 'no'
+
+          // Auto-geocode the municipality
+          const geoResult = await geocodeMunicipality(name.trim(), countryCode)
 
           const { data, error } = await supabase.from('municipalities').insert({
             name: name.trim(),
@@ -329,26 +351,61 @@ export function SuggestChangeModal({
             slug: generatedSlug,
             description: description.trim() || null,
             language_area_id: selectedLanguageAreas[0] || null,
-            country_id: defaultCountryId
+            country_id: defaultCountryId,
+            latitude: geoResult?.latitude || null,
+            longitude: geoResult?.longitude || null
           }).select().single()
 
           if (error) throw error
           resultId = data.id
           suggestedData = { name: name.trim(), name_sami: nameSami.trim() || null, description: description.trim() || null, language_area_id: selectedLanguageAreas[0] }
+
+          if (geoResult) {
+            console.log(`Auto-geocoded municipality ${name.trim()}: ${geoResult.latitude}, ${geoResult.longitude}`)
+          }
         }
         else if (entityType === 'place') {
+          const municipalityId = selectedMunicipality || parentId
+
+          // Get municipality name for better geocoding accuracy
+          let municipalityName: string | undefined
+          let countryCode = 'no'
+          if (municipalityId) {
+            const selectedMuni = municipalities.find(m => m.id === municipalityId)
+            municipalityName = selectedMuni?.name
+
+            // Try to get country code from municipality
+            if (selectedMuni?.country_id) {
+              const { data: country } = await supabase
+                .from('countries')
+                .select('code')
+                .eq('id', selectedMuni.country_id)
+                .single()
+              if (country?.code) countryCode = country.code.toLowerCase()
+            }
+          }
+
+          // Auto-geocode the place with municipality context
+          const geoResult = await geocodePlace(name.trim(), municipalityName, countryCode)
+
           const { data, error } = await supabase.from('places').insert({
             name: name.trim(),
             name_sami: nameSami.trim() || null,
             slug: generatedSlug,
             description: description.trim() || null,
-            municipality_id: selectedMunicipality || parentId,
-            created_by: user.id
+            municipality_id: municipalityId,
+            created_by: user.id,
+            latitude: geoResult?.latitude || null,
+            longitude: geoResult?.longitude || null
           }).select().single()
 
           if (error) throw error
           resultId = data.id
-          suggestedData = { name: name.trim(), name_sami: nameSami.trim() || null, description: description.trim() || null, municipality_id: selectedMunicipality || parentId }
+          suggestedData = { name: name.trim(), name_sami: nameSami.trim() || null, description: description.trim() || null, municipality_id: municipalityId }
+
+          if (geoResult) {
+            console.log(`Auto-geocoded place ${name.trim()} in ${municipalityName}: ${geoResult.latitude}, ${geoResult.longitude}`)
+          }
         }
       }
       // EDIT NAME - Update directly (includes description and relationships)
@@ -551,9 +608,9 @@ export function SuggestChangeModal({
           {/* Images section - only for existing entities */}
           {suggestionType !== 'new_item' && entity && (
             <div className="space-y-2">
-              <Label>Bilder ({images.length}/5)</Label>
+              <Label>Bilder ({images.length}/20)</Label>
               {images.length > 0 && (
-                <div className="grid grid-cols-3 gap-2 mb-2">
+                <div className="grid grid-cols-4 gap-2 mb-2 max-h-48 overflow-y-auto">
                   {images.map((img) => (
                     <div key={img.id} className="relative aspect-square rounded-lg overflow-hidden bg-gray-100">
                       <Image
@@ -566,7 +623,7 @@ export function SuggestChangeModal({
                   ))}
                 </div>
               )}
-              {currentUserId && images.length < 5 && (
+              {currentUserId && images.length < 20 && (
                 <label className="flex items-center justify-center gap-2 px-4 py-2 border-2 border-dashed border-gray-300 rounded-lg hover:border-gray-400 cursor-pointer transition-colors">
                   {uploadingImage ? (
                     <Loader2 className="w-4 h-4 animate-spin text-gray-400" />

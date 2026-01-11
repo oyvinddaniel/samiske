@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState } from 'react'
 import { Settings, Globe, Mail, Phone, MapPin, BadgeCheck, Plus, MessageCircle, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -8,27 +8,12 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { FollowButton } from '@/components/communities'
 import { Feed } from '@/components/feed/Feed'
-import { CreatePostSheet } from '@/components/posts/CreatePostSheet'
-import { ProductCard } from '@/components/communities/ProductCard'
-import { ServiceCard } from '@/components/communities/ServiceCard'
+import { PostComposerSheet } from '@/components/posts/composer'
+import { ItemCard } from '@/components/communities/ItemCard'
 import { CreateProductModal } from '@/components/communities/CreateProductModal'
 import { CreateServiceModal } from '@/components/communities/CreateServiceModal'
 import { SendMessageToCommunityModal } from '@/components/communities/SendMessageToCommunityModal'
-import {
-  getCommunityBySlug,
-  getCommunityAdmins,
-  getCommunityFollowers,
-  isFollowingCommunity,
-  isCommunityAdmin
-} from '@/lib/communities'
-import { getProductsByCommunity } from '@/lib/products'
-import { getServicesByCommunity } from '@/lib/services'
-import { getCommunityIndustries } from '@/lib/industries'
-import { createClient } from '@/lib/supabase/client'
-import type { Community, CommunityAdmin, CommunityFollower, AdminRole } from '@/lib/types/communities'
-import type { Product } from '@/lib/types/products'
-import type { Service } from '@/lib/types/services'
-import type { Industry } from '@/lib/types/industries'
+import { useCommunity } from '@/hooks/useCommunity'
 import { categoryLabels, adminRoleLabels } from '@/lib/types/communities'
 import { getIndustryDisplayName } from '@/lib/types/industries'
 
@@ -39,88 +24,31 @@ interface CommunityPageViewProps {
 }
 
 export function CommunityPageView({ slug, initialTab, onClose }: CommunityPageViewProps) {
-  const [community, setCommunity] = useState<Community | null>(null)
-  const [admins, setAdmins] = useState<CommunityAdmin[]>([])
-  const [products, setProducts] = useState<Product[]>([])
-  const [services, setServices] = useState<Service[]>([])
-  const [industries, setIndustries] = useState<Industry[]>([])
-  const [loading, setLoading] = useState(true)
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
-  const [isFollowing, setIsFollowing] = useState(false)
-  const [adminStatus, setAdminStatus] = useState<{ isAdmin: boolean; role: AdminRole | null }>({
-    isAdmin: false,
-    role: null
+  // Use centralized hook for all data fetching
+  const {
+    community,
+    admins,
+    products,
+    services,
+    industries,
+    currentUserId,
+    isFollowing,
+    setIsFollowing,
+    adminStatus,
+    loading,
+    refetch
+  } = useCommunity({
+    slug,
+    fetchProducts: true,
+    fetchServices: true,
+    fetchIndustries: true
   })
+
+  // Modal states
   const [showCreateProduct, setShowCreateProduct] = useState(false)
   const [showCreateService, setShowCreateService] = useState(false)
   const [showSendMessage, setShowSendMessage] = useState(false)
   const [showCreatePost, setShowCreatePost] = useState(false)
-
-  const supabase = createClient()
-
-  // Get current user
-  useEffect(() => {
-    const getUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      setCurrentUserId(user?.id || null)
-    }
-    getUser()
-  }, [supabase])
-
-  // Fetch community data
-  const fetchCommunityData = useCallback(async () => {
-    if (!slug) return
-
-    setLoading(true)
-    try {
-      // First, fetch the community to get its UUID
-      const communityData = await getCommunityBySlug(slug)
-
-      if (!communityData) {
-        setLoading(false)
-        return
-      }
-
-      setCommunity(communityData)
-
-      // Now fetch related data using the community UUID
-      const [
-        adminsData,
-        followersData,
-        productsData,
-        servicesData,
-        industriesData
-      ] = await Promise.all([
-        getCommunityAdmins(communityData.id),
-        getCommunityFollowers(communityData.id, 10, 0),
-        getProductsByCommunity(communityData.id),
-        getServicesByCommunity(communityData.id),
-        getCommunityIndustries(communityData.id)
-      ])
-
-      setAdmins(adminsData)
-      setProducts(productsData)
-      setServices(servicesData)
-      setIndustries(industriesData)
-
-      // Check if current user is following
-      if (currentUserId && communityData.id) {
-        const following = await isFollowingCommunity(communityData.id)
-        setIsFollowing(following)
-
-        const admin = await isCommunityAdmin(communityData.id)
-        setAdminStatus(admin)
-      }
-    } catch (error) {
-      console.error('Error fetching community data:', error)
-    } finally {
-      setLoading(false)
-    }
-  }, [slug, currentUserId, supabase])
-
-  useEffect(() => {
-    fetchCommunityData()
-  }, [fetchCommunityData])
 
   if (loading) {
     return (
@@ -292,7 +220,7 @@ export function CommunityPageView({ slug, initialTab, onClose }: CommunityPageVi
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
               </svg>
             </div>
-            <span className="font-medium text-sm">Nytt innlegg</span>
+            <span className="font-medium text-sm">Nytt sideinnlegg</span>
           </button>
         </div>
       )}
@@ -329,11 +257,14 @@ export function CommunityPageView({ slug, initialTab, onClose }: CommunityPageVi
             )}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {products.map((product) => (
-                <ProductCard
+                <ItemCard
                   key={product.id}
-                  product={product}
+                  item={product}
+                  type="product"
                   isAdmin={adminStatus.isAdmin}
                   communityId={community.id}
+                  communitySlug={community.slug}
+                  onPromoted={refetch}
                 />
               ))}
               {products.length === 0 && (
@@ -353,11 +284,14 @@ export function CommunityPageView({ slug, initialTab, onClose }: CommunityPageVi
             )}
             <div className="space-y-4">
               {services.map((service) => (
-                <ServiceCard
+                <ItemCard
                   key={service.id}
-                  service={service}
+                  item={service}
+                  type="service"
                   isAdmin={adminStatus.isAdmin}
                   communityId={community.id}
+                  communitySlug={community.slug}
+                  onPromoted={refetch}
                 />
               ))}
               {services.length === 0 && (
@@ -402,14 +336,13 @@ export function CommunityPageView({ slug, initialTab, onClose }: CommunityPageVi
       {/* Modals */}
       {adminStatus.isAdmin && community.id && currentUserId && (
         <>
-          <CreatePostSheet
+          <PostComposerSheet
             open={showCreatePost}
             onClose={() => setShowCreatePost(false)}
             userId={currentUserId}
             communityId={community.id}
             onSuccess={() => {
               setShowCreatePost(false)
-              // Refresh posts in the feed
               window.dispatchEvent(new CustomEvent('post-created'))
             }}
           />
@@ -417,13 +350,13 @@ export function CommunityPageView({ slug, initialTab, onClose }: CommunityPageVi
             open={showCreateProduct}
             onOpenChange={setShowCreateProduct}
             communityId={community.id}
-            onCreated={fetchCommunityData}
+            onCreated={refetch}
           />
           <CreateServiceModal
             open={showCreateService}
             onOpenChange={setShowCreateService}
             communityId={community.id}
-            onCreated={fetchCommunityData}
+            onCreated={refetch}
           />
         </>
       )}

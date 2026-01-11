@@ -19,6 +19,7 @@ import { CATEGORY_NAMES, SEARCHABLE_CATEGORIES } from '@/lib/search/searchConsta
 import type { AllCategoryResults } from './searchTypes'
 
 // Category icons mapping
+// Samfunn-funksjonalitet midlertidig skjult før offentlig lansering
 const CATEGORY_ICONS: Record<SearchCategory, React.ElementType> = {
   alle: Globe,
   brukere: User,
@@ -26,9 +27,9 @@ const CATEGORY_ICONS: Record<SearchCategory, React.ElementType> = {
   arrangementer: Calendar,
   kommentarer: MessageCircle,
   geografi: MapPin,
-  samfunn: Building2,
-  tjenester: Briefcase,
-  produkter: ShoppingBag,
+  // samfunn: Building2,
+  // tjenester: Briefcase,
+  // produkter: ShoppingBag,
 }
 
 interface SearchCategoryFilterProps {

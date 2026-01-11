@@ -14,6 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { CalendarFilters, type CalendarFilter } from './CalendarFilters'
 
 interface Event {
   id: string
@@ -259,25 +260,20 @@ const MONTHS = [
 ]
 
 interface CalendarViewProps {
-  groupId?: string
   communityIds?: string[]
   // Geografisk filtrering
   geographyType?: GeographyType
   geographyId?: string | null
   showFilter?: boolean
-  // For group context
-  groupName?: string
   onCreateEvent?: () => void
   hideBackButton?: boolean
 }
 
 export function CalendarView({
-  groupId,
   communityIds,
   geographyType: initialGeographyType,
   geographyId: initialGeographyId,
   showFilter = true,
-  groupName,
   onCreateEvent,
   hideBackButton = false
 }: CalendarViewProps = {}) {
@@ -294,6 +290,14 @@ export function CalendarView({
   const [geographyId, setGeographyId] = useState<string | null>(initialGeographyId || null)
   const [geographyOptions, setGeographyOptions] = useState<GeographyOption[]>([])
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
+
+  // 🆕 Modern filters (Hvem/Lokasjon)
+  const [filters, setFilters] = useState<CalendarFilter>({
+    who: ['all'],
+    location: null,
+    locationId: null,
+    locationType: null,
+  })
 
   // Hent bruker og geografiske alternativer
   useEffect(() => {
@@ -324,6 +328,31 @@ export function CalendarView({
     init()
   }, [supabase])
 
+  // 🔄 Sync modern filters with geography state (for data fetching)
+  useEffect(() => {
+    if (!filters.locationType) {
+      // No location filter - default to sapmi if not set by props
+      if (!initialGeographyType) {
+        setGeographyType('sapmi')
+        setGeographyId(null)
+      }
+      return
+    }
+
+    // Map modern filter location to geography state
+    if (filters.locationType === 'user_locations') {
+      setGeographyType('user_locations')
+      setGeographyId(null)
+    } else if (filters.locationType === 'sapmi') {
+      setGeographyType('sapmi')
+      setGeographyId(null)
+    } else {
+      // Specific location (place, municipality, language_area)
+      setGeographyType(filters.locationType)
+      setGeographyId(filters.locationId)
+    }
+  }, [filters.locationType, filters.locationId, initialGeographyType])
+
   // Fetch events for the current month
   useEffect(() => {
     const fetchEvents = async () => {
@@ -336,33 +365,21 @@ export function CalendarView({
       const firstDay = new Date(year, month, 1).toISOString().split('T')[0]
       const lastDay = new Date(year, month + 1, 0).toISOString().split('T')[0]
 
-      // If filtering by group or community, use old method
-      if (groupId || (communityIds && communityIds.length > 0)) {
-        let postIds: string[] | null = null
+      // If filtering by community, use old method
+      if (communityIds && communityIds.length > 0) {
+        const { data: communityPosts } = await supabase
+          .from('community_posts')
+          .select('post_id')
+          .in('community_id', communityIds)
+        const postIds = communityPosts?.map(cp => cp.post_id) || []
 
-        if (groupId) {
-          const { data: groupPosts } = await supabase
-            .from('group_posts')
-            .select('post_id')
-            .eq('group_id', groupId)
-          postIds = groupPosts?.map(gp => gp.post_id) || []
-        }
-
-        if (communityIds && communityIds.length > 0) {
-          const { data: communityPosts } = await supabase
-            .from('community_posts')
-            .select('post_id')
-            .in('community_id', communityIds)
-          postIds = communityPosts?.map(cp => cp.post_id) || []
-        }
-
-        if (postIds !== null && postIds.length === 0) {
+        if (postIds.length === 0) {
           setEvents([])
           setLoading(false)
           return
         }
 
-        let query = supabase
+        const query = supabase
           .from('posts')
           .select(`
             id, title, content, image_url, event_date, event_time,
@@ -371,14 +388,12 @@ export function CalendarView({
             user:profiles!posts_user_id_fkey (full_name)
           `)
           .eq('type', 'event')
+          .eq('visibility', 'public')  // 🔒 Kun offentlige arrangementer
+          .in('id', postIds)
           .gte('event_date', firstDay)
           .lte('event_date', lastDay)
           .order('event_date', { ascending: true })
           .order('event_time', { ascending: true })
-
-        if (postIds !== null) {
-          query = query.in('id', postIds)
-        }
 
         const { data, error } = await query
         if (!error && data) {
@@ -436,6 +451,8 @@ export function CalendarView({
               user:profiles!posts_user_id_fkey (full_name)
             `)
             .eq('type', 'event')
+            .eq('visibility', 'public')  // 🔒 Kun offentlige arrangementer
+            .is('created_for_group_id', null)  // 🔒 Ikke gruppe-arrangementer
             .gte('event_date', firstDay)
             .lte('event_date', lastDay)
             .order('event_date', { ascending: true })
@@ -459,7 +476,7 @@ export function CalendarView({
     }
 
     fetchEvents()
-  }, [currentDate, supabase, groupId, communityIds, geographyType, geographyId, currentUserId])
+  }, [currentDate, supabase, communityIds, geographyType, geographyId, currentUserId])
 
   // Generate calendar days
   const calendarDays = useMemo(() => {
@@ -497,15 +514,38 @@ export function CalendarView({
     return days
   }, [currentDate])
 
-  // Get events for a specific date
+  // 🆕 Filter events based on modern filters (Hvem/Lokasjon)
+  const filteredEvents = useMemo(() => {
+    return events.filter(event => {
+      // WHO filter (Meg/Venner/Grupper/Alle)
+      if (!filters.who.includes('all')) {
+        // TODO: Implement friend check and group check when we have that data
+        // For now, only "me" filter is implemented
+        if (filters.who.includes('me')) {
+          // Keep events created by current user
+          // (We don't have user_id on Event interface, so this is a placeholder)
+        }
+      }
+
+      // LOCATION filter (Søkbar lokasjon)
+      // Filter is handled by the main geography selector (geographyType/geographyId)
+      // The CalendarFilters location search overrides the geography selector
+      // TODO: When locationId is set, filter events by that specific location
+      // Would need event.municipality_id/place_id/language_area_id fields
+
+      return true // Show all events for now
+    })
+  }, [events, filters])
+
+  // Get events for a specific date (using filtered events)
   const getEventsForDate = (date: Date) => {
     const dateStr = date.toISOString().split('T')[0]
-    return events.filter(event => event.event_date === dateStr)
+    return filteredEvents.filter(event => event.event_date === dateStr)
   }
 
-  // Get events for selected date
+  // Get events for selected date (using filtered events)
   const selectedDateEvents = selectedDate
-    ? events.filter(event => event.event_date === selectedDate)
+    ? filteredEvents.filter(event => event.event_date === selectedDate)
     : []
 
   // Check if date is today
@@ -554,12 +594,6 @@ export function CalendarView({
       <Card>
         <CardHeader className="pb-2">
           <div className="flex flex-col gap-3">
-            {/* Group name header if in group context */}
-            {groupName && (
-              <div className="text-sm text-gray-500 font-medium">
-                Kalender for {groupName}
-              </div>
-            )}
             <div className="flex items-center justify-between">
               <CardTitle className="flex items-center gap-2">
                 <Calendar className="w-5 h-5 text-blue-600" />
@@ -585,49 +619,14 @@ export function CalendarView({
               </div>
             </div>
 
-            {/* Geographic filter */}
-            {showFilter && !groupId && !communityIds && (
-              <div className="flex items-center gap-2">
-                <Filter className="w-4 h-4 text-gray-400" />
-                <Select
-                  value={geographyType === 'user_locations' ? 'user_locations' : `${geographyType}:${geographyId || ''}`}
-                  onValueChange={(value) => {
-                    if (value === 'user_locations') {
-                      setGeographyType('user_locations')
-                      setGeographyId(null)
-                    } else if (value === 'sapmi') {
-                      setGeographyType('sapmi')
-                      setGeographyId(null)
-                    } else {
-                      const [type, id] = value.split(':')
-                      setGeographyType(type as GeographyType)
-                      setGeographyId(id || null)
-                    }
-                  }}
-                >
-                  <SelectTrigger className="w-[200px] h-8 text-sm">
-                    <SelectValue placeholder="Velg område" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {geographyOptions.map((option) => (
-                      <SelectItem
-                        key={option.type === 'user_locations' || option.type === 'sapmi'
-                          ? option.type
-                          : `${option.type}:${option.id}`}
-                        value={option.type === 'user_locations' || option.type === 'sapmi'
-                          ? option.type
-                          : `${option.type}:${option.id}`}
-                      >
-                        <span className="flex items-center gap-2">
-                          {option.type === 'user_locations' && <MapPin className="w-3 h-3" />}
-                          {option.type === 'sapmi' && <Globe className="w-3 h-3" />}
-                          {option.name}
-                        </span>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+            {/* 🆕 Modern Filters (Hvem/Lokasjon) */}
+            {showFilter && !communityIds && (
+              <CalendarFilters
+                currentUserId={currentUserId}
+                filters={filters}
+                onFiltersChange={setFilters}
+                eventCount={filteredEvents.length}
+              />
             )}
           </div>
         </CardHeader>

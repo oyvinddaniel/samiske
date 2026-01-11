@@ -76,62 +76,66 @@ export interface GeographySearchResult extends BaseSearchResult {
 }
 
 // Community search result
-export interface CommunitySearchResult extends BaseSearchResult {
-  type: 'samfunn'
-  name: string
-  slug: string
-  logo_url: string | null
-  category: string
-  follower_count: number
-  is_verified: boolean
-}
+// Samfunn-funksjonalitet midlertidig skjult før offentlig lansering
+// export interface CommunitySearchResult extends BaseSearchResult {
+//   type: 'samfunn'
+//   name: string
+//   slug: string
+//   logo_url: string | null
+//   category: string
+//   follower_count: number
+//   is_verified: boolean
+// }
 
 // Service search result
-export interface ServiceSearchResult extends BaseSearchResult {
-  type: 'tjenester'
-  name: string
-  slug: string
-  description: string | null
-  category: string
-  images: string[]
-  is_online: boolean
-  community: {
-    id: string
-    name: string
-    slug: string
-    logo_url: string | null
-  } | null
-}
+// Samfunn-funksjonalitet midlertidig skjult før offentlig lansering
+// export interface ServiceSearchResult extends BaseSearchResult {
+//   type: 'tjenester'
+//   name: string
+//   slug: string
+//   description: string | null
+//   category: string
+//   images: string[]
+//   is_online: boolean
+//   community: {
+//     id: string
+//     name: string
+//     slug: string
+//     logo_url: string | null
+//   } | null
+// }
 
 // Product search result
-export interface ProductSearchResult extends BaseSearchResult {
-  type: 'produkter'
-  name: string
-  slug: string
-  description: string | null
-  category: string
-  primary_image: string | null
-  price: number | null
-  currency: string
-  in_stock: boolean
-  community: {
-    id: string
-    name: string
-    slug: string
-    logo_url: string | null
-  } | null
-}
+// Samfunn-funksjonalitet midlertidig skjult før offentlig lansering
+// export interface ProductSearchResult extends BaseSearchResult {
+//   type: 'produkter'
+//   name: string
+//   slug: string
+//   description: string | null
+//   category: string
+//   primary_image: string | null
+//   price: number | null
+//   currency: string
+//   in_stock: boolean
+//   community: {
+//     id: string
+//     name: string
+//     slug: string
+//     logo_url: string | null
+//   } | null
+// }
 
 // Union type of all search results
+// Samfunn-funksjonalitet midlertidig skjult før offentlig lansering
 export type SearchResult =
   | UserSearchResult
   | PostSearchResult
   | EventSearchResult
   | CommentSearchResult
   | GeographySearchResult
-  | CommunitySearchResult
-  | ServiceSearchResult
-  | ProductSearchResult
+  // | CommunitySearchResult
+  // | ServiceSearchResult
+  // | ProductSearchResult
 
 // Category results state
 export interface CategoryResultsState {

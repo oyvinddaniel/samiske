@@ -144,8 +144,6 @@ export function RealtimeProvider({
   useEffect(() => {
     if (!user) return
 
-    console.log('🔗 Setting up Realtime subscriptions for social updates')
-
     const channel = supabase
       .channel('global-social-notifications')
       .on(
@@ -156,8 +154,7 @@ export function RealtimeProvider({
           table: 'friendships',
           filter: `addressee_id=eq.${user.id}`,
         },
-        (payload) => {
-          console.log('👥 Friendship change detected:', payload.eventType)
+        () => {
           debouncedRefresh()
         }
       )
@@ -169,8 +166,7 @@ export function RealtimeProvider({
           table: 'friendships',
           filter: `requester_id=eq.${user.id}`,
         },
-        (payload) => {
-          console.log('👥 Friendship change detected (requester):', payload.eventType)
+        () => {
           debouncedRefresh()
         }
       )
@@ -181,8 +177,7 @@ export function RealtimeProvider({
           schema: 'public',
           table: 'messages',
         },
-        (payload) => {
-          console.log('💬 New message detected:', payload.new)
+        () => {
           // Immediate refresh for new messages - no debounce
           refreshSocialNotifications()
         }
@@ -195,17 +190,13 @@ export function RealtimeProvider({
           table: 'conversation_participants',
           filter: `user_id=eq.${user.id}`,
         },
-        (payload) => {
-          console.log('📬 Conversation participant updated:', payload.new)
+        () => {
           debouncedRefresh()
         }
       )
-      .subscribe((status) => {
-        console.log('📡 Realtime subscription status:', status)
-      })
+      .subscribe()
 
     return () => {
-      console.log('🔌 Cleaning up Realtime subscription')
       supabase.removeChannel(channel)
     }
   }, [user, supabase, debouncedRefresh, refreshSocialNotifications])
@@ -213,7 +204,6 @@ export function RealtimeProvider({
   // Listen for messages-read event from ConversationView
   useEffect(() => {
     const handleMessagesRead = () => {
-      console.log('📭 Messages marked as read, refreshing counts')
       // Immediate refresh - no debounce
       refreshSocialNotifications()
     }

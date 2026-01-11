@@ -18,7 +18,7 @@ export function HeroSection({ onLoginClick }: HeroSectionProps) {
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg overflow-hidden shadow-sm">
               <Image
-                src="/images/sami.jpg"
+                src="/images/sami.png"
                 alt="Samisk flagg"
                 width={40}
                 height={40}
@@ -55,7 +55,7 @@ export function HeroSection({ onLoginClick }: HeroSectionProps) {
             {/* Image */}
             <div className="rounded-2xl overflow-hidden shadow-xl max-w-lg">
               <Image
-                src="/images/sami.jpg"
+                src="/images/sami.png"
                 alt="Samisk flagg"
                 width={600}
                 height={400}

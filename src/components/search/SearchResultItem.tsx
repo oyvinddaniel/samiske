@@ -115,9 +115,10 @@ export function SearchResultItem({
           result.type === 'innlegg' && 'bg-blue-100',
           result.type === 'arrangementer' && 'bg-red-100',
           result.type === 'kommentarer' && 'bg-purple-100',
-          result.type === 'samfunn' && 'bg-green-100',
-          result.type === 'tjenester' && 'bg-orange-100',
-          result.type === 'produkter' && 'bg-pink-100'
+          // Samfunn-funksjonalitet midlertidig skjult før offentlig lansering
+          // result.type === 'samfunn' && 'bg-green-100',
+          // result.type === 'tjenester' && 'bg-orange-100',
+          // result.type === 'produkter' && 'bg-pink-100'
         )}
       >
         {result.type === 'innlegg' && (
@@ -129,7 +130,8 @@ export function SearchResultItem({
         {result.type === 'kommentarer' && (
           <MessageCircle className="w-3 h-3 sm:w-4 sm:h-4 text-purple-600" />
         )}
-        {result.type === 'samfunn' && (
+        {/* Samfunn-funksjonalitet midlertidig skjult før offentlig lansering */}
+        {/* {result.type === 'samfunn' && (
           <Building2 className="w-3 h-3 sm:w-4 sm:h-4 text-green-600" />
         )}
         {result.type === 'tjenester' && (
@@ -137,7 +139,7 @@ export function SearchResultItem({
         )}
         {result.type === 'produkter' && (
           <ShoppingBag className="w-3 h-3 sm:w-4 sm:h-4 text-pink-600" />
-        )}
+        )} */}
       </div>
 
       {/* Content */}
@@ -186,8 +188,9 @@ export function SearchResultItem({
           </>
         )}
 
+        {/* Samfunn-funksjonalitet midlertidig skjult før offentlig lansering */}
         {/* Community */}
-        {result.type === 'samfunn' && (
+        {/* {result.type === 'samfunn' && (
           <>
             <div className="flex items-center gap-2">
               <p className="text-sm font-medium text-gray-900 truncate">
@@ -211,10 +214,11 @@ export function SearchResultItem({
               {result.follower_count} følgere
             </p>
           </>
-        )}
+        )} */}
 
+        {/* Samfunn-funksjonalitet midlertidig skjult før offentlig lansering */}
         {/* Service */}
-        {result.type === 'tjenester' && (
+        {/* {result.type === 'tjenester' && (
           <>
             <p className="text-sm font-medium text-gray-900 truncate">
               {result.name}
@@ -228,10 +232,11 @@ export function SearchResultItem({
               </p>
             )}
           </>
-        )}
+        )} */}
 
+        {/* Samfunn-funksjonalitet midlertidig skjult før offentlig lansering */}
         {/* Product */}
-        {result.type === 'produkter' && (
+        {/* {result.type === 'produkter' && (
           <>
             <p className="text-sm font-medium text-gray-900 truncate">
               {result.name}
@@ -252,7 +257,7 @@ export function SearchResultItem({
               </p>
             )}
           </>
-        )}
+        )} */}
       </div>
     </button>
   )

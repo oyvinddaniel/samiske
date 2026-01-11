@@ -40,9 +40,10 @@ export interface Place {
 export interface Suggestion {
   id: string
   user_id: string
-  suggestion_type: 'new_item' | 'edit_name' | 'edit_relationship'
+  suggestion_type: 'new_item' | 'edit_name' | 'edit_relationship' | 'delete_image' | 'edit_image'
   entity_type: 'language_area' | 'municipality' | 'place'
   entity_id: string | null
+  media_id: string | null  // For image suggestions
   suggested_data: Record<string, unknown>
   current_data: Record<string, unknown> | null
   reason: string | null

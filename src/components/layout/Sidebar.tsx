@@ -9,8 +9,9 @@ import { Users, MessageCircle, ChevronRight, Calendar, Home, MapPin, GripVertica
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { AddStarredLocationModal } from '@/components/geography'
 import { sidebarConfig, buildLocationUrl } from '@/lib/config/sidebar'
-import { getAdminCommunities } from '@/lib/communities'
-import type { Community } from '@/lib/types/communities'
+// Samfunn-funksjonalitet midlertidig skjult før offentlig lansering
+// import { getAdminCommunities } from '@/lib/communities'
+// import type { Community } from '@/lib/types/communities'
 import {
   DndContext,
   closestCenter,
@@ -43,7 +44,7 @@ interface UserProfile {
 
 interface SidebarProps {
   currentCategory?: string
-  activePanel?: 'feed' | 'friends' | 'messages' | 'chat' | 'group' | 'groups' | 'community' | 'profile' | 'geography' | 'bookmarks' | 'location' | 'post' | 'calendar'
+  activePanel?: 'feed' | 'friends' | 'messages' | 'chat' | 'profile' | 'geography' | 'bookmarks' | 'location' | 'post' | 'calendar'
   selectedLocationId?: string
 }
 
@@ -128,7 +129,8 @@ export function Sidebar({ currentCategory = '', activePanel = 'feed', selectedLo
   const [showAddLocation, setShowAddLocation] = useState(false)
   const [maxVisibleLocations, setMaxVisibleLocations] = useState(sidebarConfig.defaultMaxVisibleLocations)
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
-  const [adminCommunities, setAdminCommunities] = useState<Community[]>([])
+  // Samfunn-funksjonalitet midlertidig skjult før offentlig lansering
+  // const [adminCommunities, setAdminCommunities] = useState<Community[]>([])
 
   // Create stable supabase client reference
   const supabase = useMemo(() => createClient(), [])
@@ -183,36 +185,36 @@ export function Sidebar({ currentCategory = '', activePanel = 'feed', selectedLo
     fetchProfile()
   }, [currentUserId, supabase])
 
-  // Fetch admin communities
-  const fetchAdminCommunities = useCallback(async () => {
-    if (!currentUserId) {
-      setAdminCommunities([])
-      return
-    }
+  // Samfunn-funksjonalitet midlertidig skjult før offentlig lansering
+  // // Fetch admin communities
+  // const fetchAdminCommunities = useCallback(async () => {
+  //   if (!currentUserId) {
+  //     setAdminCommunities([])
+  //     return
+  //   }
 
-    try {
-      const communities = await getAdminCommunities()
-      console.log('Admin communities:', communities)
-      setAdminCommunities(communities)
-    } catch (error) {
-      console.error('Error fetching admin communities:', error)
-      setAdminCommunities([])
-    }
-  }, [currentUserId])
+  //   try {
+  //     const communities = await getAdminCommunities()
+  //     setAdminCommunities(communities)
+  //   } catch (error) {
+  //     console.error('Error fetching admin communities:', error)
+  //     setAdminCommunities([])
+  //   }
+  // }, [currentUserId])
 
-  useEffect(() => {
-    fetchAdminCommunities()
-  }, [fetchAdminCommunities])
+  // useEffect(() => {
+  //   fetchAdminCommunities()
+  // }, [fetchAdminCommunities])
 
-  // Listen for community creation to refresh list
-  useEffect(() => {
-    const handleCommunityCreated = () => {
-      fetchAdminCommunities()
-    }
+  // // Listen for community creation to refresh list
+  // useEffect(() => {
+  //   const handleCommunityCreated = () => {
+  //     fetchAdminCommunities()
+  //   }
 
-    window.addEventListener('community-created', handleCommunityCreated)
-    return () => window.removeEventListener('community-created', handleCommunityCreated)
-  }, [fetchAdminCommunities])
+  //   window.addEventListener('community-created', handleCommunityCreated)
+  //   return () => window.removeEventListener('community-created', handleCommunityCreated)
+  // }, [fetchAdminCommunities])
 
   // Fetch notification counts
   const fetchCounts = useCallback(async () => {
@@ -264,7 +266,6 @@ export function Sidebar({ currentCategory = '', activePanel = 'feed', selectedLo
     if (!currentUserId) return
 
     const handleMessagesRead = () => {
-      console.log('📭 Messages marked as read, refreshing Sidebar counts')
       fetchCounts()
     }
 
@@ -390,7 +391,6 @@ export function Sidebar({ currentCategory = '', activePanel = 'feed', selectedLo
     if (!currentUserId) return
 
     const handleStarredLocationsChanged = async () => {
-      console.log('📍 Starred locations changed, refreshing sidebar')
       // Re-fetch directly from database to ensure fresh data
       try {
         const { data: starredLangAreas } = await supabase
@@ -453,7 +453,6 @@ export function Sidebar({ currentCategory = '', activePanel = 'feed', selectedLo
         }
 
         setStarredLocations(locations)
-        console.log('📍 Sidebar updated with', locations.length, 'locations')
       } catch (error) {
         console.error('Error refreshing starred locations:', error)
       }
@@ -591,8 +590,9 @@ export function Sidebar({ currentCategory = '', activePanel = 'feed', selectedLo
           </div>
         )}
 
+        {/* Samfunn-funksjonalitet midlertidig skjult før offentlig lansering */}
         {/* Mine sider - communities user administers */}
-        {currentUserId && adminCommunities.length > 0 && (
+        {/* {currentUserId && adminCommunities.length > 0 && (
           <div className="mb-4 pb-4 border-b border-gray-100">
             <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 px-3">
               Mine sider
@@ -624,7 +624,7 @@ export function Sidebar({ currentCategory = '', activePanel = 'feed', selectedLo
               ))}
             </ul>
           </div>
-        )}
+        )} */}
 
         {/* Navigation links */}
         <div className="mb-4 pb-4 border-b border-gray-100 space-y-1">
@@ -680,28 +680,9 @@ export function Sidebar({ currentCategory = '', activePanel = 'feed', selectedLo
 
         {/* Navigation section */}
         <div className="mb-4 pb-4 border-b border-gray-100">
-          {/* Grupper - opens groups panel */}
-          <button
-            onClick={() => window.dispatchEvent(new CustomEvent('open-groups-panel'))}
-            className={cn(
-              'w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-colors',
-              activePanel === 'groups'
-                ? 'bg-blue-50 text-blue-700'
-                : 'text-gray-600 hover:bg-blue-50/50 hover:text-gray-700'
-            )}
-          >
-            <span className="flex items-center gap-3">
-              <Users className={cn(
-                'w-4 h-4 transition-colors',
-                activePanel === 'groups' ? 'text-blue-600' : 'text-purple-500'
-              )} />
-              Grupper
-            </span>
-            <ChevronRight className="w-4 h-4 text-gray-400" />
-          </button>
-
+          {/* Samfunn-funksjonalitet midlertidig skjult før offentlig lansering */}
           {/* Samfunn - opens community panel */}
-          <button
+          {/* <button
             onClick={() => {
               window.dispatchEvent(new CustomEvent('open-community-panel'))
             }}
@@ -720,7 +701,7 @@ export function Sidebar({ currentCategory = '', activePanel = 'feed', selectedLo
               Samfunn
             </span>
             <ChevronRight className="w-4 h-4 text-gray-400" />
-          </button>
+          </button> */}
         </div>
 
         {/* Mine steder - only for logged in users */}
@@ -868,7 +849,7 @@ export function Sidebar({ currentCategory = '', activePanel = 'feed', selectedLo
                       'w-4 h-4 transition-colors',
                       activePanel === 'bookmarks' ? 'text-blue-600' : 'text-amber-500'
                     )} />
-                    Bokmerker
+                    Lagret
                   </span>
                   <ChevronRight className="w-4 h-4 text-gray-400" />
                 </button>

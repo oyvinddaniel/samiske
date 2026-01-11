@@ -310,8 +310,7 @@ export default function NewPostPage() {
       meeting_platform: type === 'event' && isDigital && meetingPlatform ? meetingPlatform : null,
       // Maks deltakere
       max_participants: type === 'event' && maxParticipants ? parseInt(maxParticipants, 10) : null,
-      // Opprett på vegne av gruppe/samfunn
-      created_for_group_id: createdForGroupId,
+      // Opprett på vegne av samfunn
       created_for_community_id: createdForCommunityId,
     }
 

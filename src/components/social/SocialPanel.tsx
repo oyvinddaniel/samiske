@@ -90,7 +90,6 @@ export function SocialPanel({ initialTab = 'friends', initialConversationUserId 
     if (!currentUserId) return
 
     const handleMessagesRead = () => {
-      console.log('📭 Messages marked as read, refreshing SocialPanel counts')
       fetchCounts()
     }
 
@@ -110,12 +109,9 @@ export function SocialPanel({ initialTab = 'friends', initialConversationUserId 
 
   // Switch tab when initial props change
   useEffect(() => {
-     
     if (initialTab) setActiveTab(initialTab)
     if (initialConversationUserId) {
-       
       setConversationUserId(initialConversationUserId)
-       
       setActiveTab('messages')
     }
   }, [initialTab, initialConversationUserId])

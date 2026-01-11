@@ -288,11 +288,11 @@ SELECT
   p.id AS user_id,
 
   -- Post statistics
-  COUNT(DISTINCT posts.id) FILTER (WHERE posts.deleted_at IS NULL) AS total_posts,
-  COUNT(DISTINCT posts.id) FILTER (WHERE posts.created_at >= NOW() - INTERVAL '30 days' AND posts.deleted_at IS NULL) AS posts_last_30_days,
+  COUNT(DISTINCT posts.id) AS total_posts,
+  COUNT(DISTINCT posts.id) FILTER (WHERE posts.created_at >= NOW() - INTERVAL '30 days') AS posts_last_30_days,
 
   -- Comment statistics
-  COUNT(DISTINCT comments.id) FILTER (WHERE comments.deleted_at IS NULL) AS total_comments,
+  COUNT(DISTINCT comments.id) AS total_comments,
 
   -- Friend statistics
   COUNT(DISTINCT CASE
@@ -313,9 +313,9 @@ SELECT
 
 FROM profiles p
 
-LEFT JOIN posts ON posts.user_id = p.id AND posts.deleted_at IS NULL
+LEFT JOIN posts ON posts.user_id = p.id
 
-LEFT JOIN comments ON comments.user_id = p.id AND comments.deleted_at IS NULL
+LEFT JOIN comments ON comments.user_id = p.id
 
 LEFT JOIN friendships f ON (f.requester_id = p.id OR f.addressee_id = p.id) AND f.status = 'accepted'
 
@@ -325,8 +325,8 @@ LEFT JOIN LATERAL (
     COUNT(DISTINCT c.id)::BIGINT AS comment_count
   FROM posts AS user_posts
   LEFT JOIN likes l ON l.post_id = user_posts.id
-  LEFT JOIN comments c ON c.post_id = user_posts.id AND c.deleted_at IS NULL
-  WHERE user_posts.user_id = p.id AND user_posts.deleted_at IS NULL
+  LEFT JOIN comments c ON c.post_id = user_posts.id
+  WHERE user_posts.user_id = p.id
 ) AS post_stats ON true
 
 GROUP BY p.id, p.created_at;
@@ -349,8 +349,7 @@ WITH post_engagement AS (
     (COUNT(DISTINCT l.id) * 1.0 + COUNT(DISTINCT c.id) * 2.0) AS engagement_score
   FROM posts p
   LEFT JOIN likes l ON l.post_id = p.id
-  LEFT JOIN comments c ON c.post_id = p.id AND c.deleted_at IS NULL
-  WHERE p.deleted_at IS NULL
+  LEFT JOIN comments c ON c.post_id = p.id
   GROUP BY p.id, p.user_id, p.content, p.created_at
 ),
 ranked_posts AS (
@@ -390,25 +389,33 @@ VALUES (
 ON CONFLICT (id) DO NOTHING;
 
 -- RLS policies for profile-covers
-CREATE POLICY IF NOT EXISTS "Profile covers are publicly viewable"
+DROP POLICY IF EXISTS "Profile covers are publicly viewable" ON storage.objects;
+CREATE POLICY "Profile covers are publicly viewable"
 ON storage.objects FOR SELECT
 USING (bucket_id = 'profile-covers');
 
-CREATE POLICY IF NOT EXISTS "Users can upload their own profile cover"
+DROP POLICY IF EXISTS "Users can upload their own profile cover" ON storage.objects;
+CREATE POLICY "Users can upload their own profile cover"
 ON storage.objects FOR INSERT
 WITH CHECK (
   bucket_id = 'profile-covers'
   AND auth.uid()::text = (storage.foldername(name))[1]
 );
 
-CREATE POLICY IF NOT EXISTS "Users can update their own profile cover"
+DROP POLICY IF EXISTS "Users can update their own profile cover" ON storage.objects;
+CREATE POLICY "Users can update their own profile cover"
 ON storage.objects FOR UPDATE
 USING (
   bucket_id = 'profile-covers'
   AND auth.uid()::text = (storage.foldername(name))[1]
+)
+WITH CHECK (
+  bucket_id = 'profile-covers'
+  AND auth.uid()::text = (storage.foldername(name))[1]
 );
 
-CREATE POLICY IF NOT EXISTS "Users can delete their own profile cover"
+DROP POLICY IF EXISTS "Users can delete their own profile cover" ON storage.objects;
+CREATE POLICY "Users can delete their own profile cover"
 ON storage.objects FOR DELETE
 USING (
   bucket_id = 'profile-covers'

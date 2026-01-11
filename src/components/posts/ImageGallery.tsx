@@ -6,10 +6,17 @@ interface ImageGalleryProps {
   images: string[]
   alt?: string
   onImageClick?: (index: number) => void
+  style?: 'auto' | 'grid-2x3' | 'featured-grid' | 'asymmetric' | 'magazine' | 'vertical-strip' | 'waterfall' | 'polaroid'
 }
 
 // Preview component for feed - shows grid layout
-export function ImageGalleryPreview({ images, alt, onImageClick }: ImageGalleryProps) {
+export function ImageGalleryPreview({ images, alt, onImageClick, style = 'auto' }: ImageGalleryProps) {
+  // Debug: Log received images
+  if (images && images.length > 1) {
+    console.log('🎨 ImageGalleryPreview received:', images.length, 'images')
+    console.log('🎨 First 3 URLs:', images.slice(0, 3).map(url => url.substring(0, 50) + '...'))
+  }
+
   if (!images || images.length === 0) return null
 
   const handleClick = (index: number) => {
@@ -18,7 +25,10 @@ export function ImageGalleryPreview({ images, alt, onImageClick }: ImageGalleryP
     }
   }
 
-  // Single image
+  // Auto-select style based on image count if style='auto'
+  const selectedStyle = style === 'auto' ? getAutoStyle(images.length) : style
+
+  // Single image - always the same
   if (images.length === 1) {
     return (
       <button
@@ -38,7 +48,7 @@ export function ImageGalleryPreview({ images, alt, onImageClick }: ImageGalleryP
   // 2 images - side by side
   if (images.length === 2) {
     return (
-      <div className="grid grid-cols-2 gap-1 rounded-xl overflow-hidden">
+      <div className="grid grid-cols-2 gap-1.5 rounded-xl overflow-hidden">
         {images.map((img, i) => (
           <button
             key={i}
@@ -46,7 +56,7 @@ export function ImageGalleryPreview({ images, alt, onImageClick }: ImageGalleryP
             className="aspect-square overflow-hidden focus-visible:ring-2 focus-visible:ring-blue-500"
             aria-label={`Åpne bilde ${i + 1}`}
           >
-            <img src={img} alt="" className="w-full h-full object-cover" />
+            <img src={img} alt="" className="w-full h-full object-cover rounded-xl" />
           </button>
         ))}
       </div>
@@ -56,13 +66,13 @@ export function ImageGalleryPreview({ images, alt, onImageClick }: ImageGalleryP
   // 3 images - 1 large + 2 small
   if (images.length === 3) {
     return (
-      <div className="grid grid-cols-2 gap-1 rounded-xl overflow-hidden">
+      <div className="grid grid-cols-2 gap-1.5">
         <button
           onClick={() => handleClick(0)}
           className="row-span-2 overflow-hidden focus-visible:ring-2 focus-visible:ring-blue-500"
           aria-label="Åpne bilde 1"
         >
-          <img src={images[0]} alt="" className="w-full h-full object-cover" />
+          <img src={images[0]} alt="" className="w-full h-full object-cover rounded-xl" />
         </button>
         {images.slice(1).map((img, i) => (
           <button
@@ -71,16 +81,135 @@ export function ImageGalleryPreview({ images, alt, onImageClick }: ImageGalleryP
             className="aspect-square overflow-hidden focus-visible:ring-2 focus-visible:ring-blue-500"
             aria-label={`Åpne bilde ${i + 2}`}
           >
-            <img src={img} alt="" className="w-full h-full object-cover" />
+            <img src={img} alt="" className="w-full h-full object-cover rounded-xl" />
           </button>
         ))}
       </div>
     )
   }
 
-  // 4+ images - 2x2 grid with +N overlay
+  // 4 images - grid
+  if (images.length === 4) {
+    return (
+      <div className="grid grid-cols-2 gap-1.5">
+        {images.map((img, i) => (
+          <button
+            key={i}
+            onClick={() => handleClick(i)}
+            className="aspect-square overflow-hidden focus-visible:ring-2 focus-visible:ring-blue-500"
+            aria-label={`Åpne bilde ${i + 1}`}
+          >
+            <img src={img} alt="" className="w-full h-full object-cover rounded-xl" />
+          </button>
+        ))}
+      </div>
+    )
+  }
+
+  // 5 images - Featured + Grid style
+  if (images.length === 5 && selectedStyle === 'featured-grid') {
+    return (
+      <div className="space-y-1.5">
+        <button
+          onClick={() => handleClick(0)}
+          className="w-full overflow-hidden focus-visible:ring-2 focus-visible:ring-blue-500"
+          aria-label="Åpne bilde 1"
+        >
+          <img src={images[0]} alt="" className="w-full aspect-video object-cover rounded-xl" />
+        </button>
+        <div className="grid grid-cols-4 gap-1.5">
+          {images.slice(1, 5).map((img, i) => (
+            <button
+              key={i}
+              onClick={() => handleClick(i + 1)}
+              className="aspect-square overflow-hidden focus-visible:ring-2 focus-visible:ring-blue-500"
+              aria-label={`Åpne bilde ${i + 2}`}
+            >
+              <img src={img} alt="" className="w-full h-full object-cover rounded-xl" />
+            </button>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  // 6 images - Classic 2x3 Grid or Asymmetric
+  if (images.length === 6) {
+    if (selectedStyle === 'asymmetric') {
+      return (
+        <div className="grid grid-cols-2 gap-1.5">
+          <button onClick={() => handleClick(0)} className="aspect-[3/4] overflow-hidden focus-visible:ring-2 focus-visible:ring-blue-500" aria-label="Åpne bilde 1">
+            <img src={images[0]} alt="" className="w-full h-full object-cover rounded-xl" />
+          </button>
+          <div className="flex flex-col gap-1.5">
+            <button onClick={() => handleClick(1)} className="aspect-square overflow-hidden focus-visible:ring-2 focus-visible:ring-blue-500" aria-label="Åpne bilde 2">
+              <img src={images[1]} alt="" className="w-full h-full object-cover rounded-xl" />
+            </button>
+            <button onClick={() => handleClick(2)} className="aspect-[4/3] overflow-hidden focus-visible:ring-2 focus-visible:ring-blue-500" aria-label="Åpne bilde 3">
+              <img src={images[2]} alt="" className="w-full h-full object-cover rounded-xl" />
+            </button>
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <button onClick={() => handleClick(3)} className="aspect-[4/3] overflow-hidden focus-visible:ring-2 focus-visible:ring-blue-500" aria-label="Åpne bilde 4">
+              <img src={images[3]} alt="" className="w-full h-full object-cover rounded-xl" />
+            </button>
+            <button onClick={() => handleClick(4)} className="aspect-square overflow-hidden focus-visible:ring-2 focus-visible:ring-blue-500" aria-label="Åpne bilde 5">
+              <img src={images[4]} alt="" className="w-full h-full object-cover rounded-xl" />
+            </button>
+          </div>
+          <button onClick={() => handleClick(5)} className="aspect-[3/4] overflow-hidden focus-visible:ring-2 focus-visible:ring-blue-500" aria-label="Åpne bilde 6">
+            <img src={images[5]} alt="" className="w-full h-full object-cover rounded-xl" />
+          </button>
+        </div>
+      )
+    }
+
+    // Default: Classic 2x3
+    return (
+      <div className="grid grid-cols-2 gap-1.5">
+        {images.slice(0, 6).map((img, i) => (
+          <button
+            key={i}
+            onClick={() => handleClick(i)}
+            className="aspect-square overflow-hidden focus-visible:ring-2 focus-visible:ring-blue-500"
+            aria-label={`Åpne bilde ${i + 1}`}
+          >
+            <img src={img} alt="" className="w-full h-full object-cover rounded-xl" />
+          </button>
+        ))}
+      </div>
+    )
+  }
+
+  // 7+ images - Waterfall (masonry) with +N overlay
+  if (selectedStyle === 'waterfall' && images.length <= 10) {
+    return (
+      <div className="columns-2 gap-1.5">
+        {images.slice(0, 6).map((img, i) => {
+          const aspectRatios = ['aspect-[3/4]', 'aspect-square', 'aspect-square', 'aspect-[3/4]', 'aspect-[4/3]', 'aspect-[4/3]']
+          return (
+            <button
+              key={i}
+              onClick={() => handleClick(i)}
+              className={`w-full ${aspectRatios[i % 6]} overflow-hidden focus-visible:ring-2 focus-visible:ring-blue-500 mb-1.5 relative`}
+              aria-label={`Åpne bilde ${i + 1}`}
+            >
+              <img src={img} alt="" className="w-full h-full object-cover rounded-xl" />
+              {i === 5 && images.length > 6 && (
+                <div className="absolute inset-0 bg-black/60 flex items-center justify-center rounded-xl">
+                  <span className="text-white text-2xl font-bold">+{images.length - 6}</span>
+                </div>
+              )}
+            </button>
+          )
+        })}
+      </div>
+    )
+  }
+
+  // Default: 2x2 grid with +N overlay for 4+ images
   return (
-    <div className="grid grid-cols-2 gap-1 rounded-xl overflow-hidden">
+    <div className="grid grid-cols-2 gap-1.5">
       {images.slice(0, 4).map((img, i) => (
         <button
           key={i}
@@ -88,9 +217,9 @@ export function ImageGalleryPreview({ images, alt, onImageClick }: ImageGalleryP
           className="aspect-square overflow-hidden relative focus-visible:ring-2 focus-visible:ring-blue-500"
           aria-label={`Åpne bilde ${i + 1}`}
         >
-          <img src={img} alt="" className="w-full h-full object-cover" />
+          <img src={img} alt="" className="w-full h-full object-cover rounded-xl" />
           {i === 3 && images.length > 4 && (
-            <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+            <div className="absolute inset-0 bg-black/60 flex items-center justify-center rounded-xl">
               <span className="text-white text-2xl font-bold">+{images.length - 4}</span>
             </div>
           )}
@@ -98,6 +227,14 @@ export function ImageGalleryPreview({ images, alt, onImageClick }: ImageGalleryP
       ))}
     </div>
   )
+}
+
+// Auto-select style based on number of images
+function getAutoStyle(count: number): 'grid-2x3' | 'featured-grid' | 'asymmetric' | 'waterfall' {
+  if (count === 5) return 'featured-grid'
+  if (count === 6) return 'grid-2x3'
+  if (count >= 7) return 'waterfall'
+  return 'grid-2x3'
 }
 
 // Full viewer component

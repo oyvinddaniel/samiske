@@ -78,8 +78,6 @@ export function GeographySelector({
         .select('*, municipality:municipalities(*)')
         .order('name')
 
-      console.log('🗺️ Loaded all places:', placesData?.length || 0)
-
       if (countriesData && municipalitiesData) {
         // Group municipalities by country
         const grouped: GroupedMunicipalities[] = countriesData.map(country => ({

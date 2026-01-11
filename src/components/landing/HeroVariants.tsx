@@ -21,7 +21,7 @@ function Header({ dark = false, onLoginClick }: { dark?: boolean; onLoginClick: 
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-lg overflow-hidden shadow-sm">
             <Image
-              src="/images/sami.jpg"
+              src="/images/sami.png"
               alt="Samisk flagg"
               width={40}
               height={40}

@@ -5,13 +5,14 @@ import { formatDistanceToNow } from 'date-fns'
 import { nb } from 'date-fns/locale'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
-import { Textarea } from '@/components/ui/textarea'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { MentionText, MentionTextarea } from '@/components/mentions'
 
 interface Comment {
   id: string
   content: string
   created_at: string
+  edited_at?: string | null
   user: {
     id: string
     full_name: string | null
@@ -38,6 +39,7 @@ export function CommentSection({ postId, currentUserId }: CommentSectionProps) {
         id,
         content,
         created_at,
+        edited_at,
         user:profiles!comments_user_id_fkey (
           id,
           full_name,
@@ -70,13 +72,35 @@ export function CommentSection({ postId, currentUserId }: CommentSectionProps) {
 
     setSubmitting(true)
 
-    const { error } = await supabase.from('comments').insert({
-      post_id: postId,
-      user_id: currentUserId,
-      content: newComment.trim(),
-    })
+    const { data: newCommentData, error } = await supabase
+      .from('comments')
+      .insert({
+        post_id: postId,
+        user_id: currentUserId,
+        content: newComment.trim(),
+      })
+      .select('id')
+      .single()
 
-    if (!error) {
+    if (!error && newCommentData) {
+      // Parse mentions from content and send notifications
+      const mentionPattern = /@\[([^\]]+)\]\(([^:]+):([^)]+)\)/g
+      let match
+      while ((match = mentionPattern.exec(newComment)) !== null) {
+        const mentionType = match[2]
+        const mentionId = match[3]
+
+        // Only notify users
+        if (mentionType === 'user') {
+          await supabase.rpc('create_mention_notification', {
+            p_actor_id: currentUserId,
+            p_mentioned_user_id: mentionId,
+            p_post_id: postId,
+            p_comment_id: newCommentData.id,
+          })
+        }
+      }
+
       setNewComment('')
       fetchComments()
     }
@@ -134,10 +158,10 @@ export function CommentSection({ postId, currentUserId }: CommentSectionProps) {
       {/* Comment form */}
       {currentUserId ? (
         <form onSubmit={handleSubmit} className="space-y-3">
-          <Textarea
+          <MentionTextarea
             value={newComment}
-            onChange={(e) => setNewComment(e.target.value)}
-            placeholder="Skriv en kommentar..."
+            onChange={(value) => setNewComment(value)}
+            placeholder="Skriv en kommentar... Bruk @ for å nevne"
             rows={3}
             className="resize-none"
           />
@@ -188,9 +212,14 @@ export function CommentSection({ postId, currentUserId }: CommentSectionProps) {
                   <span className="text-xs text-gray-500">
                     {formatDate(comment.created_at)}
                   </span>
+                  {comment.edited_at && (
+                    <span className="text-xs text-gray-400 italic">
+                      (redigert)
+                    </span>
+                  )}
                 </div>
                 <p className="text-gray-700 text-sm whitespace-pre-wrap">
-                  {comment.content}
+                  <MentionText content={comment.content} />
                 </p>
                 {currentUserId === comment.user.id && (
                   <button

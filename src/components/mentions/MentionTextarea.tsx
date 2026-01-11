@@ -1,13 +1,14 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import { createClient } from '@/lib/supabase/client'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { cn } from '@/lib/utils'
 import { User, Users, MapPin, Building2, Globe, Languages } from 'lucide-react'
 
 // Mention types that can be extended
-export type MentionType = 'user' | 'community' | 'place' | 'municipality' | 'language_area' | 'group'
+export type MentionType = 'user' | 'community' | 'place' | 'municipality' | 'language_area'
 
 interface MentionResult {
   id: string
@@ -44,7 +45,6 @@ const TYPE_ICONS: Record<MentionType, React.ReactNode> = {
   place: <MapPin className="w-4 h-4 text-green-600" />,
   municipality: <MapPin className="w-4 h-4 text-emerald-600" />,
   language_area: <Languages className="w-4 h-4 text-teal-600" />,
-  group: <Users className="w-4 h-4 text-orange-600" />,
 }
 
 const TYPE_LABELS: Record<MentionType, string> = {
@@ -53,8 +53,10 @@ const TYPE_LABELS: Record<MentionType, string> = {
   place: 'Steder',
   municipality: 'Kommuner',
   language_area: 'Språkområder',
-  group: 'Grupper',
 }
+
+// Consistent order for displaying mention types
+const TYPE_ORDER: MentionType[] = ['user', 'community', 'place', 'municipality', 'language_area']
 
 export function MentionTextarea({
   value,
@@ -64,7 +66,7 @@ export function MentionTextarea({
   className,
   required,
   id,
-  enabledTypes = ['user', 'community', 'place', 'municipality', 'language_area', 'group'],
+  enabledTypes = ['user', 'community', 'place', 'municipality', 'language_area'],
 }: MentionTextareaProps) {
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [suggestions, setSuggestions] = useState<MentionResult[]>([])
@@ -77,6 +79,10 @@ export function MentionTextarea({
   const suggestionsRef = useRef<HTMLDivElement>(null)
   const searchIdRef = useRef(0) // To prevent race conditions
   const supabase = createClient()
+
+  // Portal positioning state
+  const [dropdownPosition, setDropdownPosition] = useState<{ top: number; left: number; width: number } | null>(null)
+
 
   // Search all enabled entity types
   useEffect(() => {
@@ -131,6 +137,7 @@ export function MentionTextarea({
                 .from('communities')
                 .select('id, name, logo_url, category')
                 .eq('is_active', true)
+                .eq('is_hidden', false)
 
               if (hasQuery) {
                 query = query.ilike('name', `%${mentionQuery}%`)
@@ -245,36 +252,18 @@ export function MentionTextarea({
           )
         }
 
-        // Search groups
-        if (enabledTypes.includes('group')) {
-          searches.push(
-            (async () => {
-              let query = supabase
-                .from('groups')
-                .select('id, name, avatar_url')
-
-              if (hasQuery) {
-                query = query.ilike('name', `%${mentionQuery}%`)
-              }
-
-              const { data } = await query.limit(3)
-              data?.forEach(group => {
-                results.push({
-                  id: group.id,
-                  type: 'group',
-                  name: group.name,
-                  displayName: group.name,
-                  avatar_url: group.avatar_url,
-                  icon: TYPE_ICONS.group,
-                })
-              })
-            })()
-          )
-        }
-
         await Promise.all(searches)
         // Only update if this is still the latest search
         if (currentSearchId === searchIdRef.current) {
+          // Sort results by type in consistent order, then by name
+          results.sort((a, b) => {
+            const typeIndexA = TYPE_ORDER.indexOf(a.type)
+            const typeIndexB = TYPE_ORDER.indexOf(b.type)
+            if (typeIndexA !== typeIndexB) {
+              return typeIndexA - typeIndexB
+            }
+            return a.name.localeCompare(b.name, 'nb')
+          })
           setSuggestions(results)
         }
       } catch (err) {
@@ -289,9 +278,24 @@ export function MentionTextarea({
     return () => clearTimeout(debounce)
   }, [mentionQuery, mentionStart, supabase, enabledTypes])
 
+  // Keep selectedIndex in bounds when suggestions change, but don't reset to 0
   useEffect(() => {
-    setSelectedIndex(0)
-  }, [suggestions])
+    if (suggestions.length > 0 && selectedIndex >= suggestions.length) {
+      setSelectedIndex(suggestions.length - 1)
+    }
+  }, [suggestions, selectedIndex])
+
+  // Update dropdown position when showing suggestions
+  useEffect(() => {
+    if (showSuggestions && textareaRef.current) {
+      const rect = textareaRef.current.getBoundingClientRect()
+      setDropdownPosition({
+        top: rect.bottom + window.scrollY + 4, // 4px margin
+        left: rect.left + window.scrollX,
+        width: rect.width,
+      })
+    }
+  }, [showSuggestions, mentionQuery])
 
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newValue = e.target.value
@@ -303,6 +307,9 @@ export function MentionTextarea({
     if (mentionMatch) {
       setMentionStart(cursorPos - mentionMatch[0].length)
       setMentionQuery(mentionMatch[1])
+      if (!showSuggestions) {
+        setSelectedIndex(0) // Reset selection when opening dropdown
+      }
       setShowSuggestions(true)
     } else {
       if (showSuggestions) {
@@ -313,10 +320,12 @@ export function MentionTextarea({
       }
     }
 
-    // Update tracked mentions
+    // Update tracked mentions - check for @Name format
     const newMentions = new Map<string, MentionData>()
     mentions.forEach((data, key) => {
-      if (newValue.includes(`@${data.name}`)) {
+      // Check if @Name still exists in text
+      const mentionPattern = `@${data.name}`
+      if (newValue.includes(mentionPattern)) {
         newMentions.set(key, data)
       }
     })
@@ -333,11 +342,11 @@ export function MentionTextarea({
     const beforeMention = value.slice(0, mentionStart)
     const afterMention = value.slice(cursorPos)
 
-    // Insert full name, but for users we'll select the last name part
+    // Insert just @Name in textarea (clean display)
     const mentionText = `@${result.displayName} `
     const newValue = beforeMention + mentionText + afterMention
 
-    // Track this mention
+    // Track full mention info separately
     const key = `${result.type}:${result.id}`
     const newMentions = new Map(mentions)
     newMentions.set(key, {
@@ -347,6 +356,7 @@ export function MentionTextarea({
     })
     setMentions(newMentions)
 
+    // Pass both clean text and full mention data to parent
     onChange(newValue, Array.from(newMentions.values()))
 
     setShowSuggestions(false)
@@ -354,21 +364,11 @@ export function MentionTextarea({
     setMentionStart(null)
     setSuggestions([]) // Clear to prevent stale data
 
-    // For users with first name, place cursor after first name and select the rest
-    // So if user continues typing, the last name gets replaced
+    // Place cursor after the mention
     setTimeout(() => {
       textarea.focus()
-      if (result.firstName && result.displayName !== result.firstName) {
-        // Position: @FirstName |LastName
-        // Select from after firstName to before the trailing space
-        const cursorAfterFirstName = mentionStart + 1 + result.firstName.length // +1 for @
-        const endOfLastName = mentionStart + mentionText.length - 1 // -1 for trailing space
-        textarea.setSelectionRange(cursorAfterFirstName, endOfLastName)
-      } else {
-        // No last name or not a user - just place cursor at end
-        const newCursorPos = mentionStart + mentionText.length
-        textarea.setSelectionRange(newCursorPos, newCursorPos)
-      }
+      const newCursorPos = mentionStart + mentionText.length
+      textarea.setSelectionRange(newCursorPos, newCursorPos)
     }, 0)
   }, [mentionStart, value, mentions, onChange])
 
@@ -433,15 +433,20 @@ export function MentionTextarea({
       .slice(0, 2)
   }
 
-  // Group suggestions by type
+  // Group suggestions by type in consistent order
   const groupedSuggestions = suggestions.reduce((acc, item) => {
     if (!acc[item.type]) acc[item.type] = []
     acc[item.type].push(item)
     return acc
   }, {} as Record<MentionType, MentionResult[]>)
 
+  // Get ordered entries for consistent rendering
+  const orderedGroupEntries = TYPE_ORDER
+    .filter(type => groupedSuggestions[type]?.length > 0)
+    .map(type => [type, groupedSuggestions[type]] as [MentionType, MentionResult[]])
+
   return (
-    <div className="relative">
+    <div className="relative w-full">
       <textarea
         ref={textareaRef}
         id={id}
@@ -451,26 +456,33 @@ export function MentionTextarea({
         placeholder={placeholder}
         rows={rows}
         required={required}
+        spellCheck={false}
         className={cn(
           "border-input placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 flex field-sizing-content min-h-16 w-full rounded-md border bg-transparent px-3 py-2 text-base shadow-xs transition-[color,box-shadow] outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50 md:text-sm resize-none",
           className
         )}
       />
 
-      {showSuggestions && mentionStart !== null && (
+      {showSuggestions && mentionStart !== null && dropdownPosition && typeof document !== 'undefined' && createPortal(
         <div
           ref={suggestionsRef}
-          className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-72 overflow-y-auto"
+          style={{
+            position: 'fixed',
+            top: dropdownPosition.top - window.scrollY,
+            left: dropdownPosition.left - window.scrollX,
+            width: dropdownPosition.width,
+          }}
+          className="z-[9999] bg-white border border-gray-200 rounded-lg shadow-lg max-h-72 overflow-y-auto"
         >
           {suggestions.length === 0 ? (
             <div className="px-4 py-3 text-sm text-gray-500">
               {mentionQuery ? `Ingen resultater for "${mentionQuery}"` : 'Søker...'}
             </div>
           ) : (
-            Object.entries(groupedSuggestions).map(([type, items]) => (
+            orderedGroupEntries.map(([type, items]) => (
               <div key={type}>
-                <div className="px-3 py-1.5 text-xs font-medium text-gray-500 bg-gray-50 sticky top-0">
-                  {TYPE_LABELS[type as MentionType]}
+                <div className="px-3 py-1.5 text-xs font-medium text-gray-500 bg-gray-50 sticky top-0 z-10">
+                  {TYPE_LABELS[type]}
                 </div>
                 {items.map((item) => {
                   const globalIndex = suggestions.indexOf(item)
@@ -508,7 +520,8 @@ export function MentionTextarea({
               </div>
             ))
           )}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )

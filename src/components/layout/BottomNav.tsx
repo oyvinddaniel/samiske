@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
 import { Home, PlusCircle, User, LogIn, Menu, BarChart3 } from 'lucide-react'
-import { NewPostSheet } from '@/components/posts/NewPostSheet'
+import { PostComposerSheet } from '@/components/posts/composer'
 import type { User as SupabaseUser } from '@supabase/supabase-js'
 
 export function BottomNav() {
@@ -72,6 +72,7 @@ export function BottomNav() {
         <button
           onClick={openLeftSidebar}
           className="flex flex-col items-center justify-center w-14 h-full py-2 text-gray-500 hover:text-gray-900 transition-colors"
+          aria-label="Åpne venstre meny"
         >
           <Menu className="w-6 h-6" />
           <span className="text-[10px] mt-1 font-medium">Meny</span>
@@ -92,6 +93,7 @@ export function BottomNav() {
                   key={item.label}
                   onClick={item.action}
                   className="flex flex-col items-center justify-center w-16 h-full py-2 transition-colors text-gray-500 hover:text-gray-900"
+                  aria-label={item.label === 'Ny' ? 'Opprett nytt innlegg' : item.label}
                 >
                   <Icon className="w-6 h-6" />
                   <span className="text-[10px] mt-1 font-medium">
@@ -132,6 +134,7 @@ export function BottomNav() {
         <button
           onClick={openRightSidebar}
           className="flex flex-col items-center justify-center w-14 h-full py-2 text-gray-500 hover:text-gray-900 transition-colors"
+          aria-label="Åpne høyre sidepanel med info"
         >
           <BarChart3 className="w-6 h-6" />
           <span className="text-[10px] mt-1 font-medium">Info</span>
@@ -139,10 +142,13 @@ export function BottomNav() {
       </div>
 
       {/* New Post Sheet */}
-      <NewPostSheet
-        open={showNewPostSheet}
-        onClose={() => setShowNewPostSheet(false)}
-      />
+      {user && (
+        <PostComposerSheet
+          open={showNewPostSheet}
+          onClose={() => setShowNewPostSheet(false)}
+          userId={user.id}
+        />
+      )}
     </nav>
   )
 }

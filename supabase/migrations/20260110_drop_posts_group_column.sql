@@ -23,10 +23,39 @@ BEGIN
 END $$;
 
 -- =====================================================
+-- DROPP AVHENGIGE RLS POLICIES FØRST
+-- =====================================================
+
+-- Dropp policies på community_posts som refererer til created_for_group_id
+DROP POLICY IF EXISTS community_posts_select_policy ON community_posts;
+DROP POLICY IF EXISTS community_posts_insert_policy ON community_posts;
+
+-- =====================================================
 -- DROPP KOLONNE
 -- =====================================================
 
-ALTER TABLE posts DROP COLUMN IF EXISTS created_for_group_id;
+ALTER TABLE posts DROP COLUMN IF EXISTS created_for_group_id CASCADE;
+
+-- =====================================================
+-- GJENOPPRETT RLS POLICIES UTEN GRUPPE-REFERANSER
+-- =====================================================
+
+-- Gjenopprett SELECT policy uten created_for_group_id sjekk
+CREATE POLICY community_posts_select_policy ON community_posts
+  FOR SELECT
+  USING (true);  -- Alle kan se community_posts (men posts har egne RLS)
+
+-- Gjenopprett INSERT policy uten created_for_group_id sjekk
+CREATE POLICY community_posts_insert_policy ON community_posts
+  FOR INSERT
+  WITH CHECK (
+    -- Sjekk at brukeren har tilgang til å poste i dette samfunnet
+    EXISTS (
+      SELECT 1 FROM community_followers
+      WHERE community_id = community_posts.community_id
+      AND user_id = auth.uid()
+    )
+  );
 
 -- =====================================================
 -- VERIFISER AT KOLONNE ER BORTE

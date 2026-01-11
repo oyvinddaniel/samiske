@@ -13,6 +13,7 @@ DROP TABLE IF EXISTS group_notification_preferences CASCADE;
 DROP TABLE IF EXISTS group_invites CASCADE;
 DROP TABLE IF EXISTS group_places CASCADE;
 DROP TABLE IF EXISTS group_posts CASCADE;
+DROP TABLE IF EXISTS group_event_permissions CASCADE;
 DROP TABLE IF EXISTS group_members CASCADE;
 DROP TABLE IF EXISTS groups CASCADE;
 

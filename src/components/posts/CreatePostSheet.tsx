@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { compressPostImage } from '@/lib/imageCompression'
+import { MediaService } from '@/lib/media'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -34,11 +34,10 @@ interface CreatePostSheetProps {
   onSuccess?: () => void
   userId: string
   defaultGeography?: DefaultGeography | null
-  groupId?: string | null
   communityId?: string | null
 }
 
-export function CreatePostSheet({ open, onClose, onSuccess, userId, defaultGeography, groupId, communityId }: CreatePostSheetProps) {
+export function CreatePostSheet({ open, onClose, onSuccess, userId, defaultGeography, communityId }: CreatePostSheetProps) {
   const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -138,18 +137,15 @@ export function CreatePostSheet({ open, onClose, onSuccess, userId, defaultGeogr
     }
   }, [type, categories])
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
       if (!file.type.startsWith('image/')) {
         setError('Vennligst velg en bildefil')
         return
       }
-      if (file.size > 5 * 1024 * 1024) {
-        setError('Bildet kan ikke vaere storre enn 5MB')
-        return
-      }
 
+      // MediaService will validate file size based on settings
       setImageFile(file)
       setError(null)
 
@@ -169,34 +165,44 @@ export function CreatePostSheet({ open, onClose, onSuccess, userId, defaultGeogr
     }
   }
 
-  const uploadImage = async (): Promise<string | null> => {
+  const uploadImage = async (postId: string): Promise<string | null> => {
     if (!imageFile || !userId) return null
 
     setUploadingImage(true)
 
     try {
-      const compressedFile = await compressPostImage(imageFile)
-      const fileName = `${userId}-${Date.now()}.jpg`
-      const filePath = `post-images/${fileName}`
+      // Use MediaService for upload
+      const result = await MediaService.upload(imageFile, {
+        entityType: 'post',
+        entityId: postId,
+      })
 
-      const { error: uploadError } = await supabase.storage
-        .from('images')
-        .upload(filePath, compressedFile)
+      setUploadingImage(false)
 
-      if (uploadError) {
-        console.error('Upload error:', uploadError)
-        setUploadingImage(false)
+      if (!result.success || !result.media) {
+        console.error('Upload error:', result.error)
         return null
       }
 
-      const { data: { publicUrl } } = supabase.storage
-        .from('images')
-        .getPublicUrl(filePath)
+      // Get the URL from MediaService
+      const url = MediaService.getUrl(result.media.storage_path, 'original')
+      const thumbnailUrl = MediaService.getUrl(result.media.storage_path, 'thumb')
 
-      setUploadingImage(false)
-      return publicUrl
+      // Insert into post_images table
+      await supabase.from('post_images').insert({
+        post_id: postId,
+        url: url,
+        thumbnail_url: thumbnailUrl,
+        width: result.media.width,
+        height: result.media.height,
+        file_size: result.media.file_size,
+        mime_type: result.media.mime_type,
+        sort_order: 0,
+      })
+
+      return url
     } catch (error) {
-      console.error('Compression/upload error:', error)
+      console.error('Upload error:', error)
       setUploadingImage(false)
       return null
     }
@@ -209,16 +215,7 @@ export function CreatePostSheet({ open, onClose, onSuccess, userId, defaultGeogr
     setLoading(true)
     setError(null)
 
-    let imageUrl: string | null = null
-    if (imageFile) {
-      imageUrl = await uploadImage()
-      if (!imageUrl && imageFile) {
-        setError('Kunne ikke laste opp bildet. Prov igjen.')
-        setLoading(false)
-        return
-      }
-    }
-
+    // Create post first (without image)
     const postData = {
       user_id: userId,
       category_id: categoryId || null,
@@ -226,7 +223,6 @@ export function CreatePostSheet({ open, onClose, onSuccess, userId, defaultGeogr
       visibility,
       title,
       content,
-      image_url: imageUrl,
       event_date: type === 'event' ? eventDate : null,
       event_time: type === 'event' ? eventTime : null,
       event_end_time: type === 'event' && eventEndTime ? eventEndTime : null,
@@ -235,8 +231,7 @@ export function CreatePostSheet({ open, onClose, onSuccess, userId, defaultGeogr
       language_area_id: selectedGeography?.type === 'language_area' ? selectedGeography.id : null,
       municipality_id: selectedGeography?.type === 'municipality' ? selectedGeography.id : null,
       place_id: selectedGeography?.type === 'place' ? selectedGeography.id : null,
-      // Group and Community
-      created_for_group_id: groupId || null,
+      // Community
       created_for_community_id: communityId || null,
     }
 
@@ -249,20 +244,47 @@ export function CreatePostSheet({ open, onClose, onSuccess, userId, defaultGeogr
     if (error) {
       setError(error.message)
       setLoading(false)
-    } else {
+      return
+    }
+
+    // Upload image after post is created (so we have the post ID)
+    if (imageFile && newPost) {
+      const imageUrl = await uploadImage(newPost.id)
+      if (!imageUrl) {
+        setError('Innlegg opprettet, men bildet kunne ikke lastes opp.')
+        // Continue anyway - post was created successfully
+      }
+    }
+
+    if (newPost) {
       // If visibility is 'circles', set the circle visibility
       if (visibility === 'circles' && selectedCircles.length > 0 && newPost) {
         await setPostCircleVisibility(newPost.id, selectedCircles)
       }
 
-      // Create notifications for mentioned users
+      // Handle mentions
       if (mentions.length > 0 && newPost) {
+        // Save mentions to post_mentions table
+        const mentionsData = mentions.map(m => ({ type: m.type, id: m.id }))
+        await supabase.rpc('save_post_mentions', {
+          p_post_id: newPost.id,
+          p_mentions: mentionsData
+        })
+
+        // Send notifications based on mention type
         for (const mention of mentions) {
-          // Only notify users, not communities/places/groups
           if (mention.type === 'user') {
+            // Notify individual user
             await supabase.rpc('create_mention_notification', {
               p_actor_id: userId,
               p_mentioned_user_id: mention.id,
+              p_post_id: newPost.id,
+            })
+          } else if (mention.type === 'community') {
+            // Notify all community followers
+            await supabase.rpc('notify_community_followers_on_mention', {
+              p_actor_id: userId,
+              p_community_id: mention.id,
               p_post_id: newPost.id,
             })
           }

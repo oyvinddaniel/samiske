@@ -3,8 +3,23 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase/client'
-import type { Comment, LikeUser, CommentLikeUser, PostData } from '@/components/posts/types'
+import type { Comment, CommentLikeUser, PostData } from '@/components/posts/types'
 import type { GeographySelection } from '@/components/geography'
+import type { ReactionType } from '@/components/posts/composer/constants'
+
+interface ReactionUser {
+  id: string
+  full_name: string | null
+  avatar_url: string | null
+  reaction_type: ReactionType
+}
+
+export interface ReactionData {
+  total_count: number
+  user_reaction: ReactionType | null
+  reactions: Partial<Record<ReactionType, number>> | null
+  recent_users: ReactionUser[] | null
+}
 
 interface UsePostCardProps {
   post: PostData
@@ -14,11 +29,13 @@ interface UsePostCardProps {
 export function usePostCard({ post, currentUserId }: UsePostCardProps) {
   const supabase = useMemo(() => createClient(), [])
 
-  // Like state
-  const [liked, setLiked] = useState(post.user_has_liked || false)
-  const [likeCount, setLikeCount] = useState(post.like_count)
-  const [isLiking, setIsLiking] = useState(false)
-  const [likeUsers, setLikeUsers] = useState<LikeUser[]>([])
+  // Reaction state (replaces old like state)
+  const [reactionData, setReactionData] = useState<ReactionData>({
+    total_count: post.like_count || 0,
+    user_reaction: post.user_has_liked ? 'elsker' : null,
+    reactions: post.like_count > 0 ? { elsker: post.like_count } : null,
+    recent_users: null,
+  })
 
   // Comment state
   const [showComments, setShowComments] = useState(false)
@@ -58,38 +75,25 @@ export function usePostCard({ post, currentUserId }: UsePostCardProps) {
   const [bookmarked, setBookmarked] = useState(false)
   const [bookmarking, setBookmarking] = useState(false)
 
+  // Archive state
+  const [archived, setArchived] = useState(post.is_archived || false)
+  const [archiving, setArchiving] = useState(false)
+
+  // Repost state
+  const [reposted, setReposted] = useState(post.user_has_reposted || false)
+  const [reposting, setReposting] = useState(false)
+
+  // New comments badge
+  const [commentsSinceOpened, setCommentsSinceOpened] = useState(0)
+
   // Computed values
   const isOwner = currentUserId === postData.user.id
-  const isBlurred = postData.visibility === 'members' && !currentUserId
+  const isBlurred = postData.visibility !== 'public' && !currentUserId
 
-  // Like handlers
-  const handleLike = async () => {
-    if (!currentUserId || isLiking) return
-    setIsLiking(true)
-
-    if (liked) {
-      await supabase
-        .from('likes')
-        .delete()
-        .eq('post_id', post.id)
-        .eq('user_id', currentUserId)
-
-      setLiked(false)
-      setLikeCount((prev) => prev - 1)
-      setLikeUsers((prev) => prev.filter((u) => u.id !== currentUserId))
-    } else {
-      await supabase.from('likes').insert({
-        post_id: post.id,
-        user_id: currentUserId,
-      })
-
-      setLiked(true)
-      setLikeCount((prev) => prev + 1)
-      fetchLikeUsers()
-    }
-
-    setIsLiking(false)
-  }
+  // Reaction handler - updates local state when ReactionPicker changes
+  const handleReactionChange = useCallback((newData: ReactionData) => {
+    setReactionData(newData)
+  }, [])
 
   const handleCommentLike = async (commentId: string) => {
     if (!currentUserId) return
@@ -214,25 +218,19 @@ export function usePostCard({ post, currentUserId }: UsePostCardProps) {
     setLoadingComments(false)
   }, [supabase, post.id, fetchCommentLikesForIds])
 
-  const fetchLikeUsers = useCallback(async () => {
-    const { data, error } = await supabase
-      .from('likes')
-      .select(`
-        user:profiles!likes_user_id_fkey (
-          id,
-          full_name,
-          avatar_url
-        )
-      `)
-      .eq('post_id', post.id)
-      .limit(10)
+  // Fetch reaction data from database
+  const fetchReactionData = useCallback(async () => {
+    const { data, error } = await supabase.rpc('get_post_reactions', {
+      p_post_id: post.id,
+    })
 
     if (!error && data) {
-      const users = data.map((like) => {
-        const userData = Array.isArray(like.user) ? like.user[0] : like.user
-        return userData as LikeUser
-      }).filter(Boolean)
-      setLikeUsers(users)
+      setReactionData({
+        total_count: data.total_count || 0,
+        user_reaction: data.user_reaction || null,
+        reactions: data.reactions || null,
+        recent_users: data.recent_users || null,
+      })
     }
   }, [supabase, post.id])
 
@@ -293,10 +291,16 @@ export function usePostCard({ post, currentUserId }: UsePostCardProps) {
 
   // Comment handlers
   const handleToggleComments = () => {
-    if (!showComments && comments.length === 0) {
-      fetchComments()
+    const willOpen = !showComments
+
+    if (willOpen) {
+      setCommentsSinceOpened(0) // Reset badge
+      if (comments.length === 0) {
+        fetchComments()
+      }
     }
-    setShowComments(!showComments)
+
+    setShowComments(willOpen)
   }
 
   const handleSubmitComment = async (e: React.FormEvent, parentId: string | null = null) => {
@@ -308,14 +312,36 @@ export function usePostCard({ post, currentUserId }: UsePostCardProps) {
 
     setSubmitting(true)
 
-    const { error } = await supabase.from('comments').insert({
-      post_id: post.id,
-      user_id: currentUserId,
-      content: content.trim(),
-      parent_id: parentId,
-    })
+    const { data: newCommentData, error } = await supabase
+      .from('comments')
+      .insert({
+        post_id: post.id,
+        user_id: currentUserId,
+        content: content.trim(),
+        parent_id: parentId,
+      })
+      .select('id')
+      .single()
 
-    if (!error) {
+    if (!error && newCommentData) {
+      // Parse mentions from content and send notifications
+      const mentionPattern = /@\[([^\]]+)\]\(([^:]+):([^)]+)\)/g
+      let match
+      while ((match = mentionPattern.exec(content)) !== null) {
+        const mentionType = match[2]
+        const mentionId = match[3]
+
+        // Only notify users
+        if (mentionType === 'user') {
+          await supabase.rpc('create_mention_notification', {
+            p_actor_id: currentUserId,
+            p_mentioned_user_id: mentionId,
+            p_post_id: post.id,
+            p_comment_id: newCommentData.id,
+          })
+        }
+      }
+
       if (parentId) {
         setReplyContent('')
         setReplyingTo(null)
@@ -353,7 +379,9 @@ export function usePostCard({ post, currentUserId }: UsePostCardProps) {
     }
 
     setCommentCount((prev) => prev - 1)
+    fetchPreviewComments()
     fetchComments()
+    toast.success('Kommentar slettet')
   }
 
   const handleStartEditComment = (commentId: string, currentContent: string) => {
@@ -479,23 +507,39 @@ export function usePostCard({ post, currentUserId }: UsePostCardProps) {
 
   const handleDeletePost = async () => {
     if (!isOwner) return
-    if (!confirm('Er du sikker på at du vil slette dette innlegget? Dette kan ikke angres.')) return
+    if (!confirm('Er du sikker på at du vil slette dette innlegget? Du kan gjenopprette det senere fra arkivet.')) return
 
     setDeleting(true)
 
-    const { error } = await supabase
-      .from('posts')
-      .delete()
-      .eq('id', postData.id)
+    const { error } = await supabase.rpc('soft_delete_post', {
+      p_post_id: postData.id,
+      p_reason: null
+    })
 
     if (!error) {
       setIsDeleted(true)
       setShowDialog(false)
+      toast.success('Innlegg slettet. Du finner det i arkivet.')
     } else {
-      alert('Kunne ikke slette innlegget. Prøv igjen.')
+      toast.error('Kunne ikke slette innlegget. Prøv igjen.')
     }
 
     setDeleting(false)
+  }
+
+  const handleRestorePost = async () => {
+    if (!isOwner) return
+
+    const { error } = await supabase.rpc('restore_post', {
+      p_post_id: postData.id
+    })
+
+    if (!error) {
+      setIsDeleted(false)
+      toast.success('Innlegg gjenopprettet')
+    } else {
+      toast.error('Kunne ikke gjenopprette innlegget')
+    }
   }
 
   const handleShare = async () => {
@@ -554,12 +598,59 @@ export function usePostCard({ post, currentUserId }: UsePostCardProps) {
     setBookmarking(false)
   }
 
+  const handleArchivePost = async () => {
+    if (!isOwner || archiving) return
+    setArchiving(true)
+
+    const { data, error } = await supabase.rpc('toggle_archive_post', {
+      p_post_id: postData.id,
+    })
+
+    if (!error && data) {
+      setArchived(data.is_archived)
+      toast.success(data.is_archived ? 'Innlegg arkivert' : 'Innlegg gjenopprettet')
+    } else {
+      toast.error('Kunne ikke arkivere innlegget')
+    }
+
+    setArchiving(false)
+  }
+
+  const handleRepost = async () => {
+    if (!currentUserId || reposting) return
+    setReposting(true)
+
+    if (reposted) {
+      // Unrepost
+      const { error } = await supabase.rpc('unrepost_post', {
+        p_post_id: postData.id
+      })
+
+      if (!error) {
+        setReposted(false)
+        toast.success('Repost fjernet')
+      }
+    } else {
+      // Repost
+      const { error } = await supabase.rpc('repost_post', {
+        p_post_id: postData.id,
+        p_comment: null
+      })
+
+      if (!error) {
+        setReposted(true)
+        toast.success('Innlegg repostet til din feed!')
+      }
+    }
+
+    setReposting(false)
+  }
+
   // Effects
   useEffect(() => {
-    if (post.like_count > 0) {
-      fetchLikeUsers()
-    }
-  }, [post.id, post.like_count, fetchLikeUsers])
+    // Fetch reaction data when component mounts
+    fetchReactionData()
+  }, [fetchReactionData])
 
   useEffect(() => {
      
@@ -587,6 +678,9 @@ export function usePostCard({ post, currentUserId }: UsePostCardProps) {
           fetchPreviewComments()
           if (showComments) {
             fetchComments()
+          } else {
+            // Count new comments when panel is closed
+            setCommentsSinceOpened(prev => prev + 1)
           }
         }
       )
@@ -599,9 +693,7 @@ export function usePostCard({ post, currentUserId }: UsePostCardProps) {
 
   return {
     // State
-    liked,
-    likeCount,
-    likeUsers,
+    reactionData,
     showComments,
     comments,
     commentCount,
@@ -650,7 +742,7 @@ export function usePostCard({ post, currentUserId }: UsePostCardProps) {
     setEditGeography,
 
     // Handlers
-    handleLike,
+    handleReactionChange,
     handleCommentLike,
     handleToggleComments,
     handleSubmitComment,
@@ -664,6 +756,15 @@ export function usePostCard({ post, currentUserId }: UsePostCardProps) {
     handleDeletePost,
     handleShare,
     handleBookmark,
+    handleArchivePost,
+    archived,
+    archiving,
     fetchComments,
+    // New exports
+    reposted,
+    reposting,
+    handleRepost,
+    handleRestorePost,
+    commentsSinceOpened,
   }
 }

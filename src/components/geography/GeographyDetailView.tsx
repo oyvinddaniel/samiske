@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import {
-  Star, Pencil, MapPin, Building2,
+  MapPin, Building2,
   Calendar, Users, FileText, Loader2
 } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -11,15 +11,27 @@ import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import { Feed } from '@/components/feed/Feed'
 import { SuggestChangeModal } from './SuggestChangeModal'
-import Image from 'next/image'
+import { GeographyTopCard } from './GeographyTopCard'
+import { ImageUploadModal } from './ImageUploadModal'
+import { MediaService, getMediaUrl, MediaEntityType } from '@/lib/media'
 
 type EntityType = 'language_area' | 'municipality' | 'place'
+
+// Mapping til MediaService entity types
+const MEDIA_ENTITY_MAP: Record<EntityType, MediaEntityType> = {
+  language_area: 'geography_language_area',
+  municipality: 'geography_municipality',
+  place: 'geography_place',
+}
 
 interface GeographyImage {
   id: string
   image_url: string
   caption: string | null
+  alt_text: string | null
   sort_order: number
+  storage_path: string
+  original_uploader_id: string
 }
 
 interface ChildItem {
@@ -53,6 +65,8 @@ export function GeographyDetailView({
     description: string | null
     code?: string
     slug?: string
+    latitude?: number | null
+    longitude?: number | null
   } | null>(null)
 
   // Related data
@@ -66,10 +80,10 @@ export function GeographyDetailView({
 
   // Edit state
   const [suggestionModalOpen, setSuggestionModalOpen] = useState(false)
+  const [uploadModalOpen, setUploadModalOpen] = useState(false)
 
   // Loading
   const [loading, setLoading] = useState(true)
-  const [uploadingImage, setUploadingImage] = useState(false)
 
   // Fetch current user
   useEffect(() => {
@@ -88,9 +102,9 @@ export function GeographyDetailView({
     if (entityType === 'language_area') {
       query = supabase.from('language_areas').select('id, name, name_sami, description, code').eq('id', entityId).single()
     } else if (entityType === 'municipality') {
-      query = supabase.from('municipalities').select('id, name, name_sami, description, slug, language_area_id').eq('id', entityId).single()
+      query = supabase.from('municipalities').select('id, name, name_sami, description, slug, language_area_id, latitude, longitude').eq('id', entityId).single()
     } else {
-      query = supabase.from('places').select('id, name, name_sami, description, slug, municipality_id').eq('id', entityId).single()
+      query = supabase.from('places').select('id, name, name_sami, description, slug, municipality_id, latitude, longitude').eq('id', entityId).single()
     }
 
     const { data, error } = await query
@@ -122,19 +136,65 @@ export function GeographyDetailView({
     setLoading(false)
   }, [supabase, entityType, entityId])
 
-  // Fetch images
+  // Fetch images from both new media table and legacy geography_images
   const fetchImages = useCallback(async () => {
+    const allImages: GeographyImage[] = []
+
+    // 1. Hent fra ny media-tabell med original_uploader_id
+    const mediaEntityType = MEDIA_ENTITY_MAP[entityType]
+    const { data: mediaData } = await supabase
+      .from('media')
+      .select('id, storage_path, caption, alt_text, sort_order, original_uploader_id')
+      .eq('entity_type', mediaEntityType)
+      .eq('entity_id', entityId)
+      .is('deleted_at', null)
+      .order('sort_order')
+
+    if (mediaData) {
+      for (const record of mediaData) {
+        allImages.push({
+          id: record.id,
+          image_url: getMediaUrl(record.storage_path, 'original'),
+          caption: record.caption,
+          alt_text: record.alt_text,
+          sort_order: record.sort_order,
+          storage_path: record.storage_path,
+          original_uploader_id: record.original_uploader_id,
+        })
+      }
+    }
+
+    // 2. Hent fra legacy geography_images (for bakoverkompatibilitet)
     const column = entityType === 'language_area' ? 'language_area_id' :
                    entityType === 'municipality' ? 'municipality_id' : 'place_id'
 
-    const { data } = await supabase
+    const { data: legacyData } = await supabase
       .from('geography_images')
       .select('*')
       .eq(column, entityId)
       .order('sort_order')
-      .limit(5)
+      .limit(20)
 
-    if (data) setImages(data)
+    if (legacyData) {
+      for (const img of legacyData) {
+        // Unngå duplikater (sjekk om URL allerede finnes)
+        if (!allImages.some(existing => existing.image_url === img.image_url)) {
+          allImages.push({
+            id: img.id,
+            image_url: img.image_url,
+            caption: img.caption,
+            alt_text: null,
+            sort_order: img.sort_order + 1000, // Legacy bilder sorteres etter nye
+            storage_path: '',
+            original_uploader_id: '', // Legacy images don't have uploader
+          })
+        }
+      }
+    }
+
+    // Sorter alle bilder
+    allImages.sort((a, b) => a.sort_order - b.sort_order)
+    setImages(allImages)
   }, [supabase, entityType, entityId])
 
   // Fetch children (municipalities for language_area, places for municipality)
@@ -218,67 +278,6 @@ export function GeographyDetailView({
     }
   }
 
-  // Upload image
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file || !currentUserId) return
-
-    if (images.length >= 5) {
-      toast.error('Maks 5 bilder per sted')
-      return
-    }
-
-    setUploadingImage(true)
-
-    try {
-      // Upload to storage
-      const fileExt = file.name.split('.').pop()
-      const fileName = `${entityType}/${entityId}/${Date.now()}.${fileExt}`
-
-      const { error: uploadError } = await supabase.storage
-        .from('geography-images')
-        .upload(fileName, file)
-
-      if (uploadError) throw uploadError
-
-      // Get public URL
-      const { data: { publicUrl } } = supabase.storage
-        .from('geography-images')
-        .getPublicUrl(fileName)
-
-      // Save to database
-      const column = entityType === 'language_area' ? 'language_area_id' :
-                     entityType === 'municipality' ? 'municipality_id' : 'place_id'
-
-      const { error: dbError } = await supabase.from('geography_images').insert({
-        [column]: entityId,
-        image_url: publicUrl,
-        uploaded_by: currentUserId,
-        sort_order: images.length,
-      })
-
-      if (dbError) throw dbError
-
-      toast.success('Bilde lastet opp')
-      fetchImages()
-    } catch (error) {
-      console.error('Upload error:', error)
-      toast.error('Kunne ikke laste opp bilde')
-    } finally {
-      setUploadingImage(false)
-    }
-  }
-
-  // Get entity icon and color - all use green MapPin for consistency
-  const getEntityStyle = () => {
-    const label = entityType === 'language_area' ? 'Språkområde' :
-                  entityType === 'municipality' ? 'Kommune' : 'By/sted'
-    return { icon: MapPin, color: 'text-green-600', bg: 'bg-green-100', label }
-  }
-
-  const style = getEntityStyle()
-  const Icon = style.icon
-
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -297,105 +296,21 @@ export function GeographyDetailView({
 
   return (
     <div className="h-full flex flex-col">
-      {/* Header Card */}
-      <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6">
-        {/* Type badge and parent info */}
-        <div className="flex items-center gap-2 mb-3">
-          <div className={cn('px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1', style.bg, style.color)}>
-            <Icon className="w-3 h-3" />
-            {style.label}
-          </div>
-          {parentInfo && (
-            <span className="text-xs text-gray-400">
-              i {parentInfo.name}
-            </span>
-          )}
-        </div>
-
-        {/* Title and Action Buttons */}
-        <div className="flex items-start justify-between gap-4 mb-4">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">{entity.name}</h1>
-            {entity.name_sami && (
-              <p className="text-lg text-gray-500 mt-1">{entity.name_sami}</p>
-            )}
-          </div>
-
-          <div className="flex gap-2">
-            {/* Star button */}
-            <div className="flex flex-col items-center">
-              <button
-                onClick={toggleStar}
-                className={cn(
-                  'p-3 rounded-full transition-colors',
-                  isStarred
-                    ? 'text-yellow-500 bg-yellow-50 hover:bg-yellow-100'
-                    : 'text-gray-300 bg-gray-50 hover:bg-gray-100 hover:text-gray-400'
-                )}
-              >
-                <Star className={cn('w-6 h-6', isStarred && 'fill-current')} />
-              </button>
-              <span className="text-[10px] text-gray-400 mt-1 text-center whitespace-nowrap">
-                Favoritt
-              </span>
-            </div>
-
-            {/* Edit button */}
-            <div className="flex flex-col items-center">
-              <button
-                onClick={() => setSuggestionModalOpen(true)}
-                className="p-3 rounded-full text-gray-400 bg-gray-50 hover:bg-gray-100 hover:text-gray-600 transition-colors"
-              >
-                <Pencil className="w-6 h-6" />
-              </button>
-              <span className="text-[10px] text-gray-400 mt-1 text-center whitespace-nowrap">
-                Rediger
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Description */}
-        <div className="border-t border-gray-100 pt-4">
-          {entity.description ? (
-            <p className="text-gray-600 text-sm whitespace-pre-wrap">{entity.description}</p>
-          ) : (
-            <p className="text-gray-400 text-sm italic">Ingen beskrivelse ennå</p>
-          )}
-        </div>
-
-        {/* Images */}
-        {images.length > 0 && (
-          <div className="border-t border-gray-100 pt-4 mt-4">
-            <div className={cn(
-              'grid gap-2',
-              images.length === 1 && 'grid-cols-1',
-              images.length === 2 && 'grid-cols-2',
-              images.length >= 3 && 'grid-cols-3'
-            )}>
-              {images.map((img, idx) => (
-                <div
-                  key={img.id}
-                  className={cn(
-                    'relative rounded-lg overflow-hidden bg-gray-100',
-                    images.length === 1 && 'aspect-video',
-                    images.length === 2 && 'aspect-square',
-                    images.length >= 3 && idx === 0 && images.length > 3 && 'col-span-2 row-span-2 aspect-square',
-                    images.length >= 3 && idx > 0 && 'aspect-square'
-                  )}
-                >
-                  <Image
-                    src={img.image_url}
-                    alt={img.caption || entity.name}
-                    fill
-                    className="object-cover"
-                  />
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
+      {/* New Top Card with 3-dot menu, map preview, and gallery */}
+      <GeographyTopCard
+        entityType={entityType}
+        entity={entity}
+        images={images}
+        parentInfo={parentInfo}
+        isStarred={isStarred}
+        isLoggedIn={!!currentUserId}
+        currentUserId={currentUserId}
+        onToggleStar={toggleStar}
+        onEdit={() => setSuggestionModalOpen(true)}
+        onUploadImages={() => setUploadModalOpen(true)}
+        onImageUpdated={fetchImages}
+        className="mb-6"
+      />
 
       {/* Tabs - Innlegg alltid først */}
       <Tabs defaultValue="innlegg" className="flex-1 flex flex-col min-h-0">
@@ -534,6 +449,16 @@ export function GeographyDetailView({
           fetchEntity()
           fetchImages()
         }}
+      />
+
+      {/* Image Upload Modal */}
+      <ImageUploadModal
+        isOpen={uploadModalOpen}
+        onClose={() => setUploadModalOpen(false)}
+        entityType={entityType}
+        entityId={entityId}
+        currentImageCount={images.length}
+        onUploadComplete={fetchImages}
       />
     </div>
   )
