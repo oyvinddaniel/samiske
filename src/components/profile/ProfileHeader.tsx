@@ -267,14 +267,12 @@ export function ProfileHeader({
             priority
           />
         ) : null}
-        {/* Gradient overlay for better text contrast */}
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/40" />
       </div>
 
-      <CardContent className="relative pt-0 pb-4">
-        <div className="flex flex-col sm:flex-row items-start gap-4 -mt-10">
-          {/* Avatar with status ring */}
-          <div className="relative">
+      <CardContent className="relative pt-4 pb-4">
+        <div className="flex flex-col sm:flex-row items-start gap-4">
+          {/* Avatar with status ring - overlaps banner */}
+          <div className="relative -mt-14">
             <Avatar
               className="w-24 h-24 border-4 border-white shadow-xl"
               style={{
@@ -291,9 +289,9 @@ export function ProfileHeader({
           </div>
 
           {/* Info */}
-          <div className="flex-1 min-w-0 mt-2 sm:mt-0">
+          <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="text-2xl font-bold text-white sm:text-gray-900 drop-shadow-lg sm:drop-shadow-none">
+              <h1 className="text-2xl font-bold text-gray-900">
                 {profile.full_name || 'Ukjent bruker'}
               </h1>
               {getRoleBadge(profile.role)}
@@ -301,19 +299,19 @@ export function ProfileHeader({
 
             {/* Username */}
             {profile.username && (
-              <p className="text-sm text-white/90 sm:text-gray-500 mt-1 drop-shadow-md sm:drop-shadow-none">
+              <p className="text-sm text-gray-500 mt-1">
                 @{profile.username}
               </p>
             )}
 
             {/* Tagline */}
             {profile.tagline && (
-              <p className="text-sm text-white/80 sm:text-gray-700 italic mt-1 drop-shadow-md sm:drop-shadow-none">
+              <p className="text-sm text-gray-700 italic mt-1">
                 "{profile.tagline}"
               </p>
             )}
 
-            {/* Social Links - Only show on desktop or after moving below banner */}
+            {/* Social Links */}
             {profile.social_links && profile.social_links.length > 0 && (
               <div className="hidden sm:flex flex-wrap gap-2 mt-2">
                 {profile.social_links.slice(0, 3).map((link, index) => (
