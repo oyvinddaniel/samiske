@@ -6,9 +6,17 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { MapPin, Home, Calendar, Settings } from 'lucide-react'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { MapPin, Home, Calendar, Settings, Link2 } from 'lucide-react'
 import { getUserLocations } from '@/lib/geography'
 import { FriendActionButtons } from '@/components/friends/FriendActionButtons'
+import Image from 'next/image'
+
+interface SocialLink {
+  type: string
+  url: string
+  label?: string
+}
 
 interface Profile {
   id: string
@@ -18,6 +26,12 @@ interface Profile {
   location: string | null
   role: string
   created_at: string
+  username: string | null
+  tagline: string | null
+  cover_image_url: string | null
+  avatar_status_color: string | null
+  social_links: SocialLink[]
+  interests: string[]
 }
 
 interface LocationInfo {
@@ -46,6 +60,7 @@ export function ProfileHeader({
   const [profile, setProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
+  const [showAllSocialLinks, setShowAllSocialLinks] = useState(false)
   const [locationInfo, setLocationInfo] = useState<LocationInfo>({
     currentLocation: null,
     homeLocation: null,
@@ -74,15 +89,19 @@ export function ProfileHeader({
 
   useEffect(() => {
     const fetchProfile = async () => {
-      // Fetch profile with location privacy settings
+      // Fetch profile with location privacy settings and new fields
       const { data: profileData } = await supabase
         .from('profiles')
-        .select('id, full_name, avatar_url, bio, location, role, created_at, show_current_location, show_home_location')
+        .select('id, full_name, avatar_url, bio, location, role, created_at, show_current_location, show_home_location, username, tagline, cover_image_url, avatar_status_color, social_links, interests')
         .eq('id', userId)
         .single()
 
       if (profileData) {
-        setProfile(profileData)
+        setProfile({
+          ...profileData,
+          social_links: profileData.social_links || [],
+          interests: profileData.interests || []
+        })
       }
 
       // Fetch geography locations
@@ -233,26 +252,92 @@ export function ProfileHeader({
     return null
   }
 
+  const avatarRingColor = profile.avatar_status_color || 'rgb(59, 130, 246)' // default blue
+
   return (
-    <Card className="mb-6">
-      <CardContent className="pt-4 pb-[15px]">
-        <div className="flex flex-col sm:flex-row items-start gap-4 -mt-[15px]">
-          {/* Avatar */}
-          <Avatar className="w-20 h-20 border-2 border-white shadow-lg">
-            <AvatarImage src={profile.avatar_url || undefined} alt={profile.full_name || 'Profilbilde'} />
-            <AvatarFallback className="bg-blue-100 text-blue-600 text-xl">
-              {getInitials(profile.full_name)}
-            </AvatarFallback>
-          </Avatar>
+    <Card className="mb-6 overflow-hidden p-0">
+      {/* Cover Image */}
+      <div className="relative w-full h-48 bg-gradient-to-r from-blue-500 to-purple-600">
+        {profile.cover_image_url ? (
+          <Image
+            src={profile.cover_image_url}
+            alt="Cover"
+            fill
+            className="object-cover"
+            priority
+          />
+        ) : null}
+        {/* Gradient overlay for better text contrast */}
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/40" />
+      </div>
+
+      <CardContent className="relative pt-0 pb-4">
+        <div className="flex flex-col sm:flex-row items-start gap-4 -mt-10">
+          {/* Avatar with status ring */}
+          <div className="relative">
+            <Avatar
+              className="w-24 h-24 border-4 border-white shadow-xl"
+              style={{
+                boxShadow: profile.avatar_status_color
+                  ? `0 0 0 3px ${profile.avatar_status_color}`
+                  : undefined
+              }}
+            >
+              <AvatarImage src={profile.avatar_url || undefined} alt={profile.full_name || 'Profilbilde'} />
+              <AvatarFallback className="bg-blue-100 text-blue-600 text-2xl">
+                {getInitials(profile.full_name)}
+              </AvatarFallback>
+            </Avatar>
+          </div>
 
           {/* Info */}
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0 mt-2 sm:mt-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="text-xl font-bold text-gray-900">
+              <h1 className="text-2xl font-bold text-white sm:text-gray-900 drop-shadow-lg sm:drop-shadow-none">
                 {profile.full_name || 'Ukjent bruker'}
               </h1>
               {getRoleBadge(profile.role)}
             </div>
+
+            {/* Username */}
+            {profile.username && (
+              <p className="text-sm text-white/90 sm:text-gray-500 mt-1 drop-shadow-md sm:drop-shadow-none">
+                @{profile.username}
+              </p>
+            )}
+
+            {/* Tagline */}
+            {profile.tagline && (
+              <p className="text-sm text-white/80 sm:text-gray-700 italic mt-1 drop-shadow-md sm:drop-shadow-none">
+                "{profile.tagline}"
+              </p>
+            )}
+
+            {/* Social Links - Only show on desktop or after moving below banner */}
+            {profile.social_links && profile.social_links.length > 0 && (
+              <div className="hidden sm:flex flex-wrap gap-2 mt-2">
+                {profile.social_links.slice(0, 3).map((link, index) => (
+                  <a
+                    key={index}
+                    href={link.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 hover:underline"
+                  >
+                    <Link2 className="w-3 h-3" />
+                    {link.label || link.type}
+                  </a>
+                ))}
+                {profile.social_links.length > 3 && (
+                  <button
+                    onClick={() => setShowAllSocialLinks(true)}
+                    className="text-xs text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
+                  >
+                    +{profile.social_links.length - 3} mer
+                  </button>
+                )}
+              </div>
+            )}
 
             {(locationInfo.currentLocation || locationInfo.homeLocation) && (
               <div className="text-sm text-gray-500 mt-1 space-y-1">
@@ -320,6 +405,34 @@ export function ProfileHeader({
           </div>
         </div>
       </CardContent>
+
+      {/* Social Links Modal */}
+      <Dialog open={showAllSocialLinks} onOpenChange={setShowAllSocialLinks}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Sosiale lenker</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2">
+            {profile?.social_links.map((link, index) => (
+              <a
+                key={index}
+                href={link.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-3 px-4 py-3 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <Link2 className="w-4 h-4 text-gray-600" />
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-gray-900">
+                    {link.label || link.type}
+                  </p>
+                  <p className="text-xs text-gray-500 truncate">{link.url}</p>
+                </div>
+              </a>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
     </Card>
   )
 }

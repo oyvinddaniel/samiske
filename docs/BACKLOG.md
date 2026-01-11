@@ -1,7 +1,7 @@
 # BACKLOG.md - Oppgaveliste
 
-> Alt som skal bygges, fikses eller vurderes.  
-> Sist oppdatert: 2025-12-26
+> Alt som skal bygges, fikses eller vurderes.
+> Sist oppdatert: 2026-01-11
 
 ---
 
@@ -21,30 +21,25 @@
 - [ ] Profile avatar - manuell testing
 - [ ] Geography images - manuell testing
 - [ ] Bug reports - manuell testing
-- [ ] Group avatar - manuell testing
 - [ ] Geography suggestions - manuell testing
 - [ ] Migrere eksisterende bilder til ny `media` tabell
 - [ ] Bunny.net video setup (fullføre)
 - [ ] Slette legacy komponent (`ny/page.tsx`)
 
+**Notis:** Group avatar fjernet fra scope (gruppe-funksjonalitet slettet 10-11. jan 2026)
+
 ### SPA-konvertering 🟠
 - [ ] **Fase 2:** Bokmerker (`/bokmerker`)
-- [ ] **Fase 2:** Grupper liste (`/grupper`)
-- [ ] **Fase 2:** Innlegg detalj (`/innlegg/[id]`)
+- [ ] **Fase 2:** Innlegg detalj (`/innlegg/[id]`) - Delvis fullført (SSR med Open Graph 11. jan)
 - [ ] **Fase 3:** Brukerprofiler (`/bruker/[username]`)
-- [ ] **Fase 3:** Gruppe-detalj (`/grupper/[slug]`)
 - [ ] **Fase 3:** Geografi enkelt-nivå
-- [ ] **Fase 4:** Samfunn (`/samfunn/[slug]`)
+- [ ] **Fase 4:** Samfunn (`/samfunn/[slug]`) - Når samfunn gjøres synlige igjen
 - [ ] **Fase 4:** Geografi hierarki (4 nivåer)
 - [ ] **Fase 5:** Polering og UX
 - [ ] **Fase 6:** Omfattende testing
 
-### Post-Composer Testing 🟡
-- [ ] Video upload og transcoding
-- [ ] Polls (opprettelse og voting)
-- [ ] Planlagte innlegg (scheduled posts)
-- [ ] Emoji-picker i toolbar
-- [ ] Arkivering av innlegg
+**Notis:** Alle gruppe-relaterte routes fjernet fra scope (grupper slettet 10-11. jan 2026)
+
 
 ---
 
@@ -67,11 +62,6 @@
 - [ ] NewPostSheet.tsx
 - [ ] InlineCreatePost.tsx
 - [ ] usePostComposer.ts
-
-### Advanced Gallery System
-- [ ] Database-migrering (`20241225_media_social_features.sql`)
-- [ ] Gallery-visning i feed
-- [ ] Album-funksjonalitet
 
 ---
 
@@ -117,13 +107,14 @@
 - [ ] Brukeraktivitets-dashboard
 
 ### Sosiale funksjoner
-- [ ] Reactions (mer enn bare like)
+- [x] Reactions (mer enn bare like) - ✅ Implementert (10 reaksjonstyper)
 - [ ] Stories/ephemeral content
 - [ ] Live streaming
+- [ ] Grupper (gjenoppbygg fra arkiv)
 
 ### Integrasjoner
 - [ ] Kalender-sync (Google/Apple)
-- [ ] Social sharing cards (OG images)
+- [x] Social sharing cards (OG images) - ✅ Implementert 11. jan (Open Graph meta tags)
 
 ---
 
@@ -165,6 +156,111 @@
 
 > Flyttet hit med dato når ferdig
 
+### Januar 2026
+
+#### 11. januar (kveld) - Profile Hotfixes 🔧
+**3 kritiske hotfixes for profilsystemet:**
+- [x] **Fake statistikk i profile_stats view** ⚠️ KRITISK FIX
+  - SQL view multipliserte likes pga. dårlige JOINs
+  - Erstattet med separate subqueries
+  - Migrering: `20260111_fix_profile_stats_view.sql`
+  - Statistikk viser nå reelle tall
+- [x] **Dårlig kontrast på profilnavn over banner** 🎨
+  - Gradient overlay + hvit tekst med drop-shadow på mobil
+  - Responsive design for optimal lesbarhet
+  - Fil: `src/components/profile/ProfileHeader.tsx` (linjer 271, 296, 304, 311)
+- [x] **Whitespace over banner** 📐
+  - Fjernet padding på Card-komponenten
+  - Banner går nå helt til kanten
+  - Fil: `src/components/profile/ProfileHeader.tsx` (linje 258)
+
+**Testing:** Build ✅, verifisert i localhost ✅
+**Status:** Alle 3 fixes deployet og fungerer
+
+#### 11. januar - Post System 2.0 🎯
+**8 avanserte post-funksjoner implementert og testet:**
+- [x] **Soft delete med restore** - Innlegg kan slettes og gjenopprettes fra arkiv
+  - Database: `posts.deleted_at` timestamp-kolonne
+  - RLS policies oppdatert for filtrering
+  - Menyitems: "Slett" og "Gjenopprett fra arkiv"
+- [x] **Edit tracking** - "Redigert"-badge med timestamp og edit count
+  - Database: `posts.edited_at`, `posts.edit_count`
+  - Badge med hover-tooltip
+- [x] **Kommentar-redigering UI** - Inline editing med lagre/avbryt
+  - Komponenter: NestedComments.tsx, CommentSection.tsx
+  - "(redigert)"-indikator på kommentarer
+- [x] **Bilderedigering** - Drag-and-drop reordering og sletting
+  - Ny komponent: EditPostImagesDialog.tsx (450+ linjer)
+  - Database-funksjoner: update_post_images_order, delete_post_image
+- [x] **Repost/reshare** - Del innlegg til egen feed
+  - Ny tabell: `reposts` med RLS policies
+  - Attribution til original poster
+  - Menyitem: "Repost til feed"
+- [x] **Analytics UI (PostStats)** - View count og engagement
+  - Ny komponent: PostStats.tsx
+  - Synlig kun for innleggseiere
+  - Bruker post_statistics view
+- [x] **"Nye kommentarer" badge** - Realtime notifications
+  - Orange badge på PostActions med count
+  - Realtime via Supabase subscriptions
+  - comment_read_tracking tabell
+- [x] **Open Graph meta tags** - Riktig preview ved ekstern deling
+  - SSR med generateMetadata() i page.tsx
+  - Dynamiske OG-tags (title, description, image, URL)
+  - PostDetailPageClient.tsx wrapper for client-side logikk
+
+**Database:** 3 nye migrasjoner (post_improvements, repost_system, post_images_edit)
+**Frontend:** 2 nye komponenter, 13 oppdaterte filer
+**Testing:** Build ✅, 120/121 tester ✅, manuell testing ✅
+
+- [x] **Final gruppe-cleanup** - Fjernet alle gjenværende gruppe-komponenter
+  - Slettet: src/components/groups/* (alle filer)
+  - Slettet: src/lib/groups.ts, src/lib/types/groups.ts
+  - Slettet: src/app/grupper/GroupsContent.tsx
+  - Oppdatert: HomeLayout.tsx, spa-utils.ts, Feed.tsx (fjernet gruppe-refs)
+  - Oppdatert: Alle post-komponenter (fjernet gruppe-mentions)
+
+#### 11. januar (tidlig) - Profile Enhancements
+- [x] Profile Enhancements komplett implementering
+  - Cover/banner-bilde (1200x400px) med parallax-effekt
+  - Brukernavn (@handle) system med uniqueness
+  - Tagline/stikkord (1 linje)
+  - Sosiale lenker (JSONB array, max 10)
+  - Interesser/hobbyer (TEXT array, max 20)
+  - Avatar status ring (valgfri farge)
+  - 5-tab profilsystem (Innlegg, Om meg, Media, Aktivitet, Innstillinger)
+  - ProfileStatsCard med venner/innlegg/likes
+  - Samiske organisasjoner (Sametinget, NSR, etc.)
+  - Featured images-galleri (3-6 bilder)
+  - ProfileOverlay modernisert med glassmorphism
+  - Database: 8 nye kolonner, 4 nye tabeller, 2 views
+  - Storage: profile-covers bucket med RLS
+  - Bugfix: Fjernet alle created_for_group_id referanser (13 filer)
+
+#### 10. januar - Pre-Launch Cleanup
+- [x] Gruppe-funksjonalitet permanent fjernet (skal bygges på nytt)
+- [x] Samfunn midlertidig skjult (reversibelt via is_hidden flag)
+- [x] 8 database-tabeller fjernet (alle triggers, funksjoner, RLS policies)
+- [x] ~200 linjer gruppe-kode fjernet fra 14+ komponenter
+- [x] Komplett dokumentasjon arkivert i docs/archive/groups-system-backup/
+- [x] Git tag: v1.0-pre-group-deletion
+
+#### 8. januar
+- [x] Gallery System komplett implementering
+  - Advanced gallery viewer (masonry + single mode)
+  - Image-level engagement (comments + likes)
+  - Polymorfisk backend (media + post_images)
+  - Dark theme konsistens
+  - Security audit og fixes
+- [x] CVE-GALLERY-001 fikset (unauthorized comment deletion)
+- [x] Gallery code quality improvements
+  - useEffect dependencies
+  - Type safety (User types)
+  - Dark theme konsistens
+- [x] Post-Composer Testing fullført
+  - Video upload, polls, scheduled posts, reactions, archive
+  - Alle 5 kritiske funksjoner verifisert
+
 ### Desember 2025
 - [x] Sapmi-transformasjon (alle 9 faser) - 17. des
 - [x] Universelt søk (8 kategorier) - 13. des
@@ -183,5 +279,5 @@
 
 ---
 
-**Sist oppdatert:** 2025-12-26  
-**Oppdatert av:** Claude (migrering)
+**Sist oppdatert:** 2026-01-11 (kveld)
+**Oppdatert av:** DOKUMENTERER-agent (Profile Hotfixes: fake statistikk fix + design-forbedringer)
