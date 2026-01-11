@@ -83,6 +83,40 @@
 
 ---
 
+## [2026-01-11 sen kveld] - E2E Test Framework for Post System 2.0
+
+### Lagt til
+- **E2E automatisert test** (`tests/e2e/post-system-v2.spec.ts`)
+  - Playwright-basert test med synlig browser (--headed)
+  - Tester komplett brukerflyt:
+    - Innlogging (håndterer både innlogget og utlogget state)
+    - Post-opprettelse med tekst
+    - 3-prikk meny-interaksjon
+    - Kommentar-funksjonalitet
+  - Screenshot-capture for visuell verifisering:
+    - `test-results/01-homepage.png`
+    - `test-results/02-logged-in.png`
+    - `test-results/03-post-composer.png`
+    - `test-results/04-post-published.png`
+    - `test-results/05-more-menu.png`
+    - `test-results/06-comment-added.png`
+  - Kjøretid: ~21.5 sekunder
+  - Status: ✅ 1 passed
+
+### Tekniske detaljer
+- **Test-fil:** `tests/e2e/post-system-v2.spec.ts` (177 linjer)
+- **Kjørekommando:** `npx playwright test tests/e2e/post-system-v2.spec.ts --headed --project=chromium`
+- **Dependencies installert:** Playwright Chromium browser (159.6 MB)
+- **Console logging:** Detaljert logging av hver teststeg
+
+### Notater
+- Baseline E2E-test opprettet for framtidig regression-testing
+- Trenger justering av selectors for robusthet
+- Manuell testing fortsatt anbefalt for komplekse interaksjoner
+- Test-framework klar for utvidelse med flere test-scenarier
+
+---
+
 ## [2026-01-11] - Post System 2.0 + Profile Enhancements + Final Group Cleanup
 
 ### 🎯 MAJOR: Post System 2.0 (8 avanserte funksjoner)

@@ -131,7 +131,11 @@
 
 ### Testing
 - [ ] Øke test coverage
-- [ ] E2E tester for kritiske flyter
+- [x] E2E tester for kritiske flyter - ✅ Post System 2.0 baseline opprettet (11. jan)
+  - Playwright-test med synlig browser
+  - Screenshot-capture for visuell verifisering
+  - Test-fil: `tests/e2e/post-system-v2.spec.ts`
+- [ ] E2E tester for øvrige flyter (profil, samfunn, meldinger)
 
 ---
 
@@ -177,6 +181,19 @@
 **Testing:** Build ✅, verifisert i localhost ✅
 **Status:** Alle 3 fixes deployet og fungerer
 
+#### 11. januar (sen kveld) - E2E Test Framework 🧪
+**Opprettet automatisert E2E-test for Post System 2.0:**
+- [x] **Playwright E2E test** (`tests/e2e/post-system-v2.spec.ts`)
+  - Synlig browser med --headed flag
+  - Komplett brukerflyt: innlogging → post-opprettelse → 3-prikk meny → kommentarer
+  - Screenshot-capture (6 bilder) for visuell verifisering
+  - Console logging med detaljerte teststeg
+  - Kjøretid: ~21.5 sekunder
+  - Status: ✅ 1 passed
+
+**Dependencies installert:** Playwright Chromium browser (159.6 MB)
+**Notater:** Baseline opprettet, trenger selector-justering for robusthet
+
 #### 11. januar - Post System 2.0 🎯
 **8 avanserte post-funksjoner implementert og testet:**
 - [x] **Soft delete med restore** - Innlegg kan slettes og gjenopprettes fra arkiv
@@ -211,7 +228,7 @@
 
 **Database:** 3 nye migrasjoner (post_improvements, repost_system, post_images_edit)
 **Frontend:** 2 nye komponenter, 13 oppdaterte filer
-**Testing:** Build ✅, 120/121 tester ✅, manuell testing ✅
+**Testing:** Build ✅, 120/121 tester ✅, manuell testing ✅, E2E baseline ✅
 
 - [x] **Final gruppe-cleanup** - Fjernet alle gjenværende gruppe-komponenter
   - Slettet: src/components/groups/* (alle filer)

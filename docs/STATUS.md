@@ -149,6 +149,12 @@ supabase/migrations/20260110_post_images_edit.sql
 - ✅ 120/121 tester består
 - ✅ Lokal testing vellykket (alle 8 funksjoner verifisert manuelt)
 - ✅ Database-migrasjoner kjørt (`npx supabase db push`)
+- ✅ E2E automatisert test opprettet (`tests/e2e/post-system-v2.spec.ts`)
+  - Playwright-test med synlig browser
+  - Tester innlogging, post-opprettelse, kommentarer, meny-interaksjoner
+  - Tar screenshots for visuell verifisering
+  - Kjøretid: ~21.5s
+  - Status: Baseline opprettet, trenger UI-justering for robusthet
 
 #### Gruppe-cleanup parallelt:
 - ✅ Fjernet alle `src/components/groups/*` filer
