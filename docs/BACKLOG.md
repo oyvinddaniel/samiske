@@ -162,6 +162,26 @@
 
 ### Januar 2026
 
+#### 13. januar - Pre-Launch: Samfunn skjult fra UI 🚀
+**Samfunn-funksjonalitet midlertidig skjult før offentlig lansering (reversibelt):**
+- [x] **Navigasjon** - Fjernet "Samfunn"-knapper fra Sidebar og MobileNav
+- [x] **Søkesystem** - Fjernet samfunn/tjenester/produkter fra søk (8 filer)
+  - SearchCategory type oppdatert (searchConstants.ts)
+  - Search-funksjoner returnerer tomme arrays (searchQueries.ts)
+  - Kommentert ut community-typer (searchTypes.ts)
+  - Fjernet UI-komponenter (SearchCategoryFilter, SearchResultItem, UnifiedSearchBar, useSearch)
+- [x] **Frontend** - HomeLayout oppdatert (fjernet community-panels fra ActivePanel type)
+- [x] **Bugfikser** - ProfileTabs og SamiOrganizations TypeScript-feil fikset
+
+**Tekniske detaljer:**
+- 12 filer endret (8 søk, 2 navigasjon, 2 bugfixes)
+- ~150 linjer kode kommentert ut/fjernet
+- Database uendret (data bevares med is_hidden flag)
+- Enkelt reversibelt (uncommit + is_hidden=false)
+
+**Testing:** Build ✅, TypeScript ✅, Git push ✅ (440 files, d1abc86)
+**Status:** Fullført og deployet til main
+
 #### 11. januar (kveld) - Profile Hotfixes 🔧
 **3 kritiske hotfixes for profilsystemet:**
 - [x] **Fake statistikk i profile_stats view** ⚠️ KRITISK FIX
@@ -296,5 +316,5 @@
 
 ---
 
-**Sist oppdatert:** 2026-01-11 (kveld)
-**Oppdatert av:** DOKUMENTERER-agent (Profile Hotfixes: fake statistikk fix + design-forbedringer)
+**Sist oppdatert:** 2026-01-13
+**Oppdatert av:** DOKUMENTERER-agent (Samfunn skjult fra UI - pre-launch cleanup)

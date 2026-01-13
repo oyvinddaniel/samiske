@@ -1,11 +1,67 @@
 # STATUS.md - Nåværende tilstand
 
-> **Sist oppdatert:** 2026-01-11
+> **Sist oppdatert:** 2026-01-13
 > **Kilde:** Migrert fra agent_docs/status.md og docs/sapmi/
 
 ---
 
-## Nylige forbedringer (2026-01-11) 🎉
+## Nylige forbedringer (2026-01-13) 🎉
+
+### 🚀 Pre-Launch: Samfunn skjult fra UI (13. jan 2026) - FULLFØRT ✅
+
+**Bakgrunn:** Samfunn-funksjonalitet (communities, tjenester, produkter) skjules midlertidig fra UI før offentlig lansering. Dette er reversibelt - all data bevares i database med `is_hidden` flag.
+
+#### Hva ble gjort:
+
+**NAVIGASJON (2 komponenter)**
+- ✅ Fjernet "Samfunn"-knapp fra `Sidebar.tsx` (desktop)
+- ✅ Fjernet "Samfunn"-knapp fra `MobileNav.tsx` (mobil)
+- Resultat: Ingen synlige entry points til samfunn i navigasjonen
+
+**SØKESYSTEM (8 filer)**
+- ✅ Fjernet `samfunn`, `tjenester`, `produkter` fra SearchCategory type (`searchConstants.ts`)
+- ✅ searchCommunities(), searchServices(), searchProducts() returnerer tomme arrays (`searchQueries.ts`)
+- ✅ Kommentert ut CommunitySearchResult, ServiceSearchResult, ProductSearchResult (`searchTypes.ts`)
+- ✅ Fjernet community-ikoner fra CATEGORY_ICONS (`SearchCategoryFilter.tsx`)
+- ✅ Kommentert ut samfunn-rendering i `SearchResultItem.tsx`
+- ✅ Fjernet community event handlers fra `UnifiedSearchBar.tsx`
+- ✅ Fjernet samfunn/tjenester/produkter fra initialState (`useSearch.ts`)
+- Resultat: Samfunn ikke søkbare eller synlige i søkeresultater
+
+**FRONTEND (2 komponenter)**
+- ✅ HomeLayout: Fjernet `'community'` og `'community-page'` fra ActivePanel type
+- ✅ Kommentert ut community-paneler for fremtidig gjenoppretting
+- Resultat: Ingen panel-visning av samfunn
+
+**BUGFIKSER (2 filer)**
+- ✅ ProfileTabs.tsx: La til manglende SocialLink type import
+- ✅ SamiOrganizations.tsx: Fikset type casting error med `as unknown`
+- Resultat: Build kompilerer uten TypeScript-feil
+
+#### Testing:
+- ✅ Build kompilerer: `npm run build` (ingen errors)
+- ✅ TypeScript-feil fikset (8+ locations)
+- ✅ Alle samfunn-referanser fjernet/kommentert ut
+- ✅ Git push fullført (440 files changed)
+
+#### Tekniske detaljer:
+- **Filer endret:** 12 hovedfiler (8 søk-relaterte, 2 navigasjon, 2 bugfixes)
+- **Linjer kode:** ~150 linjer kommentert ut eller fjernet
+- **Database:** Ingen endringer (data bevares med is_hidden flag)
+- **Reversering:** Enkelt - uncommit kode + sett is_hidden=false
+
+#### Sikkerhet:
+- All data bevares i database (ikke permanent sletting som grupper)
+- RLS policies forblir intakte
+- Samfunn kan enkelt gjenopprettes når klart
+
+**Status:** ✅ Fullført og deployet
+**Commit:** "Pre-launch: Skjul samfunn-funksjonalitet fra UI"
+**Git:** d1abc86 (pushed to main)
+
+---
+
+## Tidligere forbedringer (2026-01-11) 🎉
 
 ### 🔧 Profilsystem Hotfixes (11. jan 2026 kveld) - KRITISK ✅
 
@@ -502,5 +558,5 @@ Se `docs/archive/groups-system-backup/README.md` for komplett guide.
 
 ---
 
-**Sist oppdatert:** 2026-01-11 (kveld)
-**Oppdatert av:** DOKUMENTERER-agent (Profile Hotfixes: fake statistikk fix + design-forbedringer)
+**Sist oppdatert:** 2026-01-13
+**Oppdatert av:** DOKUMENTERER-agent (Samfunn skjult fra UI - pre-launch cleanup)

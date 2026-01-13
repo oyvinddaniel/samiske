@@ -1,7 +1,7 @@
 # CHANGELOG.md - Prosjekthistorikk
 
 > Kronologisk logg over alle betydelige endringer
-> Sist oppdatert: 2026-01-11
+> Sist oppdatert: 2026-01-13
 
 ---
 
@@ -25,6 +25,57 @@
 ### Sikkerhet
 - Sikkerhetsoppdateringer
 ```
+
+---
+
+## [2026-01-13] - Pre-Launch: Samfunn skjult fra UI
+
+### Bakgrunn
+Samfunn-funksjonalitet (communities, tjenester, produkter) skjules midlertidig fra UI før offentlig lansering. Dette er 100% reversibelt - all data bevares i database med `is_hidden` flag.
+
+### Fjernet (midlertidig - kan gjenopprettes)
+- **Navigasjon:**
+  - "Samfunn"-knapper fra desktop navigasjon (`Sidebar.tsx`)
+  - "Samfunn"-knapper fra mobil navigasjon (`MobileNav.tsx`)
+
+- **Søkesystem (8 filer):**
+  - `samfunn`, `tjenester`, `produkter` fra SearchCategory type (`searchConstants.ts`)
+  - Community-typer fra search results: CommunitySearchResult, ServiceSearchResult, ProductSearchResult (`searchTypes.ts`)
+  - Community-ikoner fra søkefilter (`SearchCategoryFilter.tsx`)
+  - Community-rendering i søkeresultater (`SearchResultItem.tsx`)
+  - Community event handlers (`UnifiedSearchBar.tsx`)
+  - Community-relaterte states (`useSearch.ts`)
+
+- **Frontend:**
+  - `'community'` og `'community-page'` fra ActivePanel type (`HomeLayout.tsx`)
+
+### Endret
+- `searchCommunities()`, `searchServices()`, `searchProducts()` returnerer nå tomme arrays (`searchQueries.ts`)
+- All community-relatert UI-kode kommentert ut (kan enkelt uncommentes)
+
+### Fikset
+- **ProfileTabs.tsx:** Manglende SocialLink type import
+- **SamiOrganizations.tsx:** Type casting error (`as unknown` intermediate cast)
+- **TypeScript-kompileringsfeil** i søkesystemet (8+ locations)
+
+### Testing
+- ✅ Build kompilerer: `npm run build` (ingen errors)
+- ✅ TypeScript-feil fikset
+- ✅ Alle samfunn-referanser fjernet/kommentert ut
+- ✅ Git push fullført (440 files changed)
+
+### Tekniske detaljer
+- **Filer endret:** 12 hovedfiler (8 søk-relaterte, 2 navigasjon, 2 bugfixes)
+- **Linjer kode:** ~150 linjer kommentert ut eller fjernet
+- **Database:** Ingen endringer (data bevares med is_hidden flag)
+- **Reversering:** Enkelt - uncommit kode + sett `is_hidden=false`
+
+### Sikkerhet
+- All data bevares i database (ikke permanent sletting som grupper)
+- RLS policies forblir intakte
+- Samfunn kan enkelt gjenopprettes når klart
+
+**Git commit:** d1abc86 - "Pre-launch: Skjul samfunn-funksjonalitet fra UI"
 
 ---
 
